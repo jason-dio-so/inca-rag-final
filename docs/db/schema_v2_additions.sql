@@ -226,6 +226,28 @@ WHERE cs.coverage_id IS NULL;
 ';
 
 -- ========================================
+-- Chunk Idempotency Fix (STEP 4-Validate)
+-- ========================================
+
+-- Add content_hash column for idempotency
+ALTER TABLE chunk ADD COLUMN IF NOT EXISTS content_hash VARCHAR(64);
+
+-- Add UNIQUE constraint to prevent duplicate chunks
+-- Using (document_id, page_number, content_hash) as natural key
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chunk_unique_hash'
+    ) THEN
+        ALTER TABLE chunk ADD CONSTRAINT chunk_unique_hash
+            UNIQUE (document_id, page_number, content_hash);
+    END IF;
+END$$;
+
+COMMENT ON COLUMN chunk.content_hash IS 'SHA-256 hash of content for idempotency';
+
+-- ========================================
 -- 마이그레이션 노트
 -- ========================================
 

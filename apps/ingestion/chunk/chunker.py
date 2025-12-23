@@ -26,6 +26,8 @@ class Chunk:
         self.meta = meta or {}
         self.is_synthetic = False  # Always false for original chunks
         self.synthetic_source_chunk_id = None  # Always None for original chunks
+        # Calculate content_hash for idempotency
+        self.content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
 
 
 def split_text_into_chunks(text: str, page_number: int, max_chunk_size: int = 1000,
@@ -146,7 +148,7 @@ def create_chunks_from_parsed_doc(parsed_doc: Dict[str, Any],
 
 def insert_chunk(conn: PGConnection, chunk: Chunk) -> int:
     """
-    Insert chunk into database.
+    Insert chunk into database with idempotency via content_hash.
 
     Args:
         conn: Database connection
@@ -156,18 +158,18 @@ def insert_chunk(conn: PGConnection, chunk: Chunk) -> int:
         chunk_id
 
     Note:
-        Uses ON CONFLICT DO NOTHING to handle idempotency.
-        If chunk already exists, retrieves existing chunk_id.
+        Uses ON CONFLICT (document_id, page_number, content_hash) DO NOTHING
+        to ensure idempotency. If chunk already exists, retrieves existing chunk_id.
     """
     with conn.cursor() as cur:
-        # Try INSERT
+        # Try INSERT with content_hash
         cur.execute("""
-            INSERT INTO chunk (document_id, page_number, content, is_synthetic,
-                             synthetic_source_chunk_id, meta)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT DO NOTHING
+            INSERT INTO chunk (document_id, page_number, content, content_hash,
+                             is_synthetic, synthetic_source_chunk_id, meta)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (document_id, page_number, content_hash) DO NOTHING
             RETURNING chunk_id
-        """, (chunk.document_id, chunk.page_number, chunk.content,
+        """, (chunk.document_id, chunk.page_number, chunk.content, chunk.content_hash,
               chunk.is_synthetic, chunk.synthetic_source_chunk_id,
               json.dumps(chunk.meta)))
 
@@ -182,10 +184,9 @@ def insert_chunk(conn: PGConnection, chunk: Chunk) -> int:
             FROM chunk
             WHERE document_id = %s
               AND page_number = %s
-              AND content = %s
-              AND is_synthetic = %s
+              AND content_hash = %s
             LIMIT 1
-        """, (chunk.document_id, chunk.page_number, chunk.content, chunk.is_synthetic))
+        """, (chunk.document_id, chunk.page_number, chunk.content_hash))
 
         result = cur.fetchone()
         if result:
