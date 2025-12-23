@@ -54,11 +54,9 @@ async def get_amount_bridge_evidence(
         # Convert to schema using DB-sourced amount fields
         evidences = []
         for row in evidence_rows:
-            # Map amount_unit to Currency enum (KRW default)
+            # KRW ONLY — 외화 개념 제거 (대한민국 보험 도메인 전용)
+            # amount_unit은 계산·분기·매핑에 사용하지 않음
             currency = Currency.KRW
-            amount_unit = row.get("amount_unit", "").upper()
-            if amount_unit in ["USD", "EUR", "JPY", "CNY"]:
-                currency = Currency[amount_unit]
 
             # Use context_type from DB (validated by CHECK constraint)
             context_type = AmountContextType(row["context_type"])

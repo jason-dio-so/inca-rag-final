@@ -440,3 +440,55 @@ class TestRealDBSchemaAlignment:
             "Amount bridge SQL MUST use public.product"
         assert "public.insurer" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
             "Amount bridge SQL MUST use public.insurer"
+
+    def test_amount_bridge_currency_is_always_krw(self):
+        """
+        KRW ONLY RULE:
+        Amount Bridge 응답의 currency는 항상 KRW여야 한다.
+        amount_unit 값과 무관하게 무조건 KRW만 반환.
+
+        대한민국 보험 도메인 전용 시스템이므로 외화는 존재하지 않는다.
+        """
+        from apps.api.app.db import get_readonly_conn
+        from apps.api.app.main import app as test_app
+
+        def mock_conn_gen():
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            # 고의로 amount_unit에 외화 값을 넣어서 테스트
+            mock_cursor.fetchall.return_value = [{
+                "chunk_id": 1,
+                "is_synthetic": False,
+                "synthetic_source_chunk_id": None,
+                "amount_value": 30000000,
+                "amount_text": "3천만원",
+                "amount_unit": "USD",  # 고의적 외화 값 (무시되어야 함)
+                "context_type": "payment",
+                "snippet": "암 진단 시 3천만원 지급",
+                "insurer_code": "TEST",
+                "product_id": 1,
+                "product_name": "Test Product",
+                "document_id": 1,
+                "page_number": 1,
+                "coverage_code": "CANCER_DIAG",
+            }]
+            mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+            yield mock_conn
+
+        test_app.dependency_overrides[get_readonly_conn] = mock_conn_gen
+
+        try:
+            response = client.post("/evidence/amount-bridge", json={
+                "axis": "amount_bridge",
+                "coverage_code": "CANCER_DIAG"
+            })
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # CRITICAL: amount_unit이 USD여도 currency는 반드시 KRW
+            assert data["evidences"][0]["currency"] == "KRW", \
+                "Amount bridge MUST return currency='KRW' regardless of amount_unit value"
+
+        finally:
+            test_app.dependency_overrides.clear()

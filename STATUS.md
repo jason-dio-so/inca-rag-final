@@ -123,6 +123,17 @@ pytest -q                    # 23 passed
 - ❌ coverage_standard auto-INSERT → Read-only connection + SELECT-only queries
 - ❌ DB write operations → BEGIN READ ONLY transaction
 - ❌ SQL bypass patterns → String-level tests prove no backdoors
+- ❌ Foreign currencies → KRW ONLY policy enforced
+
+### Currency Policy (FINAL)
+
+- **System currency**: KRW ONLY
+- **Foreign currencies**: NOT supported (USD/EUR/JPY/CNY all forbidden)
+- **amount_unit**: Ignored for computation/branching/mapping
+- **All API responses**: currency = "KRW"
+- **Enforcement**: Integration test verifies KRW-only regardless of amount_unit value
+
+**Rationale**: 대한민국 보험 도메인 전용 시스템. 모든 금액은 원화(KRW) 기준.
 
 ---
 

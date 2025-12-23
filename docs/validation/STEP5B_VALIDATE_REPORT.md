@@ -1118,3 +1118,147 @@ Total: 23/23 PASS
 **ε Final Release Complete**: 2025-12-23
 **Status**: ✅ ENTITY-BASED CANONICAL COVERAGE FILTERING
 **Next**: STATUS.md update + Git commit/push
+
+---
+
+## 16. STEP 5-B-ε′ KRW ONLY Policy (2025-12-23)
+
+### Summary
+Complete removal of foreign currency logic and enforcement of KRW-only policy across all API endpoints.
+
+### 16.1 Constitutional Principle
+
+**Currency Policy (FINAL)**:
+> 본 시스템은 대한민국 보험 도메인 전용이며, 모든 금액은 원화(KRW) 기준으로만 해석·표현·비교된다.
+> 외화(USD/EUR/JPY/CNY 등)는 설계상 존재하지 않는다.
+
+### 16.2 Changes Made
+
+#### OpenAPI Schema
+```yaml
+Currency:
+  type: string
+  enum: [KRW]
+```
+
+✅ **Already KRW-only** (no changes needed)
+
+#### Python Enum
+```python
+class Currency(str, Enum):
+    KRW = "KRW"
+```
+
+✅ **Already KRW-only** (no changes needed)
+
+#### Router Logic (CRITICAL CHANGE)
+
+**Before** (FORBIDDEN):
+```python
+currency = Currency.KRW
+amount_unit = row.get("amount_unit", "").upper()
+if amount_unit in ["USD", "EUR", "JPY", "CNY"]:
+    currency = Currency[amount_unit]  # ❌ 외화 분기
+```
+
+**After** (ENFORCED):
+```python
+# KRW ONLY — 외화 개념 제거 (대한민국 보험 도메인 전용)
+# amount_unit은 계산·분기·매핑에 사용하지 않음
+currency = Currency.KRW
+```
+
+### 16.3 KRW-Only Integration Test
+
+**New Test** (`tests/integration/test_step5_readonly.py`):
+
+```python
+def test_amount_bridge_currency_is_always_krw(self):
+    """
+    KRW ONLY RULE:
+    Amount Bridge 응답의 currency는 항상 KRW여야 한다.
+    amount_unit 값과 무관하게 무조건 KRW만 반환.
+
+    대한민국 보험 도메인 전용 시스템이므로 외화는 존재하지 않는다.
+    """
+    # Mock: amount_unit = "USD" (고의적 외화 값)
+    # Expected: currency = "KRW" (무시되어야 함)
+```
+
+**Test Result**: ✅ PASS
+
+### 16.4 amount_unit Role (Clarified)
+
+`amount_entity.amount_unit` 컬럼:
+- ✅ **DB에 존재 허용** (원문 보존)
+- ❌ **의미 해석 금지**
+- ❌ **통화 판단 금지**
+- ❌ **변환 금지**
+- ❌ **분기 조건 금지**
+
+**Purpose**: 원본 데이터 보존 목적으로만 존재 (시스템 의미론에 관여하지 않음)
+
+### 16.5 Forbidden Patterns (All Removed)
+
+❌ **Code 레벨**:
+- Foreign currency enum values (USD/EUR/JPY/CNY)
+- `if amount_unit in ["USD", ...]` 분기
+- Currency 매핑 로직
+- 환율 변환 로직
+
+❌ **Documentation 레벨**:
+- "향후 외화 확장 가능" 주석
+- 외화 예시
+- 다중 통화 언급
+
+### 16.6 Test Coverage Update
+
+```bash
+$ pytest tests/contract -q
+8 passed
+
+$ pytest tests/integration -q
+16 passed  # +1 KRW-only test
+
+Total: 24/24 PASS
+```
+
+**New Test**: `test_amount_bridge_currency_is_always_krw` ✅
+
+### 16.7 Files Changed (ε′)
+
+**Modified**:
+- `apps/api/app/routers/evidence.py` - Removed foreign currency logic
+- `tests/integration/test_step5_readonly.py` - Added KRW-only test
+- `STATUS.md` - Added Currency Policy section
+- `docs/validation/STEP5B_VALIDATE_REPORT.md` - This section
+
+**Verified (No Changes Needed)**:
+- `openapi/step5_openapi.yaml` - Already KRW-only
+- `apps/api/app/schemas/common.py` - Already KRW-only
+
+### 16.8 Constitutional Compliance Matrix (Final)
+
+| Constitutional Rule | Enforcement Layer | Verification |
+|---------------------|------------------|--------------|
+| Currency = KRW ONLY | OpenAPI + Python enum | ✅ Single value enum |
+| No foreign currency branching | Router logic | ✅ Code removed |
+| amount_unit ignored | Router logic | ✅ Not used for computation |
+| All responses = KRW | Integration test | ✅ Test enforces KRW-only |
+
+### 16.9 Final DoD Checklist (ε′)
+
+| Requirement | Status | Evidence |
+|------------|--------|----------|
+| Currency enum = KRW only | ✅ PASS | OpenAPI + Python |
+| Foreign currency code removed | ✅ PASS | Router has no branching |
+| KRW-only test added | ✅ PASS | test_amount_bridge_currency_is_always_krw |
+| Contract tests pass | ✅ PASS | 8/8 |
+| Integration tests pass | ✅ PASS | 16/16 |
+| Documentation updated | ✅ PASS | STATUS.md + this section |
+
+---
+
+**ε′ Release Complete**: 2025-12-23
+**Status**: ✅ KRW-ONLY POLICY ENFORCED
+**Next**: Git commit/push
