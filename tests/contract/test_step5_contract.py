@@ -1,7 +1,12 @@
 """
-STEP 5 Contract Tests
+STEP 5 Contract Tests (DB-agnostic)
 
 운영 헌법을 400/422로 강제하는지 검증
+
+Constitutional rule:
+- These tests verify POLICY and SCHEMA enforcement
+- NO database access required (dependency override)
+- Tests run without DB/container/data
 
 Test Coverage:
 1. /compare + mode=premium + premium filter 누락 → 400 + VALIDATION_ERROR
@@ -11,8 +16,33 @@ Test Coverage:
 5. /evidence/amount-bridge에 axis=compare → 400 + VALIDATION_ERROR
 """
 import pytest
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from apps.api.app.main import app
+from apps.api.app.db import get_readonly_conn
+
+
+# Mock DB connection for contract tests (DB-agnostic)
+def get_mock_db_conn():
+    """
+    Fake DB connection for contract tests.
+    Returns a mock that provides minimal cursor interface.
+    """
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+
+    # Mock cursor to return empty results
+    mock_cursor.fetchall.return_value = []
+    mock_cursor.fetchone.return_value = None
+
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_conn.cursor.return_value.__exit__.return_value = False
+
+    yield mock_conn
+
+
+# Override DB dependency for all contract tests
+app.dependency_overrides[get_readonly_conn] = get_mock_db_conn
 
 client = TestClient(app)
 

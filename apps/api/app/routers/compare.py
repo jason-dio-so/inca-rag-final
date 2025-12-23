@@ -1,7 +1,8 @@
 """
 /compare endpoint
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from psycopg2.extensions import connection as PGConnection
 from ..schemas.compare import (
     CompareRequest,
     CompareResponse,
@@ -10,7 +11,7 @@ from ..schemas.compare import (
 )
 from ..schemas.common import DebugHardRules, DebugBlock, Mode
 from ..policy import enforce_compare_policy
-from ..db import db_readonly_session
+from ..db import get_readonly_conn
 from ..queries.compare import (
     get_products_for_compare,
     get_compare_evidence,
@@ -21,7 +22,10 @@ router = APIRouter(tags=["Compare"])
 
 
 @router.post("/compare", response_model=CompareResponse)
-async def compare_products(request: CompareRequest):
+async def compare_products(
+    request: CompareRequest,
+    conn: PGConnection = Depends(get_readonly_conn)
+):
     """
     상품 비교 (compare axis 전용)
 
@@ -57,62 +61,63 @@ async def compare_products(request: CompareRequest):
 
     # Query DB (read-only)
     try:
-        with db_readonly_session() as conn:
-            # Get products for comparison
-            product_rows = get_products_for_compare(
-                conn=conn,
-                product_ids=product_ids,
-                insurer_codes=insurer_codes,
-                limit=10
-            )
+        # Get products for comparison
+        product_rows = get_products_for_compare(
+            conn=conn,
+            product_ids=product_ids,
+            insurer_codes=insurer_codes,
+            limit=10
+        )
 
-            # Build compare items
-            items = []
-            for rank, product_row in enumerate(product_rows, start=1):
-                product_id = product_row["product_id"]
+        # Build compare items
+        items = []
+        for rank, product_row in enumerate(product_rows, start=1):
+            product_id = product_row["product_id"]
 
-                # Get coverage amount if coverage_code provided
-                coverage_amount = None
-                if coverage_code:
-                    coverage_amount = get_coverage_amount_for_product(
-                        conn=conn,
-                        product_id=product_id,
-                        coverage_code=coverage_code
-                    )
-
-                # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
-                evidence_list = []
-                if include_evidence:
-                    evidence_rows = get_compare_evidence(
-                        conn=conn,
-                        product_id=product_id,
-                        coverage_code=coverage_code,
-                        limit=max_evidence
-                    )
-                    evidence_list = [
-                        EvidenceItem(
-                            chunk_id=row["chunk_id"],
-                            document_id=row.get("document_id"),
-                            page_number=row.get("page_number"),
-                            is_synthetic=row["is_synthetic"],  # Always false from SQL
-                            synthetic_source_chunk_id=row.get("synthetic_source_chunk_id"),
-                            snippet=row["snippet"],
-                            doc_type=row.get("doc_type")
-                        )
-                        for row in evidence_rows
-                    ]
-
-                items.append(CompareItem(
-                    rank=rank,
-                    insurer_code=product_row["insurer_code"],
+            # Get coverage amount if coverage_code provided
+            coverage_amount = None
+            if coverage_code:
+                coverage_amount = get_coverage_amount_for_product(
+                    conn=conn,
                     product_id=product_id,
-                    product_name=product_row["product_name"],
-                    premium_amount=None,  # TODO: premium calculation
+                    coverage_code=coverage_code
+                )
+
+            # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
+            evidence_list = []
+            if include_evidence:
+                evidence_rows = get_compare_evidence(
+                    conn=conn,
+                    product_id=product_id,
                     coverage_code=coverage_code,
-                    coverage_amount=coverage_amount,
-                    conditions_summary=None,  # TODO: conditions extraction
-                    evidence=evidence_list if evidence_list else None
-                ))
+                    limit=max_evidence
+                )
+                # DOUBLE SAFETY: Even if SQL has a bug, force is_synthetic=False
+                # Constitutional guarantee: Compare axis NEVER returns synthetic chunks
+                evidence_list = [
+                    EvidenceItem(
+                        chunk_id=row["chunk_id"],
+                        document_id=row.get("document_id"),
+                        page_number=row.get("page_number"),
+                        is_synthetic=False,  # HARD-CODED: Compare axis forbids synthetic
+                        synthetic_source_chunk_id=None,  # HARD-CODED: Always None for compare
+                        snippet=row["snippet"],
+                        doc_type=row.get("doc_type")
+                    )
+                    for row in evidence_rows
+                ]
+
+            items.append(CompareItem(
+                rank=rank,
+                insurer_code=product_row["insurer_code"],
+                product_id=product_id,
+                product_name=product_row["product_name"],
+                premium_amount=None,  # TODO: premium calculation
+                coverage_code=coverage_code,
+                coverage_amount=coverage_amount,
+                conditions_summary=None,  # TODO: conditions extraction
+                evidence=evidence_list if evidence_list else None
+            ))
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

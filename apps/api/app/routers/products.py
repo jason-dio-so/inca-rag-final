@@ -1,7 +1,8 @@
 """
 /search/products endpoint
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from psycopg2.extensions import connection as PGConnection
 from ..schemas.products import (
     SearchProductsRequest,
     SearchProductsResponse,
@@ -11,7 +12,7 @@ from ..schemas.products import (
 )
 from ..schemas.common import DebugHardRules, DebugBlock, Mode
 from ..policy import enforce_search_products_policy
-from ..db import db_readonly_session
+from ..db import get_readonly_conn
 from ..queries.products import search_products as query_search_products
 from ..queries.products import get_coverage_recommendations
 
@@ -19,7 +20,10 @@ router = APIRouter(prefix="/search", tags=["Products"])
 
 
 @router.post("/products", response_model=SearchProductsResponse)
-async def search_products(request: SearchProductsRequest):
+async def search_products(
+    request: SearchProductsRequest,
+    conn: PGConnection = Depends(get_readonly_conn)
+):
     """
     상품 검색
 
@@ -58,51 +62,49 @@ async def search_products(request: SearchProductsRequest):
         if coverage_ref and coverage_ref.coverage_name and not coverage_ref.coverage_code:
             # Get recommendations from DB (no auto-INSERT)
             try:
-                with db_readonly_session() as conn:
-                    candidates_rows = get_coverage_recommendations(conn, coverage_ref.coverage_name)
-                    if candidates_rows:
-                        candidates = [
-                            CoverageCandidate(
-                                coverage_code=row["coverage_code"],
-                                score=float(row.get("score", 0.8)),
-                                reason=f"Matched alias: {row.get('canonical_name', '')}"
-                            )
-                            for row in candidates_rows
-                        ]
-                        recommendations = CoverageRecommendations(
-                            input_coverage_name=coverage_ref.coverage_name,
-                            candidates=candidates,
-                            next_action="사용자가 coverage_code 선택 후 재호출"
+                candidates_rows = get_coverage_recommendations(conn, coverage_ref.coverage_name)
+                if candidates_rows:
+                    candidates = [
+                        CoverageCandidate(
+                            coverage_code=row["coverage_code"],
+                            score=float(row.get("score", 0.8)),
+                            reason=f"Matched alias: {row.get('canonical_name', '')}"
                         )
+                        for row in candidates_rows
+                    ]
+                    recommendations = CoverageRecommendations(
+                        input_coverage_name=coverage_ref.coverage_name,
+                        candidates=candidates,
+                        next_action="사용자가 coverage_code 선택 후 재호출"
+                    )
             except Exception:
                 # If DB query fails, return empty recommendations
                 pass
 
     # Query products from DB
     try:
-        with db_readonly_session() as conn:
-            product_rows = query_search_products(
-                conn=conn,
-                insurer_codes=insurer_codes,
-                product_query=product_query,
-                sale_status=sale_status,
-                limit=limit,
-                offset=offset
-            )
+        product_rows = query_search_products(
+            conn=conn,
+            insurer_codes=insurer_codes,
+            product_query=product_query,
+            sale_status=sale_status,
+            limit=limit,
+            offset=offset
+        )
 
-            # Convert to schema
-            items = [
-                ProductSummary(
-                    product_id=row["product_id"],
-                    insurer_code=row["insurer_code"],
-                    product_code=row["product_code"],
-                    product_name=row["product_name"],
-                    product_type=row.get("product_type"),
-                    sale_status=row.get("sale_status"),
-                    premium_amount=None  # TODO: premium calculation if filter provided
-                )
-                for row in product_rows
-            ]
+        # Convert to schema
+        items = [
+            ProductSummary(
+                product_id=row["product_id"],
+                insurer_code=row["insurer_code"],
+                product_code=row["product_code"],
+                product_name=row["product_name"],
+                product_type=row.get("product_type"),
+                sale_status=row.get("sale_status"),
+                premium_amount=None  # TODO: premium calculation if filter provided
+            )
+            for row in product_rows
+        ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

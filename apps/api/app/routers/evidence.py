@@ -1,7 +1,8 @@
 """
 /evidence/amount-bridge endpoint
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from psycopg2.extensions import connection as PGConnection
 from ..schemas.evidence import (
     AmountBridgeRequest,
     AmountBridgeResponse,
@@ -10,14 +11,17 @@ from ..schemas.evidence import (
 )
 from ..schemas.common import DebugHardRules, DebugBlock, Currency
 from ..policy import enforce_amount_bridge_policy
-from ..db import db_readonly_session
+from ..db import get_readonly_conn
 from ..queries.evidence import get_amount_bridge_evidence as query_amount_evidence
 
 router = APIRouter(prefix="/evidence", tags=["Evidence"])
 
 
 @router.post("/amount-bridge", response_model=AmountBridgeResponse)
-async def get_amount_bridge_evidence(request: AmountBridgeRequest):
+async def get_amount_bridge_evidence(
+    request: AmountBridgeRequest,
+    conn: PGConnection = Depends(get_readonly_conn)
+):
     """
     금액 증거 수집 (amount_bridge axis 전용)
 
@@ -39,34 +43,33 @@ async def get_amount_bridge_evidence(request: AmountBridgeRequest):
 
     # Query DB (read-only)
     try:
-        with db_readonly_session() as conn:
-            evidence_rows = query_amount_evidence(
-                conn=conn,
-                coverage_code=request.coverage_code,
-                insurer_codes=request.insurer_codes,
-                include_synthetic=include_synthetic,
-                limit=max_evidence
-            )
+        evidence_rows = query_amount_evidence(
+            conn=conn,
+            coverage_code=request.coverage_code,
+            insurer_codes=request.insurer_codes,
+            include_synthetic=include_synthetic,
+            limit=max_evidence
+        )
 
-            # Convert to schema
-            evidences = [
-                AmountEvidence(
-                    chunk_id=row["chunk_id"],
-                    is_synthetic=row["is_synthetic"],
-                    synthetic_source_chunk_id=row.get("synthetic_source_chunk_id"),
-                    amount_value=row["amount_value"],
-                    currency=Currency(row["currency"]) if row.get("currency") else Currency.KRW,
-                    amount_text=row["amount_text"],
-                    context_type=AmountContextType(row["context_type"]),
-                    snippet=row["snippet"],
-                    insurer_code=row.get("insurer_code"),
-                    product_id=row.get("product_id"),
-                    product_name=row.get("product_name"),
-                    document_id=row.get("document_id"),
-                    page_number=row.get("page_number")
-                )
-                for row in evidence_rows
-            ]
+        # Convert to schema
+        evidences = [
+            AmountEvidence(
+                chunk_id=row["chunk_id"],
+                is_synthetic=row["is_synthetic"],
+                synthetic_source_chunk_id=row.get("synthetic_source_chunk_id"),
+                amount_value=row["amount_value"],
+                currency=Currency(row["currency"]) if row.get("currency") else Currency.KRW,
+                amount_text=row["amount_text"],
+                context_type=AmountContextType(row["context_type"]),
+                snippet=row["snippet"],
+                insurer_code=row.get("insurer_code"),
+                product_id=row.get("product_id"),
+                product_name=row.get("product_name"),
+                document_id=row.get("document_id"),
+                page_number=row.get("page_number")
+            )
+            for row in evidence_rows
+        ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
