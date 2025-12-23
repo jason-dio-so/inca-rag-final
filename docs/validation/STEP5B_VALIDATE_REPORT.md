@@ -713,6 +713,184 @@ The operational constitution is now **mathematically proven** through string-lev
 
 ---
 
-**Report Updated**: 2025-12-23 (γ release)  
-**Status**: ✅ SEALED  
+**Report Updated**: 2025-12-23 (γ release)
+**Status**: ✅ SEALED
 **Next**: STEP 5-C (Premium calculation + Conditions extraction)
+
+---
+
+## 14. STEP 5-B-ε Real DB Schema Alignment (2025-12-23)
+
+### Summary of ε Changes
+Final alignment of all SQL queries with actual PostgreSQL database schema confirmed via `\d` commands.
+
+### 14.1 Schema Verification
+
+**Confirmed Tables** (from `docker exec postgres_inca_test psql`):
+- ✅ `public.product` (not `product_master`)
+- ✅ `public.insurer`
+- ✅ `public.product_coverage`
+- ✅ `public.coverage_standard` (with `coverage_code` column)
+- ✅ `public.chunk` (with `is_synthetic`, `doc_type_priority`)
+- ✅ `public.document`
+- ✅ `public.premium`
+
+**Key Schema Details**:
+- `coverage_standard.coverage_code` (varchar(100), UNIQUE) - canonical coverage code
+- `product_coverage.coverage_id` FK → `coverage_standard.coverage_id`
+- `document.doc_type_priority` (integer, 1-4) - for evidence ordering
+- `chunk.is_synthetic` (boolean, default false)
+
+### 14.2 SQL Query Alignment
+
+**All SQL templates updated to use `public.*` schema prefix**:
+
+#### products.py
+```sql
+FROM public.product p
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
+```
+
+#### compare.py
+```sql
+-- Products query
+FROM public.product p
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
+
+-- Evidence query
+FROM public.chunk c
+JOIN public.document d ON d.document_id = c.document_id
+WHERE c.is_synthetic = false  -- HARD RULE
+ORDER BY d.doc_type_priority ASC  -- Real column
+
+-- Coverage amount query
+FROM public.product_coverage pc
+JOIN public.coverage_standard cs ON cs.coverage_id = pc.coverage_id
+WHERE cs.coverage_code = %(coverage_code)s  -- Canonical code
+```
+
+#### evidence.py
+```sql
+FROM public.chunk c
+JOIN public.document d ON d.document_id = c.document_id
+JOIN public.product p ON p.product_id = d.product_id
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
+WHERE (%(include_synthetic)s = true OR c.is_synthetic = false)
+ORDER BY c.is_synthetic ASC, d.doc_type_priority ASC
+```
+
+### 14.3 Amount Extraction Implementation
+
+**New Module**: `apps/api/app/utils/amount_extractor.py`
+
+Simple regex-based extraction for STEP 5-B validation:
+```python
+def extract_amount_from_text(text: str) -> Tuple[Optional[int], Optional[str], AmountContextType]:
+    """
+    Extract amount from chunk content.
+
+    Examples:
+        "600만원" -> (6000000, "600만원", payment)
+        "3억원" -> (300000000, "3억원", payment)
+    """
+```
+
+**Integration**: Amount-bridge endpoint extracts from `chunk.content` since dedicated amount columns don't exist yet.
+
+### 14.4 Schema Validation Tests
+
+**New Test Class**: `TestRealDBSchemaAlignment` (integration tests)
+
+| Test | Verification |
+|------|-------------|
+| `test_search_products_uses_real_schema` | ✅ Asserts `public.product`, `public.insurer` |
+| `test_compare_products_uses_real_schema` | ✅ No `product_master` allowed |
+| `test_coverage_amount_uses_product_coverage` | ✅ `product_coverage` + `coverage_standard` |
+| `test_compare_evidence_uses_chunk_document` | ✅ `doc_type_priority` ordering |
+| `test_amount_bridge_uses_real_schema` | ✅ All 4 tables validated |
+
+**String-level assertions prevent accidental schema drift**.
+
+### 14.5 Forbidden Schema Patterns
+
+❌ **FORBIDDEN**:
+- `product_master` (imaginary denormalized table)
+- `coverage_name_kr` (should be `coverage_name`)
+- Hard-coded document type CASE statements (use `doc_type_priority`)
+
+✅ **ENFORCED**:
+- All queries use `public.*` explicit schema
+- Coverage code joins via `coverage_standard.coverage_code`
+- Document ordering via `doc_type_priority` column
+
+### 14.6 Test Results
+
+```bash
+# Contract tests (DB-agnostic)
+$ pytest tests/contract -q
+8 passed
+
+# Integration tests (with schema validation)
+$ pytest tests/integration -q
+15 passed  # +5 new schema tests
+
+# Total
+23/23 PASS
+```
+
+### 14.7 Coverage Amount Query Change
+
+**Before** (assumed entity tables):
+```sql
+FROM coverage_entity ce
+LEFT JOIN amount_entity ae ...
+```
+
+**After** (real schema):
+```sql
+SELECT pc.coverage_amount
+FROM public.product_coverage pc
+JOIN public.coverage_standard cs ON cs.coverage_id = pc.coverage_id
+WHERE pc.product_id = %(product_id)s
+  AND cs.coverage_code = %(coverage_code)s
+```
+
+**Return type**: Changed from `Optional[int]` to `Optional[float]` (matches `numeric(15,2)`)
+
+### 14.8 Final DoD Checklist (ε)
+
+| Requirement | Status | Evidence |
+|------------|--------|----------|
+| All SQL uses actual DB schema | ✅ PASS | `public.*` prefix everywhere |
+| No `product_master` references | ✅ PASS | Schema tests enforce |
+| Coverage amount via `product_coverage` | ✅ PASS | Query updated + tested |
+| Amount extraction implemented | ✅ PASS | Regex extractor + router integration |
+| Schema validation tests added | ✅ PASS | 5 new tests in integration suite |
+| Contract tests still pass | ✅ PASS | 8/8 |
+| Integration tests pass | ✅ PASS | 15/15 |
+
+### 14.9 Files Changed (ε)
+
+**Modified**:
+- `apps/api/app/queries/products.py` - `public.*` schema
+- `apps/api/app/queries/compare.py` - Real schema + `product_coverage`
+- `apps/api/app/queries/evidence.py` - Simplified for real schema
+- `apps/api/app/routers/evidence.py` - Amount extraction integration
+- `tests/integration/test_step5_readonly.py` - +5 schema tests
+
+**New**:
+- `apps/api/app/utils/amount_extractor.py` - Amount regex extractor
+
+### 14.10 Constitutional Guarantee Update
+
+**Schema Alignment Principle** (now enforced):
+> All SQL queries MUST use actual PostgreSQL schema (`public.product`, `public.product_coverage`, etc.). Imaginary tables like `product_master` are FORBIDDEN. String-level tests enforce this at CI time.
+
+**Canonical Coverage Code Principle** (reinforced):
+> `coverage_standard.coverage_code` is the single source of truth. All joins use this column. No LLM-based coverage inference allowed.
+
+---
+
+**ε Release Complete**: 2025-12-23
+**Status**: ✅ REAL DB ALIGNED
+**Next**: Git commit + push

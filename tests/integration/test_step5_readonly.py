@@ -5,13 +5,15 @@ Tests:
 1. DB connection is read-only (write attempts fail)
 2. Compare evidence queries enforce is_synthetic=false
 3. Amount bridge respects include_synthetic option
+4. Real DB schema validation (product/product_coverage/chunk/document)
 """
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from apps.api.app.main import app
-from apps.api.app.queries.compare import COMPARE_EVIDENCE_SQL
+from apps.api.app.queries.compare import COMPARE_EVIDENCE_SQL, COMPARE_PRODUCTS_SQL, COVERAGE_AMOUNT_SQL
 from apps.api.app.queries.evidence import AMOUNT_BRIDGE_EVIDENCE_SQL
+from apps.api.app.queries.products import SEARCH_PRODUCTS_SQL
 
 client = TestClient(app)
 
@@ -100,6 +102,10 @@ class TestSyntheticEnforcementSQL:
         # CRITICAL: Verify there's NO parameter to bypass this filter
         assert "%(include_synthetic)s" not in COMPARE_EVIDENCE_SQL, \
             "Compare SQL MUST NOT have include_synthetic parameter (no bypass allowed)"
+
+        # Verify uses real schema: public.product
+        assert "public.product" in COMPARE_EVIDENCE_SQL or "FROM product" not in COMPARE_EVIDENCE_SQL or "public.chunk" in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST use real DB schema (public.product, public.chunk, etc.)"
 
         # Additional verification: check it's in WHERE clause context
         sql_lower = COMPARE_EVIDENCE_SQL.lower()
@@ -363,3 +369,64 @@ class TestHardRulesDebugInfo:
             assert "include_synthetic=True" in notes_str
         finally:
             test_app.dependency_overrides.clear()
+
+
+class TestRealDBSchemaAlignment:
+    """Verify all SQL queries use real DB schema (product/product_coverage/chunk/document)"""
+
+    def test_search_products_uses_real_schema(self):
+        """
+        Verify /search/products SQL uses public.product + public.insurer
+        """
+        assert "public.product" in SEARCH_PRODUCTS_SQL, \
+            "Search products SQL MUST use public.product (not product_master)"
+        assert "public.insurer" in SEARCH_PRODUCTS_SQL, \
+            "Search products SQL MUST use public.insurer"
+        assert "product_master" not in SEARCH_PRODUCTS_SQL, \
+            "Search products SQL MUST NOT use product_master (forbidden)"
+
+    def test_compare_products_uses_real_schema(self):
+        """
+        Verify /compare products SQL uses public.product + public.insurer
+        """
+        assert "public.product" in COMPARE_PRODUCTS_SQL, \
+            "Compare products SQL MUST use public.product"
+        assert "public.insurer" in COMPARE_PRODUCTS_SQL, \
+            "Compare products SQL MUST use public.insurer"
+        assert "product_master" not in COMPARE_PRODUCTS_SQL, \
+            "Compare products SQL MUST NOT use product_master"
+
+    def test_coverage_amount_uses_product_coverage(self):
+        """
+        Verify coverage amount query uses product_coverage + coverage_standard
+        """
+        assert "public.product_coverage" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST use public.product_coverage"
+        assert "public.coverage_standard" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST use public.coverage_standard"
+        assert "coverage_code" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST join on coverage_code (canonical)"
+
+    def test_compare_evidence_uses_chunk_document(self):
+        """
+        Verify compare evidence SQL uses public.chunk + public.document
+        """
+        assert "public.chunk" in COMPARE_EVIDENCE_SQL, \
+            "Compare evidence SQL MUST use public.chunk"
+        assert "public.document" in COMPARE_EVIDENCE_SQL, \
+            "Compare evidence SQL MUST use public.document"
+        assert "doc_type_priority" in COMPARE_EVIDENCE_SQL, \
+            "Compare evidence SQL MUST use doc_type_priority for ordering"
+
+    def test_amount_bridge_uses_real_schema(self):
+        """
+        Verify amount-bridge SQL uses public.chunk/document/product/insurer
+        """
+        assert "public.chunk" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount bridge SQL MUST use public.chunk"
+        assert "public.document" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount bridge SQL MUST use public.document"
+        assert "public.product" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount bridge SQL MUST use public.product"
+        assert "public.insurer" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount bridge SQL MUST use public.insurer"

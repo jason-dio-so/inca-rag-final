@@ -19,8 +19,8 @@ SELECT
   p.product_name,
   p.product_type,
   CASE WHEN p.is_active THEN 'ACTIVE' ELSE 'INACTIVE' END AS sale_status
-FROM product p
-JOIN insurer i ON i.insurer_id = p.insurer_id
+FROM public.product p
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
 WHERE 1=1
   AND (%(insurer_codes)s IS NULL OR i.insurer_code = ANY(%(insurer_codes)s))
   AND (%(product_query)s IS NULL OR p.product_name ILIKE %(product_query_like)s)
@@ -71,10 +71,10 @@ def search_products(
 COVERAGE_RECOMMENDATIONS_SQL = """
 SELECT DISTINCT
   ca.coverage_code,
-  cs.coverage_name_kr AS canonical_name,
+  cs.coverage_name AS canonical_name,
   0.8 AS score
-FROM coverage_alias ca
-JOIN coverage_standard cs ON cs.coverage_code = ca.coverage_code
+FROM public.coverage_alias ca
+JOIN public.coverage_standard cs ON cs.coverage_code = ca.coverage_code
 WHERE
   ca.alias_name ILIKE %(coverage_name_like)s
 ORDER BY score DESC

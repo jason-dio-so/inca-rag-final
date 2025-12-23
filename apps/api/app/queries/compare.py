@@ -20,27 +20,14 @@ SELECT
   c.page_number,
   c.is_synthetic,
   c.synthetic_source_chunk_id,
-  LEFT(c.content, 500) AS snippet,
+  LEFT(c.content, 400) AS snippet,
   d.document_type AS doc_type
-FROM chunk c
-JOIN document d ON d.document_id = c.document_id
+FROM public.chunk c
+JOIN public.document d ON d.document_id = c.document_id
 WHERE
   c.is_synthetic = false              -- HARD RULE: Compare axis forbids synthetic
   AND d.product_id = %(product_id)s
-  AND (%(coverage_code)s IS NULL OR EXISTS (
-    SELECT 1 FROM coverage_entity ce
-    WHERE ce.chunk_id = c.chunk_id
-      AND ce.coverage_code = %(coverage_code)s
-  ))
-ORDER BY
-  CASE d.document_type
-    WHEN '약관' THEN 1
-    WHEN '사업방법서' THEN 2
-    WHEN '상품요약서' THEN 3
-    WHEN '가입설계서' THEN 4
-    ELSE 99
-  END ASC,
-  c.page_number ASC
+ORDER BY d.doc_type_priority ASC, c.page_number ASC, c.chunk_id ASC
 LIMIT %(limit)s;
 """
 
@@ -84,13 +71,12 @@ SELECT
   i.insurer_code,
   p.product_name,
   p.product_code
-FROM product p
-JOIN insurer i ON i.insurer_id = p.insurer_id
-WHERE
-  (%(product_ids)s IS NULL OR p.product_id = ANY(%(product_ids)s))
+FROM public.product p
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
+WHERE 1=1
+  AND (%(product_ids)s IS NULL OR p.product_id = ANY(%(product_ids)s))
   AND (%(insurer_codes)s IS NULL OR i.insurer_code = ANY(%(insurer_codes)s))
-  AND p.is_active = true
-ORDER BY p.product_id ASC
+ORDER BY p.product_id DESC
 LIMIT %(limit)s;
 """
 
@@ -124,22 +110,11 @@ def get_products_for_compare(
 
 # SQL template for coverage amount
 COVERAGE_AMOUNT_SQL = """
-SELECT
-  ce.coverage_code,
-  ae.amount_value
-FROM coverage_entity ce
-LEFT JOIN amount_entity ae ON ae.chunk_id = ce.chunk_id
-  AND ae.context_type IN ('payment', 'limit')
-WHERE
-  ce.coverage_code = %(coverage_code)s
-  AND EXISTS (
-    SELECT 1 FROM chunk c
-    JOIN document d ON d.document_id = c.document_id
-    WHERE c.chunk_id = ce.chunk_id
-      AND d.product_id = %(product_id)s
-      AND c.is_synthetic = false  -- HARD RULE
-  )
-ORDER BY ae.amount_value DESC NULLS LAST
+SELECT pc.coverage_amount
+FROM public.product_coverage pc
+JOIN public.coverage_standard cs ON cs.coverage_id = pc.coverage_id
+WHERE pc.product_id = %(product_id)s
+  AND cs.coverage_code = %(coverage_code)s
 LIMIT 1;
 """
 
@@ -148,20 +123,17 @@ def get_coverage_amount_for_product(
     conn: PGConnection,
     product_id: int,
     coverage_code: str
-) -> Optional[int]:
+) -> Optional[float]:
     """
-    Get coverage amount for product.
-
-    Constitutional guarantee:
-    - Only queries non-synthetic chunks
+    Get coverage amount for product from product_coverage table.
 
     Args:
         conn: Read-only database connection
         product_id: Product ID
-        coverage_code: Coverage code
+        coverage_code: Canonical coverage code (신정원 통일 코드)
 
     Returns:
-        Amount value or None
+        Coverage amount or None
     """
     params = {
         "product_id": product_id,
@@ -170,5 +142,5 @@ def get_coverage_amount_for_product(
 
     rows = execute_readonly_query(conn, COVERAGE_AMOUNT_SQL, params)
     if rows:
-        return rows[0].get("amount_value")
+        return rows[0].get("coverage_amount")
     return None

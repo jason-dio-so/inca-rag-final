@@ -29,8 +29,8 @@
 
 ---
 
-### ✅ STEP 5-B: DB Read-Only Implementation (α → β → γ)
-**Status:** COMPLETE AND SEALED
+### ✅ STEP 5-B: DB Read-Only Implementation (α → β → γ → ε)
+**Status:** COMPLETE AND SEALED (REAL DB ALIGNED)
 **Final Commit:** [pending]
 **Date:** 2025-12-23
 
@@ -54,7 +54,7 @@
 - Strengthened BEGIN READ ONLY enforcement
 
 #### γ Release (Final Validation + Guardrails)
-**Commit:** [current]
+**Commit:** e7e15e9
 
 **Deliverables:**
 - SQL template string-level assertion tests (4 new tests)
@@ -63,30 +63,43 @@
 - Documentation updates (STEP5B_VALIDATE_REPORT.md)
 - Constitutional guarantees sealed at 4 layers
 
+#### ε Release (Real DB Schema Alignment)
+**Commit:** [current]
+
+**Deliverables:**
+- All SQL queries aligned with actual PostgreSQL schema
+- `public.product` / `public.product_coverage` / `public.coverage_standard`
+- Coverage amount via `product_coverage` table (not entity tables)
+- Amount extraction logic for amount-bridge endpoint
+- 5 new schema validation tests
+- Forbidden patterns (`product_master`) enforced
+
 **Key Features:**
 1. **SQL Layer**: `is_synthetic=false` hard-coded, proven by string tests
 2. **Router Layer**: Double safety hard-code for compare evidence
 3. **Transaction Layer**: BEGIN READ ONLY with proper cleanup
 4. **Policy Layer**: 400 errors for violations
+5. **Schema Layer**: Real DB schema enforced by integration tests
 
 **Test Coverage:**
 - Contract tests: 8/8 PASS (DB-agnostic)
-- Integration tests: 10/10 PASS (SQL validation)
-- Total: 18/18 PASS
+- Integration tests: 15/15 PASS (SQL validation + schema enforcement)
+- Total: 23/23 PASS
 
 **Test Commands:**
 ```bash
 pytest tests/contract -q     # 8 passed
-pytest tests/integration -q  # 10 passed
-pytest -q                    # 18 passed
+pytest tests/integration -q  # 15 passed
+pytest -q                    # 23 passed
 ```
 
 **Key Files:**
 - `apps/api/app/db.py` (read-only connection + transaction hygiene)
-- `apps/api/app/queries/*.py` (SQL templates with constitutional enforcement)
+- `apps/api/app/queries/*.py` (SQL templates with real schema)
 - `apps/api/app/routers/*.py` (dependency injection + double safety)
+- `apps/api/app/utils/amount_extractor.py` (amount regex extraction)
 - `tests/contract/test_step5_contract.py` (8 contract tests, DB-agnostic)
-- `tests/integration/test_step5_readonly.py` (10 integration tests)
+- `tests/integration/test_step5_readonly.py` (15 integration tests + schema validation)
 - `docs/validation/STEP5B_VALIDATE_REPORT.md` (complete validation report)
 
 ---
