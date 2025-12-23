@@ -17,9 +17,7 @@ from psycopg2.extensions import connection as PGConnection
 try:
     import openai
     OPENAI_AVAILABLE = True
-except Import
-
-Error:
+except ImportError:
     OPENAI_AVAILABLE = False
 
 

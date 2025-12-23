@@ -8,7 +8,7 @@ Critical principle:
 - ✅ Use FK enforcement to prevent invalid references
 """
 import json
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Optional, Any
 
 from psycopg2.extensions import connection as PGConnection
 
