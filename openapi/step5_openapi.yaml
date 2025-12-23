@@ -237,13 +237,13 @@ components:
           nullable: true
           minimum: 0
           maximum: 100
-          description: 납입기간(년) 예: 20
+          description: "납입기간(년) 예: 20"
         coverage_period_to_age:
           type: integer
           nullable: true
           minimum: 0
           maximum: 120
-          description: 보장기간(세 만기) 예: 100
+          description: "보장기간(세 만기) 예: 100"
         payment_method:
           $ref: "#/components/schemas/PaymentMethod"
       description: >
