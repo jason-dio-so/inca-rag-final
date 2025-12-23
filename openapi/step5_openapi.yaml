@@ -1,0 +1,652 @@
+openapi: 3.0.3
+info:
+  title: inca-RAG-final STEP 5 API (Contract)
+  version: "0.1.0"
+  description: >
+    STEP 5 API 계약(OpenAPI) 정의서.
+    구현이 아닌 **Contract**이며, 서버/클라이언트/테스트는 본 스펙을 "헌법"으로 준수해야 한다.
+
+    핵심 헌법:
+    - Compare/Retrieval 축: chunk.is_synthetic=false 강제 (synthetic evidence 금지)
+    - Amount Bridge 축: include_synthetic 옵션으로 synthetic 허용(축 분리)
+    - coverage_standard 자동 INSERT/UPDATE 금지 (해당 API 없음)
+    - premium mode 정렬은 premium 필터 없으면 400
+
+servers:
+  - url: http://localhost:8000
+    description: Local dev
+
+tags:
+  - name: Products
+  - name: Compare
+  - name: Evidence
+
+paths:
+  /search/products:
+    post:
+      tags: [Products]
+      summary: Search products with filters (premium/coverage optional)
+      operationId: searchProducts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchProductsRequest"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchProductsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /compare:
+    post:
+      tags: [Compare]
+      summary: Compare products by coverage and/or premium (compare axis)
+      description: >
+        **Compare axis** 전용.
+        - 서버는 항상 evidence 조회에서 `chunk.is_synthetic=false`를 강제해야 한다.
+        - 요청에서 include_synthetic=true는 정책 위반으로 400 반환.
+        - mode=premium 인 경우 premium 필터 없으면 400 반환.
+      operationId: compareProducts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareRequest"
+      responses:
+        "200":
+          description: Compare results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /evidence/amount-bridge:
+    post:
+      tags: [Evidence]
+      summary: Collect amount evidence (amount bridge axis)
+      description: >
+        **Amount Bridge axis** 전용.
+        - include_synthetic=true를 허용한다(옵션).
+        - 응답에 is_synthetic 및 synthetic_source_chunk_id를 명시한다.
+        - compare 축과 완전 분리(혼동 금지).
+      operationId: getAmountBridgeEvidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AmountBridgeRequest"
+      responses:
+        "200":
+          description: Amount evidence results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmountBridgeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+components:
+  responses:
+    BadRequest:
+      description: Bad Request (validation/policy violation)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Unprocessable Entity (schema validation failed)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # ----------------------------
+    # Common
+    # ----------------------------
+    Axis:
+      type: string
+      enum: [compare, amount_bridge]
+      description: >
+        축(axis) 구분은 "헌법".
+        compare: 비교 축 (synthetic 금지)
+        amount_bridge: 금액 증거 축 (synthetic 옵션 허용)
+
+    Mode:
+      type: string
+      enum: [premium, compensation]
+      description: >
+        정렬/우선순위 모드.
+        - premium: 보험료 우선(오름차순)
+        - compensation: 보상 우선(담보금액/한도 기준 내림차순)
+
+    SaleStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, ALL]
+
+    Gender:
+      type: string
+      enum: [M, F]
+
+    PaymentMethod:
+      type: string
+      enum: [월납, 연납, 일시납, 기타]
+
+    Currency:
+      type: string
+      enum: [KRW]
+
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - POLICY_VIOLATION
+        - NOT_FOUND
+        - INTERNAL_ERROR
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              $ref: "#/components/schemas/ErrorCode"
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    DebugHardRules:
+      type: object
+      description: E2E 테스트에서 검증 가능한 하드룰 체크 결과
+      additionalProperties: false
+      properties:
+        is_synthetic_filter_applied:
+          type: boolean
+        compare_axis_forbids_synthetic:
+          type: boolean
+        premium_mode_requires_premium_filter:
+          type: boolean
+
+    DebugBlock:
+      type: object
+      additionalProperties: false
+      properties:
+        hard_rules:
+          $ref: "#/components/schemas/DebugHardRules"
+        notes:
+          type: array
+          items:
+            type: string
+
+    # ----------------------------
+    # Filters
+    # ----------------------------
+    ProductFilter:
+      type: object
+      additionalProperties: false
+      properties:
+        insurer_codes:
+          type: array
+          items:
+            type: string
+          description: 예) ["SAMSUNG","MERITZ"]
+        product_query:
+          type: string
+          description: 상품명 검색 키워드
+        product_type:
+          type: string
+          description: 예) "암보험" (도메인 확장 가능)
+        sale_status:
+          $ref: "#/components/schemas/SaleStatus"
+      description: 상품 필터
+
+    PremiumFilter:
+      type: object
+      additionalProperties: false
+      required: [age, gender]
+      properties:
+        age:
+          type: integer
+          minimum: 0
+          maximum: 120
+        gender:
+          $ref: "#/components/schemas/Gender"
+        payment_period_years:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: 납입기간(년) 예: 20
+        coverage_period_to_age:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 120
+          description: 보장기간(세 만기) 예: 100
+        payment_method:
+          $ref: "#/components/schemas/PaymentMethod"
+      description: >
+        보험료 필터.
+        - mode=premium 정렬/랭킹에는 필수(없으면 400)
+
+    CoverageRef:
+      type: object
+      additionalProperties: false
+      properties:
+        coverage_code:
+          type: string
+          description: 신정원 통일코드 (canonical)
+        coverage_name:
+          type: string
+          description: 사용자가 입력한 담보명(자연어)
+      description: >
+        담보 참조.
+        - coverage_code가 없고 coverage_name만 있는 경우, 서버는 자동 매핑 금지(추천만 제공)
+
+    CoverageFilter:
+      type: object
+      additionalProperties: false
+      properties:
+        coverage:
+          $ref: "#/components/schemas/CoverageRef"
+        min_coverage_amount:
+          type: integer
+          nullable: true
+          minimum: 0
+        max_coverage_amount:
+          type: integer
+          nullable: true
+          minimum: 0
+        disease_query:
+          type: string
+          nullable: true
+          description: 예) "제자리암", "경계성종양" 등 (정의/조건 비교에 사용)
+      description: 담보/질병 조건 필터
+
+    Paging:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+
+    # ----------------------------
+    # Products Search
+    # ----------------------------
+    SearchProductsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        filter:
+          type: object
+          additionalProperties: false
+          properties:
+            product:
+              $ref: "#/components/schemas/ProductFilter"
+            premium:
+              $ref: "#/components/schemas/PremiumFilter"
+            coverage:
+              $ref: "#/components/schemas/CoverageFilter"
+        sort:
+          type: object
+          additionalProperties: false
+          properties:
+            mode:
+              $ref: "#/components/schemas/Mode"
+            direction:
+              type: string
+              enum: [asc, desc]
+              default: asc
+        paging:
+          $ref: "#/components/schemas/Paging"
+      description: >
+        상품 검색.
+        - sort.mode=premium 인 경우 premium 필터 없으면 400
+        - coverage.coverage_code 미제공 시: 결과 0일 수 있으며 recommendations 제공 가능
+
+    ProductSummary:
+      type: object
+      additionalProperties: false
+      required: [product_id, insurer_code, product_code, product_name]
+      properties:
+        product_id:
+          type: integer
+        insurer_code:
+          type: string
+        product_code:
+          type: string
+        product_name:
+          type: string
+        product_type:
+          type: string
+          nullable: true
+        sale_status:
+          $ref: "#/components/schemas/SaleStatus"
+        premium_amount:
+          type: integer
+          nullable: true
+          description: premium filter가 있는 경우에만 채워질 수 있음
+
+    CoverageCandidate:
+      type: object
+      additionalProperties: false
+      required: [coverage_code, score]
+      properties:
+        coverage_code:
+          type: string
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        reason:
+          type: string
+          nullable: true
+
+    CoverageRecommendations:
+      type: object
+      additionalProperties: false
+      required: [input_coverage_name, candidates, next_action]
+      properties:
+        input_coverage_name:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoverageCandidate"
+        next_action:
+          type: string
+          description: 예) "사용자가 coverage_code 선택 후 재호출"
+
+    SearchProductsResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSummary"
+        recommendations:
+          $ref: "#/components/schemas/CoverageRecommendations"
+        debug:
+          $ref: "#/components/schemas/DebugBlock"
+
+    # ----------------------------
+    # Compare
+    # ----------------------------
+    CompareOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        include_evidence:
+          type: boolean
+          default: true
+        include_synthetic:
+          type: boolean
+          default: false
+          description: >
+            compare 축에서는 **항상 false**여야 한다.
+            true 요청 시 POLICY_VIOLATION(400).
+        max_evidence_per_item:
+          type: integer
+          minimum: 0
+          maximum: 20
+          default: 5
+
+    CompareRequest:
+      type: object
+      additionalProperties: false
+      required: [axis, mode]
+      properties:
+        axis:
+          $ref: "#/components/schemas/Axis"
+        mode:
+          $ref: "#/components/schemas/Mode"
+        filter:
+          type: object
+          additionalProperties: false
+          properties:
+            product:
+              $ref: "#/components/schemas/ProductFilter"
+            premium:
+              $ref: "#/components/schemas/PremiumFilter"
+            coverage:
+              $ref: "#/components/schemas/CoverageFilter"
+        target:
+          type: object
+          additionalProperties: false
+          properties:
+            product_ids:
+              type: array
+              items:
+                type: integer
+              description: 비교 대상 상품을 product_id로 직접 고정
+        options:
+          $ref: "#/components/schemas/CompareOptions"
+      description: >
+        compare 요청.
+        규칙:
+        - axis는 반드시 "compare"
+        - mode=premium 인 경우 filter.premium 필수(없으면 400)
+        - options.include_synthetic=true 요청 금지(400)
+        - coverage.coverage_code 미제공 시 자동 매핑 금지(추천만 제공)
+
+    EvidenceItem:
+      type: object
+      additionalProperties: false
+      required: [chunk_id, is_synthetic, snippet]
+      properties:
+        chunk_id:
+          type: integer
+        document_id:
+          type: integer
+          nullable: true
+        page_number:
+          type: integer
+          nullable: true
+        is_synthetic:
+          type: boolean
+          description: compare 축에서는 항상 false
+        synthetic_source_chunk_id:
+          type: integer
+          nullable: true
+          description: compare 축에서는 항상 null
+        snippet:
+          type: string
+        doc_type:
+          type: string
+          nullable: true
+
+    CompareItem:
+      type: object
+      additionalProperties: false
+      required: [rank, insurer_code, product_id, product_name]
+      properties:
+        rank:
+          type: integer
+        insurer_code:
+          type: string
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        premium_amount:
+          type: integer
+          nullable: true
+        coverage_code:
+          type: string
+          nullable: true
+        coverage_amount:
+          type: integer
+          nullable: true
+        conditions_summary:
+          type: string
+          nullable: true
+          description: 제자리암/경계성종양 등 조건 요약(정의/면책/감액 등)
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceItem"
+
+    UnmappedBlock:
+      type: object
+      additionalProperties: false
+      properties:
+        input_coverage_name:
+          type: string
+          nullable: true
+        unmapped_names:
+          type: array
+          items:
+            type: string
+        recommendations:
+          $ref: "#/components/schemas/CoverageRecommendations"
+
+    CompareResponse:
+      type: object
+      additionalProperties: false
+      required: [axis, mode, items]
+      properties:
+        axis:
+          $ref: "#/components/schemas/Axis"
+        mode:
+          $ref: "#/components/schemas/Mode"
+        criteria:
+          type: object
+          additionalProperties: true
+          description: 서버가 실제 적용한 조건(투명성)
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompareItem"
+        unmapped:
+          $ref: "#/components/schemas/UnmappedBlock"
+        debug:
+          $ref: "#/components/schemas/DebugBlock"
+
+    # ----------------------------
+    # Amount Bridge Evidence
+    # ----------------------------
+    AmountContextType:
+      type: string
+      enum: [payment, limit, count, other]
+
+    AmountBridgeOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        include_synthetic:
+          type: boolean
+          default: true
+          description: amount_bridge 축에서는 허용됨(옵션)
+        max_evidence:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+
+    AmountBridgeRequest:
+      type: object
+      additionalProperties: false
+      required: [axis, coverage_code]
+      properties:
+        axis:
+          $ref: "#/components/schemas/Axis"
+        coverage_code:
+          type: string
+          description: 신정원 통일코드 (필수)
+        insurer_codes:
+          type: array
+          items:
+            type: string
+          nullable: true
+        options:
+          $ref: "#/components/schemas/AmountBridgeOptions"
+      description: >
+        Amount Bridge 요청.
+        - axis는 반드시 "amount_bridge"
+        - coverage_code 필수 (이 축은 추천 흐름이 아니라 "증거 수집")
+
+    AmountEvidence:
+      type: object
+      additionalProperties: false
+      required: [chunk_id, is_synthetic, amount_value, amount_text, context_type, snippet]
+      properties:
+        chunk_id:
+          type: integer
+        is_synthetic:
+          type: boolean
+        synthetic_source_chunk_id:
+          type: integer
+          nullable: true
+        amount_value:
+          type: integer
+          minimum: 0
+        currency:
+          $ref: "#/components/schemas/Currency"
+        amount_text:
+          type: string
+        context_type:
+          $ref: "#/components/schemas/AmountContextType"
+        snippet:
+          type: string
+        insurer_code:
+          type: string
+          nullable: true
+        product_id:
+          type: integer
+          nullable: true
+        product_name:
+          type: string
+          nullable: true
+        document_id:
+          type: integer
+          nullable: true
+        page_number:
+          type: integer
+          nullable: true
+
+    AmountBridgeResponse:
+      type: object
+      additionalProperties: false
+      required: [axis, coverage_code, evidences]
+      properties:
+        axis:
+          $ref: "#/components/schemas/Axis"
+        coverage_code:
+          type: string
+        evidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/AmountEvidence"
+        debug:
+          $ref: "#/components/schemas/DebugBlock"
