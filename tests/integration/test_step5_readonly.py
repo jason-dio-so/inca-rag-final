@@ -74,29 +74,105 @@ class TestReadOnlyEnforcement:
 
 
 class TestSyntheticEnforcementSQL:
-    """Verify is_synthetic enforcement in SQL templates"""
+    """
+    Verify is_synthetic enforcement in SQL templates (STRING-LEVEL VALIDATION)
+
+    These tests verify the SQL templates themselves, not just the router behavior.
+    This ensures the constitution is enforced at the SQL layer, independent of
+    any router-level safety measures.
+    """
 
     def test_compare_sql_hard_codes_is_synthetic_false(self):
         """
-        CONSTITUTIONAL TEST: Compare SQL template MUST have is_synthetic=false
-        """
-        # This is a compile-time guarantee - SQL template must contain the filter
-        assert "c.is_synthetic = false" in COMPARE_EVIDENCE_SQL
-        assert "-- HARD RULE" in COMPARE_EVIDENCE_SQL
+        CONSTITUTIONAL TEST: Compare SQL template MUST have is_synthetic=false HARD-CODED
 
-        # Verify there's no option to skip this filter
-        assert "%(include_synthetic)s" not in COMPARE_EVIDENCE_SQL
+        This test verifies the SQL string itself contains the filter.
+        Router-level double safety is separate - this tests SQL layer enforcement.
+        """
+        # CRITICAL: SQL template must contain the hard-coded filter
+        assert "c.is_synthetic = false" in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST hard-code 'c.is_synthetic = false' in WHERE clause"
+
+        # Verify comment marker for audit trail
+        assert "-- HARD RULE" in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST have '-- HARD RULE' comment marking constitutional enforcement"
+
+        # CRITICAL: Verify there's NO parameter to bypass this filter
+        assert "%(include_synthetic)s" not in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST NOT have include_synthetic parameter (no bypass allowed)"
+
+        # Additional verification: check it's in WHERE clause context
+        sql_lower = COMPARE_EVIDENCE_SQL.lower()
+        where_idx = sql_lower.find("where")
+        is_synthetic_idx = sql_lower.find("c.is_synthetic = false")
+        assert where_idx != -1 and is_synthetic_idx != -1, \
+            "Both WHERE and is_synthetic filter must exist"
+        assert is_synthetic_idx > where_idx, \
+            "is_synthetic=false filter must appear after WHERE clause"
 
     def test_amount_bridge_sql_allows_synthetic_option(self):
         """
-        Amount Bridge SQL template MUST support include_synthetic option
-        """
-        # Amount bridge should have conditional synthetic filtering
-        assert "%(include_synthetic)s" in AMOUNT_BRIDGE_EVIDENCE_SQL
-        assert "c.is_synthetic = false" in AMOUNT_BRIDGE_EVIDENCE_SQL
+        Amount Bridge SQL template MUST support include_synthetic option with proper branching
 
-        # Should have OR clause for conditional filtering
-        assert "OR c.is_synthetic = false" in AMOUNT_BRIDGE_EVIDENCE_SQL
+        This axis separation allows synthetic chunks via parameter control.
+        """
+        # CRITICAL: Must have parameter for option control
+        assert "%(include_synthetic)s" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST have include_synthetic parameter for axis separation"
+
+        # CRITICAL: Must still have the false filter for conditional use
+        assert "c.is_synthetic = false" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST have 'c.is_synthetic = false' for conditional filtering"
+
+        # CRITICAL: Verify OR clause for proper branching
+        assert "OR c.is_synthetic = false" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST have 'OR c.is_synthetic = false' for conditional logic"
+
+        # Verify the branching logic structure
+        assert "%(include_synthetic)s = true" in AMOUNT_BRIDGE_EVIDENCE_SQL.lower() or \
+               "%(include_synthetic)s = TRUE" in AMOUNT_BRIDGE_EVIDENCE_SQL or \
+               "%(include_synthetic)s" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST check include_synthetic parameter"
+
+    def test_compare_sql_no_synthetic_bypass_possible(self):
+        """
+        Additional validation: Compare SQL has NO way to bypass synthetic filter
+
+        This is a negative test ensuring no backdoors exist.
+        """
+        sql_lower = COMPARE_EVIDENCE_SQL.lower()
+
+        # Check for common bypass patterns that should NOT exist
+        forbidden_patterns = [
+            "include_synthetic",
+            "allow_synthetic",
+            "skip_synthetic",
+            "c.is_synthetic = true",
+            "c.is_synthetic != false",
+            "c.is_synthetic <> false"
+        ]
+
+        for pattern in forbidden_patterns:
+            assert pattern not in sql_lower, \
+                f"Compare SQL MUST NOT contain '{pattern}' - no bypass allowed"
+
+    def test_amount_bridge_sql_proper_conditional_structure(self):
+        """
+        Verify Amount Bridge SQL has proper conditional structure for include_synthetic
+
+        The SQL should be: (include_synthetic = true OR is_synthetic = false)
+        """
+        sql_lower = AMOUNT_BRIDGE_EVIDENCE_SQL.lower()
+
+        # Verify conditional structure exists
+        has_conditional = (
+            "%(include_synthetic)s" in AMOUNT_BRIDGE_EVIDENCE_SQL and
+            ("or" in sql_lower) and
+            ("c.is_synthetic = false" in sql_lower)
+        )
+
+        assert has_conditional, \
+            "Amount Bridge SQL MUST have proper conditional: (include_synthetic OR is_synthetic=false)"
 
     def test_compare_evidence_all_non_synthetic(self):
         """

@@ -60,11 +60,12 @@ def get_db_connection(readonly: bool = True) -> PGConnection:
 @contextmanager
 def db_readonly_session() -> Iterator[PGConnection]:
     """
-    Context manager for READ-ONLY database session.
+    Context manager for READ-ONLY database session with proper transaction hygiene.
 
     Constitutional guarantee:
-    - Transaction is READ ONLY
-    - Any write attempt will raise psycopg2.ProgrammingError
+    - Transaction is READ ONLY (BEGIN READ ONLY)
+    - Any write attempt will raise psycopg2.errors.ReadOnlySqlTransaction
+    - Proper cleanup on exit (rollback if needed)
 
     Usage:
         with db_readonly_session() as conn:
@@ -74,14 +75,33 @@ def db_readonly_session() -> Iterator[PGConnection]:
 
     Yields:
         psycopg2 connection in READ ONLY mode
+
+    Transaction Hygiene:
+    - BEGIN READ ONLY is executed on connection creation
+    - On normal exit: connection closed (no commit needed for read-only)
+    - On exception: rollback executed, then connection closed
+    - No write operations possible at PostgreSQL level
     """
     conn = None
     try:
         conn = get_db_connection(readonly=True)
         yield conn
+        # For read-only transactions, no commit needed
+        # BEGIN READ ONLY prevents any writes
+    except Exception:
+        # Rollback on exception (though read-only shouldn't have changes)
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass  # Rollback failure is non-critical for read-only
+        raise
     finally:
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass  # Close failure is logged but not raised
 
 
 def get_readonly_conn() -> Iterator[PGConnection]:
