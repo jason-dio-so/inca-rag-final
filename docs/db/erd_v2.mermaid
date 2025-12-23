@@ -1,0 +1,173 @@
+erDiagram
+    %% ========================================
+    %% ERD v2: 보험료 + 상품비교 확장
+    %% ========================================
+    %% 기존 STEP 2 테이블 + 신규 테이블 추가
+    %% 신정원 코드 정합 + Synthetic 오염 차단 강제
+    %% ========================================
+
+    %% ========================================
+    %% 기존 테이블 (STEP 2)
+    %% ========================================
+
+    insurer {
+        int insurer_id PK
+        varchar insurer_code UK
+        varchar insurer_name
+        boolean is_active
+        timestamp created_at
+    }
+
+    product {
+        int product_id PK
+        int insurer_id FK
+        varchar product_code UK
+        varchar product_name
+        varchar product_type
+        date sale_start_date
+        date sale_end_date
+        boolean is_active
+        timestamp created_at
+    }
+
+    coverage_standard {
+        int coverage_id PK
+        varchar coverage_code UK "신정원 통일 코드 (CANONICAL)"
+        varchar coverage_name
+        varchar domain "암/뇌/심혈관/상해"
+        varchar coverage_type "진단/수술/입원/통원"
+        int priority "도메인 내 우선순위"
+        boolean is_main
+        timestamp created_at
+    }
+
+    document {
+        int document_id PK
+        int product_id FK
+        varchar document_type
+        varchar file_path
+        varchar file_hash
+        int doc_type_priority
+        date effective_date
+        timestamp created_at
+    }
+
+    coverage_alias {
+        int alias_id PK
+        int insurer_id FK
+        int coverage_id FK
+        varchar insurer_coverage_name UK
+        varchar confidence
+        varchar mapping_method
+        timestamp created_at
+    }
+
+    chunk {
+        int chunk_id PK
+        int document_id FK
+        int page_number
+        text content
+        vector embedding
+        boolean is_synthetic "NOT NULL DEFAULT false"
+        int synthetic_source_chunk_id FK "Synthetic인 경우 필수"
+        jsonb meta "참고용, 필터링 금지"
+        timestamp created_at
+    }
+
+    chunk_entity {
+        int entity_id PK
+        int chunk_id FK
+        varchar entity_type
+        varchar coverage_code FK
+        jsonb entity_value
+        varchar extraction_method
+        float confidence
+        timestamp created_at
+    }
+
+    amount_entity {
+        int amount_id PK
+        int chunk_id FK
+        varchar coverage_code FK "NOT NULL"
+        varchar context_type "payment/count/limit"
+        numeric amount_value
+        varchar amount_text
+        varchar amount_unit
+        float confidence
+        timestamp created_at
+    }
+
+    coverage_subtype {
+        int subtype_id PK
+        int coverage_id FK
+        varchar subtype_name "경계성종양, 제자리암 등"
+        varchar subtype_code
+        jsonb rules
+        timestamp created_at
+    }
+
+    coverage_condition {
+        int condition_id PK
+        int coverage_id FK
+        varchar condition_type "지급/감액/면책"
+        text condition_text
+        jsonb condition_rules
+        timestamp created_at
+    }
+
+    %% ========================================
+    %% 신규 테이블 (ERD v2)
+    %% ========================================
+
+    premium {
+        int premium_id PK
+        int product_id FK
+        int age "가입 연령"
+        varchar gender "M/F"
+        int payment_period "납입 기간 (년)"
+        int coverage_period "보장 기간 (년/100세만기 등)"
+        varchar payment_method "월납/연납/일시납"
+        numeric premium_amount "보험료 (원)"
+        date effective_date "요율 적용 시작일"
+        jsonb meta "추가 조건"
+        timestamp created_at
+    }
+
+    product_coverage {
+        int product_coverage_id PK
+        int product_id FK
+        int coverage_id FK
+        numeric coverage_amount "보장 금액 (원)"
+        varchar coverage_limit_type "일시금/연금 등"
+        varchar coverage_frequency "1회/연간 등"
+        int coverage_max_count "최대 지급 횟수"
+        date effective_date "보장 시작일"
+        jsonb coverage_details "세부 조건"
+        timestamp created_at
+    }
+
+    %% ========================================
+    %% 관계 (Relationships)
+    %% ========================================
+
+    %% 기존 관계
+    insurer ||--o{ product : "has"
+    product ||--o{ document : "has"
+    document ||--o{ chunk : "contains"
+    chunk ||--o{ chunk : "spawns (synthetic)"
+
+    coverage_standard ||--o{ coverage_alias : "mapped_by"
+    coverage_standard ||--o{ coverage_subtype : "has_subtype"
+    coverage_standard ||--o{ coverage_condition : "has_condition"
+
+    insurer ||--o{ coverage_alias : "defines"
+    coverage_standard ||--o{ chunk_entity : "referenced_by"
+    coverage_standard ||--o{ amount_entity : "referenced_by"
+
+    chunk ||--o{ chunk_entity : "has"
+    chunk ||--o{ amount_entity : "has"
+
+    %% 신규 관계 (v2)
+    product ||--o{ premium : "has_premium_table"
+    product ||--o{ product_coverage : "has_coverages"
+    coverage_standard ||--o{ product_coverage : "referenced_by"

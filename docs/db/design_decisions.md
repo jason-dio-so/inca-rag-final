@@ -503,6 +503,136 @@ UNIQUE(insurer_id, insurer_coverage_name)
 
 ---
 
+## 9. 왜 보험료를 독립 테이블로 설계했는가? (v2 확장)
+
+### 결정
+`premium` 테이블을 별도로 분리하고, 연령/성별/납입방식별 보험료를 구조화
+
+### 이유
+
+#### 9.1 보험료는 담보와 동일한 복잡성을 갖는다
+- 동일 상품이라도:
+  - 30세 남성 vs 40세 여성 → 보험료 다름
+  - 20년납 vs 전기납 → 보험료 다름
+  - 100세만기 vs 80세만기 → 보험료 다름
+
+#### 9.2 `product.meta` JSONB 저장의 문제점
+```json
+// ❌ 잘못된 설계
+{
+  "premium": {
+    "30M_20_100": 50000,
+    "30F_20_100": 45000,
+    ...
+  }
+}
+```
+- SQL 집계 불가능 (`MIN(premium_amount)` 등)
+- 인덱스 불가능 (성능 저하)
+- 연령대별 분포 분석 불가능
+
+#### 9.3 비교 쿼리가 SQL 레벨에서 가능해야 한다
+```sql
+-- ✅ 보험료 최저 TOP 5 (SQL만으로 가능)
+SELECT product_name, premium_amount
+FROM premium pr
+JOIN product p ON pr.product_id = p.product_id
+WHERE age = 30 AND gender = 'M'
+ORDER BY premium_amount ASC
+LIMIT 5;
+```
+
+#### 9.4 UNIQUE 제약으로 중복 방지
+```sql
+UNIQUE(product_id, age, gender, payment_period, coverage_period, payment_method)
+```
+- 동일 조건의 보험료 중복 삽입 방지
+- Idempotent ingestion 보장
+
+### 대안 분석
+| 대안 | 문제점 |
+|------|--------|
+| product.meta JSONB | SQL 집계 불가, 인덱스 불가 |
+| product.premium_amount (단일 컬럼) | 연령/성별별 다른 보험료 표현 불가 |
+| 별도 서비스에서 계산 | 데이터 일관성 보장 불가, 재현 불가 |
+
+---
+
+## 10. 왜 비교 우선순위를 데이터 모델에 반영했는가? (v2 확장)
+
+### 결정
+비교 우선순위(보험료 우선 vs 보상 우선)를 **쿼리 파라미터 + SQL CASE**로 처리
+
+### 이유
+
+#### 10.1 "우선순위는 사용자 선택"이다
+- 고정된 순위가 아니라 런타임 파라미터
+- 별도 `ranking_rule` 테이블은 over-engineering
+
+#### 10.2 SQL CASE로 충분히 표현 가능
+```sql
+SELECT product_name,
+       CASE WHEN $1 = 'premium' THEN premium_amount
+            ELSE -coverage_amount END as sort_value
+FROM ...
+ORDER BY sort_value ASC;
+```
+
+#### 10.3 데이터 모델이 "비교 가능성"을 보장
+- `premium` 테이블: 보험료 비교 가능
+- `product_coverage` 테이블: 보상 금액 비교 가능
+- 우선순위는 Application이 결정, 데이터는 중립
+
+### 대안 분석
+| 대안 | 문제점 |
+|------|--------|
+| ranking_rule 테이블 | 고정된 순위, 유연성 저하 |
+| Application에서만 처리 | SQL 집계/필터 불가능 |
+| View로 고정 | 사용자 선택 불가 |
+
+---
+
+## 11. product_coverage 테이블의 필요성 (v2 확장)
+
+### 결정
+상품별 담보 보장 금액을 `product_coverage` 테이블로 명시적 관리
+
+### 이유
+
+#### 11.1 "상품 × 담보" 관계는 N:M이다
+- 1개 상품 → 여러 담보
+- 1개 담보 → 여러 상품
+
+#### 11.2 보장 금액은 상품마다 다르다
+- 삼성화재 암플러스: 암진단금 5000만원
+- 현대해상 프리미엄: 암진단금 3000만원
+- 동일 담보(`CA_DIAG_GENERAL`)이지만 금액 다름
+
+#### 11.3 비교 쿼리의 핵심 테이블
+```sql
+-- 암진단금 5000만원 이상 상품
+SELECT product_name, coverage_amount
+FROM product_coverage pc
+JOIN coverage_standard cs ON pc.coverage_id = cs.coverage_id
+WHERE cs.coverage_code = 'CA_DIAG_GENERAL'
+  AND pc.coverage_amount >= 50000000;
+```
+
+#### 11.4 FK로 신정원 코드 정합 강제
+```sql
+coverage_id INTEGER NOT NULL REFERENCES coverage_standard(coverage_id)
+```
+- 존재하지 않는 담보 코드 → INSERT 실패
+- Application-level 검증 불필요
+
+### UNIQUE 제약
+```sql
+UNIQUE(product_id, coverage_id)
+```
+- 동일 상품에 동일 담보 중복 방지
+
+---
+
 ## 요약
 
 | 질문 | 답변 |
@@ -514,6 +644,9 @@ UNIQUE(insurer_id, insurer_coverage_name)
 | **V1.6.x 문제 예방법?** | DB 제약, 권한 분리, View 강제, 명확한 문서화 |
 | **is_synthetic 필터링 규칙?** | `chunk.is_synthetic` 컬럼 사용, meta JSONB 사용 금지 |
 | **청크 본문 컬럼명?** | `content` (기존 코드 호환성) |
+| **왜 보험료를 독립 테이블로?** (v2) | SQL 집계 가능, 인덱스 활용, 연령/성별별 구조화 |
+| **비교 우선순위 처리?** (v2) | 쿼리 파라미터 + SQL CASE, 데이터 모델은 중립 유지 |
+| **product_coverage 필요성?** (v2) | 상품×담보 N:M 관계, FK로 신정원 코드 정합 강제 |
 
 **핵심 원칙:**
 1. 신정원 코드 중심 (coverage_standard)
@@ -521,3 +654,4 @@ UNIQUE(insurer_id, insurer_coverage_name)
 3. Amount Bridge 전용 설계 (amount_entity + context_type)
 4. 확장 가능한 스키마 (보험사/문서/담보 추가 시 데이터만 변경)
 5. **필터링은 컬럼 기준, meta는 참고용**
+6. **비교는 데이터 모델이 강제, 서비스는 조합만** (v2)
