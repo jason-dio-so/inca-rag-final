@@ -75,6 +75,32 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ---
 
+## GitHub 저장소 규칙 (절대)
+
+### Single Source of Truth
+본 프로젝트의 **유일한 기준 저장소**는 **GitHub `inca-rag-final` repository**이다.
+
+### 작업 순서 (필수)
+모든 작업은 다음 순서를 반드시 따른다:
+
+1. `inca-RAG-final/` 디렉토리에서 작업
+2. 로컬 Git commit
+3. **GitHub `inca-rag-final`로 push**
+4. 커밋 해시를 작업 결과에 명시
+
+### Push 필수
+- Push되지 않은 작업은 **완료로 간주하지 않는다**
+- Claude는 작업 완료 시 항상 다음 정보를 출력해야 한다:
+  - branch
+  - commit hash
+  - push 여부
+
+### 기존 저장소
+- 기존 `inca-rag` repository는 **참조용(read-only)**
+- 어떠한 코드/문서도 추가·수정하지 않는다
+
+---
+
 ## 금지 사항 (절대)
 
 1. ❌ 기존 inca-rag 코드 복붙 구현
