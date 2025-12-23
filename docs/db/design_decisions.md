@@ -440,6 +440,49 @@ CREATE TABLE comparison_cache (
 
 ---
 
+## 8. 운영 적용 시 필수 확인 사항
+
+### 8.1 is_synthetic 필터링 규칙 (강제)
+**절대 규칙:** 필터링은 `chunk.is_synthetic` 컬럼 기준, `meta` JSONB 필드 사용 금지
+
+```sql
+-- ✅ 올바른 필터링 (Compare/Retrieval)
+SELECT * FROM chunk WHERE is_synthetic = false;
+
+-- ❌ 잘못된 필터링 (성능 저하)
+SELECT * FROM chunk WHERE meta->>'is_synthetic' = 'false';
+```
+
+**이유:**
+- B-tree 인덱스 활용 가능 (컬럼)
+- JSONB 쿼리는 인덱스 효율 저하
+- meta는 참고용, 필터링 금지
+
+### 8.2 컬럼명 표준: `content` (not `chunk_text`)
+기존 코드베이스 호환성을 위해 청크 본문 컬럼명은 **`content`**로 확정
+
+```python
+# ✅ 표준
+chunk.content
+
+# ❌ 비표준
+chunk.chunk_text
+```
+
+### 8.3 UNIQUE 제약 조건
+```sql
+-- product: 보험사 내 상품 코드 중복 방지
+UNIQUE(insurer_id, product_code)
+
+-- document: 동일 상품의 동일 문서 중복 방지
+UNIQUE(product_id, document_type, file_hash)
+
+-- coverage_alias: 보험사별 담보명 중복 방지
+UNIQUE(insurer_id, insurer_coverage_name)
+```
+
+---
+
 ## 요약
 
 | 질문 | 답변 |
@@ -449,9 +492,12 @@ CREATE TABLE comparison_cache (
 | **왜 synthetic chunk를 chunk에?** | 스키마 일관성, Amount Bridge 효율성, 명확한 필터링 |
 | **왜 amount를 meta/entity 구조로?** | Meta는 유연성, Entity는 쿼리 성능, Context 분리로 정확도 향상 |
 | **V1.6.x 문제 예방법?** | DB 제약, 권한 분리, View 강제, 명확한 문서화 |
+| **is_synthetic 필터링 규칙?** | `chunk.is_synthetic` 컬럼 사용, meta JSONB 사용 금지 |
+| **청크 본문 컬럼명?** | `content` (기존 코드 호환성) |
 
 **핵심 원칙:**
 1. 신정원 코드 중심 (coverage_standard)
 2. Synthetic chunk 명확한 분리 (is_synthetic flag)
 3. Amount Bridge 전용 설계 (amount_entity + context_type)
 4. 확장 가능한 스키마 (보험사/문서/담보 추가 시 데이터만 변경)
+5. **필터링은 컬럼 기준, meta는 참고용**

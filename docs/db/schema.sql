@@ -7,7 +7,8 @@
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Note: uuid-ossp는 현재 스키마에서 사용하지 않음 (향후 필요 시 활성화)
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ========================================
 -- 기준/마스터 계층 (Canonical Layer)
@@ -82,13 +83,14 @@ CREATE TABLE document (
     doc_type_priority INTEGER NOT NULL,
     meta JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(product_id, document_type, file_hash)
 );
 
 COMMENT ON TABLE document IS '보험 문서 메타데이터';
 COMMENT ON COLUMN document.document_type IS '문서 유형 (약관/사업방법서/요약서/설계서)';
 COMMENT ON COLUMN document.doc_type_priority IS '문서 우선순위: 1=약관, 2=사업방법서, 3=상품요약서, 4=가입설계서';
-COMMENT ON COLUMN document.file_hash IS 'SHA-256 파일 해시';
+COMMENT ON COLUMN document.file_hash IS 'SHA-256 파일 해시 (중복 방지)';
 
 -- ========================================
 -- 매핑/정규화 계층 (Normalization Layer)
@@ -162,9 +164,9 @@ CREATE TABLE chunk (
     chunk_id SERIAL PRIMARY KEY,
     document_id INTEGER NOT NULL REFERENCES document(document_id) ON DELETE CASCADE,
     page_number INTEGER,
-    chunk_text TEXT NOT NULL,
+    content TEXT NOT NULL,
     embedding vector(1536),
-    is_synthetic BOOLEAN DEFAULT false,
+    is_synthetic BOOLEAN NOT NULL DEFAULT false,
     synthetic_source_chunk_id INTEGER REFERENCES chunk(chunk_id) ON DELETE SET NULL,
     meta JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -172,9 +174,10 @@ CREATE TABLE chunk (
 );
 
 COMMENT ON TABLE chunk IS '문서 분할 단위 (원본 + synthetic)';
-COMMENT ON COLUMN chunk.is_synthetic IS '합성 청크 여부 (Amount Bridge 전용)';
+COMMENT ON COLUMN chunk.content IS '청크 본문 (검색/비교 시 필터링: is_synthetic = false)';
+COMMENT ON COLUMN chunk.is_synthetic IS '합성 청크 여부 (Amount Bridge 전용) - 필터 기준은 이 컬럼 사용, meta 아님';
 COMMENT ON COLUMN chunk.synthetic_source_chunk_id IS '원본 청크 ID (synthetic인 경우)';
-COMMENT ON COLUMN chunk.meta IS '메타 정보: synthetic_type, synthetic_method, entities 등';
+COMMENT ON COLUMN chunk.meta IS '메타 정보: synthetic_type, synthetic_method, entities 등 (참고용, 필터링 금지)';
 
 -- ========================================
 -- Extraction/Evidence 계층
@@ -259,9 +262,20 @@ CREATE INDEX idx_chunk_synthetic ON chunk(is_synthetic);
 CREATE INDEX idx_chunk_document_synthetic ON chunk(document_id, is_synthetic);
 CREATE INDEX idx_chunk_source ON chunk(synthetic_source_chunk_id) WHERE synthetic_source_chunk_id IS NOT NULL;
 
--- Vector search index (IVFFLAT - 운영 환경에서 HNSW 고려)
+-- ========================================
+-- Vector search index (Optional - pgvector 버전 확인 필요)
+-- ========================================
+-- IVFFLAT: pgvector 0.3.0+ 지원, 대용량 데이터셋에 적합
+-- 초기 데이터 적을 때는 인덱스 없이도 동작 가능
 CREATE INDEX idx_chunk_embedding ON chunk USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
--- HNSW 대안: CREATE INDEX idx_chunk_embedding ON chunk USING hnsw (embedding vector_cosine_ops);
+
+-- HNSW: pgvector 0.5.0+ 지원, 검색 성능 우수하나 인덱스 구축 시간 김
+-- 운영 환경에서 IVFFLAT 성능 부족 시 HNSW로 교체 고려:
+-- DROP INDEX IF EXISTS idx_chunk_embedding;
+-- CREATE INDEX idx_chunk_embedding ON chunk USING hnsw (embedding vector_cosine_ops);
+
+-- pgvector 버전 확인: SELECT * FROM pg_extension WHERE extname = 'vector';
+-- 인덱스 생성 실패 시: 인덱스 없이도 vector search 동작 가능 (성능 저하)
 
 -- chunk_entity
 CREATE INDEX idx_entity_chunk ON chunk_entity(chunk_id);
@@ -371,7 +385,7 @@ SELECT
     c.chunk_id,
     c.document_id,
     c.page_number,
-    c.chunk_text,
+    c.content,
     c.embedding,
     c.meta,
     d.document_type,
@@ -388,7 +402,7 @@ WHERE c.is_synthetic = false;
 CREATE OR REPLACE VIEW v_synthetic_chunks AS
 SELECT
     c.chunk_id,
-    c.chunk_text,
+    c.content,
     c.synthetic_source_chunk_id,
     c.meta->>'synthetic_type' AS synthetic_type,
     c.meta->>'synthetic_method' AS synthetic_method,
@@ -430,3 +444,18 @@ $$ LANGUAGE SQL STABLE;
 -- ALTER DATABASE inca_rag_final SET lc_ctype = 'ko_KR.UTF-8';
 
 COMMENT ON DATABASE CURRENT_DATABASE() IS 'inca-RAG-final: 보험 약관 비교 RAG 시스템 (신정원 통일 담보 코드 기반)';
+
+-- ========================================
+-- 권한 정책 (Security & Access Control)
+-- ========================================
+-- coverage_standard 자동 INSERT 금지 정책
+-- 운영 환경에서는 애플리케이션 role에 INSERT 권한 제거
+-- 예시:
+-- CREATE ROLE app_ingestion;
+-- GRANT SELECT ON coverage_standard TO app_ingestion;
+-- GRANT INSERT, UPDATE, DELETE ON coverage_alias TO app_ingestion;
+-- REVOKE INSERT ON coverage_standard FROM app_ingestion;
+--
+-- coverage_standard는 관리자만 수동으로 INSERT 가능
+-- CREATE ROLE admin_role;
+-- GRANT ALL ON coverage_standard TO admin_role;
