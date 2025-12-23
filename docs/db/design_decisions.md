@@ -442,6 +442,26 @@ CREATE TABLE comparison_cache (
 
 ## 8. 운영 적용 시 필수 확인 사항
 
+### 8.0 DDL 적용 원칙 (필수)
+**절대 원칙:** `schema.sql`은 빈 PostgreSQL 데이터베이스에 단일 실행으로 오류 없이 적용 가능해야 한다.
+
+**환경 의존 요소 분리:**
+- pgvector 인덱스 (IVFFLAT/HNSW)는 선택 실행으로 주석 처리
+- 데이터베이스명 의존 구문은 주석 처리
+- 환경별 설정(권한, collation 등)은 선택 적용
+
+**검증 방법:**
+```bash
+# Docker 환경에서 검증
+docker run --name postgres_test -e POSTGRES_PASSWORD=testpass \
+  -e POSTGRES_DB=inca_rag_final_test -d pgvector/pgvector:pg16
+
+docker exec -i postgres_test psql -U postgres -d inca_rag_final_test < schema.sql
+
+# 테이블 생성 확인
+docker exec postgres_test psql -U postgres -d inca_rag_final_test -c "\dt"
+```
+
 ### 8.1 is_synthetic 필터링 규칙 (강제)
 **절대 규칙:** 필터링은 `chunk.is_synthetic` 컬럼 기준, `meta` JSONB 필드 사용 금지
 

@@ -263,19 +263,21 @@ CREATE INDEX idx_chunk_document_synthetic ON chunk(document_id, is_synthetic);
 CREATE INDEX idx_chunk_source ON chunk(synthetic_source_chunk_id) WHERE synthetic_source_chunk_id IS NOT NULL;
 
 -- ========================================
--- Vector search index (Optional - pgvector 버전 확인 필요)
+-- Vector search index (Optional - 선택 실행)
 -- ========================================
--- IVFFLAT: pgvector 0.3.0+ 지원, 대용량 데이터셋에 적합
--- 초기 데이터 적을 때는 인덱스 없이도 동작 가능
-CREATE INDEX idx_chunk_embedding ON chunk USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- pgvector 설치 및 버전 확인 후 수동 실행 권장
+-- 기본 DDL 적용 시에는 비활성화 상태
 
--- HNSW: pgvector 0.5.0+ 지원, 검색 성능 우수하나 인덱스 구축 시간 김
+-- IVFFLAT 인덱스 (pgvector 0.3.0+ 지원)
+-- 초기 데이터 적을 때는 인덱스 없이도 동작 가능
+-- CREATE INDEX idx_chunk_embedding ON chunk USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- HNSW 인덱스 (pgvector 0.5.0+ 지원, 검색 성능 우수)
 -- 운영 환경에서 IVFFLAT 성능 부족 시 HNSW로 교체 고려:
--- DROP INDEX IF EXISTS idx_chunk_embedding;
 -- CREATE INDEX idx_chunk_embedding ON chunk USING hnsw (embedding vector_cosine_ops);
 
 -- pgvector 버전 확인: SELECT * FROM pg_extension WHERE extname = 'vector';
--- 인덱스 생성 실패 시: 인덱스 없이도 vector search 동작 가능 (성능 저하)
+-- 인덱스 없이도 vector search 동작 가능 (성능 저하)
 
 -- chunk_entity
 CREATE INDEX idx_entity_chunk ON chunk_entity(chunk_id);
@@ -443,7 +445,8 @@ $$ LANGUAGE SQL STABLE;
 -- ALTER DATABASE inca_rag_final SET lc_collate = 'ko_KR.UTF-8';
 -- ALTER DATABASE inca_rag_final SET lc_ctype = 'ko_KR.UTF-8';
 
-COMMENT ON DATABASE CURRENT_DATABASE() IS 'inca-RAG-final: 보험 약관 비교 RAG 시스템 (신정원 통일 담보 코드 기반)';
+-- 데이터베이스 설명 (실제 DB명으로 교체 필요)
+-- COMMENT ON DATABASE inca_rag_final IS 'inca-RAG-final: 보험 약관 비교 RAG 시스템 (신정원 통일 담보 코드 기준)';
 
 -- ========================================
 -- 권한 정책 (Security & Access Control)
