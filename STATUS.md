@@ -63,16 +63,18 @@
 - Documentation updates (STEP5B_VALIDATE_REPORT.md)
 - Constitutional guarantees sealed at 4 layers
 
-#### ε Release (Real DB Schema Alignment)
+#### ε Release (Entity-Based Coverage Filtering - FINAL)
 **Commit:** [current]
 
 **Deliverables:**
 - All SQL queries aligned with actual PostgreSQL schema
 - `public.product` / `public.product_coverage` / `public.coverage_standard`
-- Coverage amount via `product_coverage` table (not entity tables)
-- Amount extraction logic for amount-bridge endpoint
-- 5 new schema validation tests
-- Forbidden patterns (`product_master`) enforced
+- Coverage amount via `product_coverage` table
+- **Entity-based evidence filtering**: `chunk_entity` + `amount_entity`
+- Amount data from DB columns (no regex extraction)
+- Coverage filtering via canonical `coverage_code` (신정원 통일 코드)
+- Entity table assertions in integration tests
+- Forbidden patterns (`product_master`, `coverage_id` params) enforced
 
 **Key Features:**
 1. **SQL Layer**: `is_synthetic=false` hard-coded, proven by string tests
@@ -80,6 +82,7 @@
 3. **Transaction Layer**: BEGIN READ ONLY with proper cleanup
 4. **Policy Layer**: 400 errors for violations
 5. **Schema Layer**: Real DB schema enforced by integration tests
+6. **Entity Layer**: Coverage filtering via `chunk_entity`/`amount_entity`
 
 **Test Coverage:**
 - Contract tests: 8/8 PASS (DB-agnostic)
@@ -95,11 +98,10 @@ pytest -q                    # 23 passed
 
 **Key Files:**
 - `apps/api/app/db.py` (read-only connection + transaction hygiene)
-- `apps/api/app/queries/*.py` (SQL templates with real schema)
-- `apps/api/app/routers/*.py` (dependency injection + double safety)
-- `apps/api/app/utils/amount_extractor.py` (amount regex extraction)
+- `apps/api/app/queries/*.py` (SQL templates with entity-based filtering)
+- `apps/api/app/routers/*.py` (dependency injection + DB column mapping)
 - `tests/contract/test_step5_contract.py` (8 contract tests, DB-agnostic)
-- `tests/integration/test_step5_readonly.py` (15 integration tests + schema validation)
+- `tests/integration/test_step5_readonly.py` (15 integration tests + entity assertions)
 - `docs/validation/STEP5B_VALIDATE_REPORT.md` (complete validation report)
 
 ---

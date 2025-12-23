@@ -103,9 +103,12 @@ class TestSyntheticEnforcementSQL:
         assert "%(include_synthetic)s" not in COMPARE_EVIDENCE_SQL, \
             "Compare SQL MUST NOT have include_synthetic parameter (no bypass allowed)"
 
-        # Verify uses real schema: public.product
-        assert "public.product" in COMPARE_EVIDENCE_SQL or "FROM product" not in COMPARE_EVIDENCE_SQL or "public.chunk" in COMPARE_EVIDENCE_SQL, \
-            "Compare SQL MUST use real DB schema (public.product, public.chunk, etc.)"
+        # Verify uses chunk_entity for coverage filtering
+        assert "JOIN public.chunk_entity" in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST use chunk_entity for coverage-based filtering"
+
+        assert "ce.coverage_code" in COMPARE_EVIDENCE_SQL, \
+            "Compare SQL MUST filter by coverage_code via chunk_entity"
 
         # Additional verification: check it's in WHERE clause context
         sql_lower = COMPARE_EVIDENCE_SQL.lower()
@@ -133,6 +136,13 @@ class TestSyntheticEnforcementSQL:
         # CRITICAL: Verify OR clause for proper branching
         assert "OR c.is_synthetic = false" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
             "Amount Bridge SQL MUST have 'OR c.is_synthetic = false' for conditional logic"
+
+        # Verify amount_entity usage for coverage-based filtering
+        assert "FROM public.amount_entity" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST use amount_entity table"
+
+        assert "ae.coverage_code" in AMOUNT_BRIDGE_EVIDENCE_SQL, \
+            "Amount Bridge SQL MUST filter by coverage_code via amount_entity"
 
         # Verify the branching logic structure
         assert "%(include_synthetic)s = true" in AMOUNT_BRIDGE_EVIDENCE_SQL.lower() or \

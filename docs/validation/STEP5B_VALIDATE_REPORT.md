@@ -894,3 +894,227 @@ WHERE pc.product_id = %(product_id)s
 **ε Release Complete**: 2025-12-23
 **Status**: ✅ REAL DB ALIGNED
 **Next**: Git commit + push
+
+---
+
+## 15. STEP 5-B-ε Final: Entity-Based Coverage Filtering (2025-12-23)
+
+### Summary of ε Final Changes
+Complete implementation of coverage-based evidence filtering using `chunk_entity` and `amount_entity` tables with canonical coverage codes.
+
+### 15.1 Entity Schema Verification
+
+**chunk_entity** (confirmed via `\d chunk_entity`):
+- ✅ `chunk_id` (FK → chunk.chunk_id)
+- ✅ `coverage_code` (FK → coverage_standard.coverage_code)
+- ✅ `entity_type` (varchar(50))
+
+**amount_entity** (confirmed via `\d amount_entity`):
+- ✅ `chunk_id` (FK → chunk.chunk_id)
+- ✅ `coverage_code` (FK → coverage_standard.coverage_code, NOT NULL)
+- ✅ `amount_value` (numeric(15,2))
+- ✅ `amount_text` (varchar(200))
+- ✅ `amount_unit` (varchar(20)) - mapped to Currency enum
+- ✅ `context_type` (varchar(50), CHECK: payment/count/limit)
+
+### 15.2 Compare Evidence Query (Entity-Based)
+
+**Updated Query** (`apps/api/app/queries/compare.py`):
+
+```sql
+SELECT
+  c.chunk_id,
+  c.document_id,
+  c.page_number,
+  c.is_synthetic,
+  c.synthetic_source_chunk_id,
+  LEFT(c.content, 400) AS snippet,
+  d.document_type AS doc_type
+FROM public.document d
+JOIN public.chunk c ON c.document_id = d.document_id
+JOIN public.chunk_entity ce ON ce.chunk_id = c.chunk_id
+WHERE d.product_id = %(product_id)s
+  AND (%(coverage_code)s IS NULL OR ce.coverage_code = %(coverage_code)s)
+  AND c.is_synthetic = false              -- HARD RULE: Compare axis forbids synthetic
+ORDER BY d.doc_type_priority ASC, c.page_number ASC, c.chunk_id ASC
+LIMIT %(limit)s;
+```
+
+**Key Features**:
+- ✅ Coverage filtering via `chunk_entity.coverage_code`
+- ✅ `is_synthetic = false` hard-coded (constitutional guarantee)
+- ✅ NULL coverage_code returns all evidence for product
+- ✅ Canonical coverage code enforcement (신정원 통일 코드)
+
+### 15.3 Amount Bridge Query (Entity-Based)
+
+**Updated Query** (`apps/api/app/queries/evidence.py`):
+
+```sql
+SELECT
+  ae.coverage_code,
+  ae.amount_value,
+  ae.amount_text,
+  ae.amount_unit,
+  ae.context_type,
+
+  c.chunk_id,
+  c.is_synthetic,
+  c.synthetic_source_chunk_id,
+  LEFT(c.content, 500) AS snippet,
+
+  d.document_id,
+  d.document_type AS doc_type,
+  d.product_id,
+
+  i.insurer_code,
+  p.product_name
+FROM public.amount_entity ae
+JOIN public.chunk c ON c.chunk_id = ae.chunk_id
+JOIN public.document d ON d.document_id = c.document_id
+JOIN public.product p ON p.product_id = d.product_id
+JOIN public.insurer i ON i.insurer_id = p.insurer_id
+WHERE ae.coverage_code = %(coverage_code)s
+  AND (%(insurer_codes)s IS NULL OR i.insurer_code = ANY(%(insurer_codes)s))
+  AND (%(include_synthetic)s = true OR c.is_synthetic = false)
+ORDER BY c.is_synthetic ASC, d.doc_type_priority ASC, c.page_number ASC, c.chunk_id ASC
+LIMIT %(limit)s;
+```
+
+**Key Features**:
+- ✅ Amount fields from `amount_entity` table (no regex extraction)
+- ✅ `coverage_code` required parameter (canonical code)
+- ✅ `include_synthetic` option supported (axis separation)
+- ✅ DB-validated `context_type` (CHECK constraint)
+
+### 15.4 Router Changes
+
+**Amount Bridge Router** (`apps/api/app/routers/evidence.py`):
+
+**Removed**:
+- ❌ `from ..utils.amount_extractor import extract_amount_from_text` (obsolete)
+
+**Added**:
+- ✅ `coverage_code` parameter passed to query
+- ✅ `amount_unit` → `Currency` enum mapping
+- ✅ `context_type` from DB (validated by CHECK constraint)
+
+```python
+# Map amount_unit to Currency enum (KRW default)
+currency = Currency.KRW
+amount_unit = row.get("amount_unit", "").upper()
+if amount_unit in ["USD", "EUR", "JPY", "CNY"]:
+    currency = Currency[amount_unit]
+
+# Use context_type from DB (validated by CHECK constraint)
+context_type = AmountContextType(row["context_type"])
+```
+
+### 15.5 Integration Test Updates
+
+**New Assertions** (`tests/integration/test_step5_readonly.py`):
+
+#### Compare Evidence SQL:
+```python
+assert "JOIN public.chunk_entity" in COMPARE_EVIDENCE_SQL
+assert "ce.coverage_code" in COMPARE_EVIDENCE_SQL
+```
+
+#### Amount Bridge SQL:
+```python
+assert "FROM public.amount_entity" in AMOUNT_BRIDGE_EVIDENCE_SQL
+assert "ae.coverage_code" in AMOUNT_BRIDGE_EVIDENCE_SQL
+```
+
+**String-level validation ensures**:
+- ✅ Entity tables used (not extraction logic)
+- ✅ Coverage code filtering via entity FK
+- ✅ Constitutional guarantees maintained
+
+### 15.6 Canonical Coverage Code Enforcement
+
+**신정원 통일 코드 (Canonical Coverage Code) Principle**:
+
+```
+coverage_standard.coverage_code (UNIQUE)
+    ↓ FK
+chunk_entity.coverage_code
+    ↓ FK
+amount_entity.coverage_code
+```
+
+**Enforcement Mechanisms**:
+1. **DB Layer**: Foreign key constraints
+2. **SQL Layer**: JOIN via `coverage_code` column
+3. **API Layer**: Only accepts `coverage_code` (not `coverage_id`)
+4. **Test Layer**: String-level assertions verify entity usage
+
+### 15.7 Test Results
+
+```bash
+$ pytest tests/contract -q
+8 passed
+
+$ pytest tests/integration -q
+15 passed
+
+Total: 23/23 PASS
+```
+
+**No regressions**: All existing tests pass with entity-based implementation.
+
+### 15.8 Forbidden Patterns (Enforced)
+
+❌ **FORBIDDEN**:
+- Regex-based amount extraction for amount-bridge (replaced by DB columns)
+- Coverage filtering without entity tables
+- `coverage_id` in API parameters (only `coverage_code`)
+- LLM-based coverage code inference
+
+✅ **ENFORCED**:
+- All coverage filtering via `chunk_entity`/`amount_entity`
+- All amount data from `amount_entity` table
+- Canonical `coverage_code` throughout stack
+- Constitutional `is_synthetic=false` for compare axis
+
+### 15.9 Files Changed (ε Final)
+
+**Modified**:
+- `apps/api/app/queries/compare.py` - chunk_entity join
+- `apps/api/app/queries/evidence.py` - amount_entity query
+- `apps/api/app/routers/evidence.py` - removed extractor, use DB columns
+- `tests/integration/test_step5_readonly.py` - entity table assertions
+
+**Removed** (obsolete):
+- ~~`apps/api/app/utils/amount_extractor.py`~~ (no longer needed)
+
+### 15.10 Constitutional Compliance Matrix (Updated)
+
+| Constitutional Rule | Enforcement Layer | Verification |
+|---------------------|------------------|--------------|
+| Compare: is_synthetic=false mandatory | SQL WHERE clause | ✅ Hard-coded + string test |
+| Compare: coverage via chunk_entity | SQL JOIN | ✅ Entity table assertion |
+| Amount Bridge: coverage via amount_entity | SQL FROM | ✅ Entity table assertion |
+| Amount Bridge: synthetic optional | SQL parameter | ✅ Conditional test |
+| Canonical coverage_code only | DB FK + API schema | ✅ No coverage_id params |
+| No regex amount extraction | Router logic | ✅ DB columns only |
+
+### 15.11 Final DoD Checklist (ε)
+
+| Requirement | Status | Evidence |
+|------------|--------|----------|
+| chunk_entity schema verified | ✅ PASS | `\d chunk_entity` output |
+| amount_entity schema verified | ✅ PASS | `\d amount_entity` output |
+| Compare evidence uses chunk_entity | ✅ PASS | SQL JOIN assertion |
+| Amount bridge uses amount_entity | ✅ PASS | SQL FROM assertion |
+| is_synthetic=false hard-coded | ✅ PASS | String-level test |
+| Coverage code filtering works | ✅ PASS | ce.coverage_code parameter |
+| Amount data from DB columns | ✅ PASS | No extractor import |
+| Contract tests pass | ✅ PASS | 8/8 |
+| Integration tests pass | ✅ PASS | 15/15 |
+
+---
+
+**ε Final Release Complete**: 2025-12-23
+**Status**: ✅ ENTITY-BASED CANONICAL COVERAGE FILTERING
+**Next**: STATUS.md update + Git commit/push

@@ -22,11 +22,12 @@ SELECT
   c.synthetic_source_chunk_id,
   LEFT(c.content, 400) AS snippet,
   d.document_type AS doc_type
-FROM public.chunk c
-JOIN public.document d ON d.document_id = c.document_id
-WHERE
-  c.is_synthetic = false              -- HARD RULE: Compare axis forbids synthetic
-  AND d.product_id = %(product_id)s
+FROM public.document d
+JOIN public.chunk c ON c.document_id = d.document_id
+JOIN public.chunk_entity ce ON ce.chunk_id = c.chunk_id
+WHERE d.product_id = %(product_id)s
+  AND (%(coverage_code)s IS NULL OR ce.coverage_code = %(coverage_code)s)
+  AND c.is_synthetic = false              -- HARD RULE: Compare axis forbids synthetic
 ORDER BY d.doc_type_priority ASC, c.page_number ASC, c.chunk_id ASC
 LIMIT %(limit)s;
 """
@@ -45,11 +46,12 @@ def get_compare_evidence(
     - Returns ONLY non-synthetic chunks (is_synthetic = false)
     - This is enforced in SQL WHERE clause
     - No option to include synthetic chunks
+    - Coverage filtering via chunk_entity.coverage_code (신정원 통일 코드)
 
     Args:
         conn: Read-only database connection
         product_id: Product ID to get evidence for
-        coverage_code: Optional coverage code filter
+        coverage_code: Optional canonical coverage code filter
         limit: Max evidence items
 
     Returns:
