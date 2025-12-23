@@ -111,32 +111,38 @@ async def compare_products(
 
             # STEP 5-C: Generate conditions summary (opt-in, presentation-only)
             conditions_summary = None
-            if request.options and request.options.include_conditions_summary and coverage_code:
-                # Use evidence snippets for summary generation
-                # If evidence not included, fetch snippets separately
+            if request.options and request.options.include_conditions_summary:
+                # Evidence가 아직 없다면 상품 기준으로 다시 조회
+                # coverage_code는 optional (None 허용 → 상품 전체 evidence)
                 if not evidence_rows:
                     try:
                         evidence_rows = get_compare_evidence(
                             conn=conn,
                             product_id=product_id,
-                            coverage_code=coverage_code,
+                            coverage_code=coverage_code,  # None 가능 → 상품 전체 evidence
                             limit=5  # Default for summary
                         )
                     except Exception:
                         evidence_rows = []  # Graceful degradation
 
-                # Extract snippets for summary
-                snippets = [row.get("snippet", "") for row in evidence_rows if row.get("snippet")]
+                # Snippet 추출
+                snippets = [
+                    row.get("snippet", "")
+                    for row in evidence_rows
+                    if row.get("snippet")
+                ]
 
-                # Generate summary (graceful degradation on failure)
+                # Snippet이 있을 때만 요약 생성
                 if snippets:
                     conditions_summary = generate_conditions_summary(
                         product_name=product_row["product_name"],
-                        coverage_code=coverage_code,
-                        coverage_name="",  # TODO: get from coverage_standard if needed
+                        coverage_code=coverage_code or "",  # optional
+                        coverage_name="",  # 이번 단계에서는 조회 금지
                         evidence_snippets=snippets,
                         max_snippets=5
                     )
+                else:
+                    conditions_summary = None
 
             items.append(CompareItem(
                 rank=rank,

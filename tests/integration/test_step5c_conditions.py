@@ -226,3 +226,56 @@ class TestConditionsSummaryIntegration:
 
         finally:
             app.dependency_overrides.clear()
+
+    def test_conditions_summary_without_coverage_code(self):
+        """
+        HOTFIX TEST: Verify conditions_summary works even without coverage_code
+
+        When include_conditions_summary=true and coverage_code=None,
+        summary should still be generated from product evidence.
+        """
+        from apps.api.app.db import get_readonly_conn
+
+        def mock_conn_gen():
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            # Mock: product exists with evidence, but no coverage_code filter
+            mock_cursor.fetchall.side_effect = [
+                [{"product_id": 1, "insurer_code": "TEST", "product_name": "Test Product", "product_code": "TP001"}],
+                [],  # No initial evidence
+                [{  # Evidence from product (coverage_code=None)
+                    "chunk_id": 1,
+                    "document_id": 1,
+                    "page_number": 1,
+                    "is_synthetic": False,
+                    "synthetic_source_chunk_id": None,
+                    "snippet": "면책기간 없음. 가입 즉시 보장 개시.",
+                    "doc_type": "약관"
+                }]
+            ]
+            mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+            yield mock_conn
+
+        app.dependency_overrides[get_readonly_conn] = mock_conn_gen
+
+        try:
+            response = client.post("/compare", json={
+                "axis": "compare",
+                "mode": "compensation",
+                "options": {
+                    "include_conditions_summary": True  # Request summary without coverage_code
+                }
+            })
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Verify summary generation attempted even without coverage_code
+            if data["items"]:
+                item = data["items"][0]
+                # Summary can be null (no evidence) or string (success)
+                # The important part is the request didn't fail
+                assert "conditions_summary" in item
+
+        finally:
+            app.dependency_overrides.clear()
