@@ -18,6 +18,7 @@ class CompareOptions(BaseModel):
     include_evidence: bool = True
     include_synthetic: bool = False
     max_evidence_per_item: int = Field(5, ge=0, le=20)
+    include_conditions_summary: bool = False
 
     class Config:
         extra = "forbid"

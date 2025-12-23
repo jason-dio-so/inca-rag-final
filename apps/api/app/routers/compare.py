@@ -17,6 +17,7 @@ from ..queries.compare import (
     get_compare_evidence,
     get_coverage_amount_for_product
 )
+from ..services.conditions_summary_service import generate_conditions_summary
 
 router = APIRouter(tags=["Compare"])
 
@@ -85,6 +86,7 @@ async def compare_products(
 
             # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
             evidence_list = []
+            evidence_rows = []
             if include_evidence:
                 evidence_rows = get_compare_evidence(
                     conn=conn,
@@ -107,6 +109,35 @@ async def compare_products(
                     for row in evidence_rows
                 ]
 
+            # STEP 5-C: Generate conditions summary (opt-in, presentation-only)
+            conditions_summary = None
+            if request.options and request.options.include_conditions_summary and coverage_code:
+                # Use evidence snippets for summary generation
+                # If evidence not included, fetch snippets separately
+                if not evidence_rows:
+                    try:
+                        evidence_rows = get_compare_evidence(
+                            conn=conn,
+                            product_id=product_id,
+                            coverage_code=coverage_code,
+                            limit=5  # Default for summary
+                        )
+                    except Exception:
+                        evidence_rows = []  # Graceful degradation
+
+                # Extract snippets for summary
+                snippets = [row.get("snippet", "") for row in evidence_rows if row.get("snippet")]
+
+                # Generate summary (graceful degradation on failure)
+                if snippets:
+                    conditions_summary = generate_conditions_summary(
+                        product_name=product_row["product_name"],
+                        coverage_code=coverage_code,
+                        coverage_name="",  # TODO: get from coverage_standard if needed
+                        evidence_snippets=snippets,
+                        max_snippets=5
+                    )
+
             items.append(CompareItem(
                 rank=rank,
                 insurer_code=product_row["insurer_code"],
@@ -115,7 +146,7 @@ async def compare_products(
                 premium_amount=None,  # TODO: premium calculation
                 coverage_code=coverage_code,
                 coverage_amount=coverage_amount,
-                conditions_summary=None,  # TODO: conditions extraction
+                conditions_summary=conditions_summary,  # STEP 5-C: LLM-based summary
                 evidence=evidence_list if evidence_list else None
             ))
 

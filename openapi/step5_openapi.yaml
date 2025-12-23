@@ -421,6 +421,13 @@ components:
           minimum: 0
           maximum: 20
           default: 5
+        include_conditions_summary:
+          type: boolean
+          default: false
+          description: >
+            보장 조건 요약 생성 여부.
+            true 시 LLM 기반 조건 요약(면책기간, 감액기간, 지급조건 등) 생성.
+            생성 실패 시에도 응답은 200 OK (conditions_summary = null).
 
     CompareRequest:
       type: object
@@ -511,7 +518,10 @@ components:
         conditions_summary:
           type: string
           nullable: true
-          description: 제자리암/경계성종양 등 조건 요약(정의/면책/감액 등)
+          description: >
+            보장 조건 요약 (면책기간, 감액기간, 지급조건 등).
+            include_conditions_summary=true 시에만 생성.
+            생성 실패 시 null. 금액정보/보험료/지급가능여부 판정 제외.
         evidence:
           type: array
           items:
