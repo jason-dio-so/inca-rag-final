@@ -1,10 +1,17 @@
 """
 /evidence/amount-bridge endpoint
 """
-from fastapi import APIRouter
-from ..schemas.evidence import AmountBridgeRequest, AmountBridgeResponse
-from ..schemas.common import DebugHardRules, DebugBlock
+from fastapi import APIRouter, HTTPException
+from ..schemas.evidence import (
+    AmountBridgeRequest,
+    AmountBridgeResponse,
+    AmountEvidence,
+    AmountContextType
+)
+from ..schemas.common import DebugHardRules, DebugBlock, Currency
 from ..policy import enforce_amount_bridge_policy
+from ..db import db_readonly_session
+from ..queries.evidence import get_amount_bridge_evidence as query_amount_evidence
 
 router = APIRouter(prefix="/evidence", tags=["Evidence"])
 
@@ -16,18 +23,53 @@ async def get_amount_bridge_evidence(request: AmountBridgeRequest):
 
     헌법:
     - axis는 반드시 "amount_bridge"
-    - include_synthetic=true 허용 (옵션)
+    - include_synthetic=true 허용 (옵션) - 이 축에서만 허용!
     - compare 축과 완전 분리
+    - Read-only DB access
     """
     # 헌법 강제 (400 발생 가능)
     enforce_amount_bridge_policy(request)
 
-    # Dummy response (contract-only implementation)
-    include_synthetic = (
-        request.options.include_synthetic
-        if request.options
-        else True
-    )
+    # Extract parameters
+    include_synthetic = True
+    max_evidence = 20
+    if request.options:
+        include_synthetic = request.options.include_synthetic
+        max_evidence = request.options.max_evidence
+
+    # Query DB (read-only)
+    try:
+        with db_readonly_session() as conn:
+            evidence_rows = query_amount_evidence(
+                conn=conn,
+                coverage_code=request.coverage_code,
+                insurer_codes=request.insurer_codes,
+                include_synthetic=include_synthetic,
+                limit=max_evidence
+            )
+
+            # Convert to schema
+            evidences = [
+                AmountEvidence(
+                    chunk_id=row["chunk_id"],
+                    is_synthetic=row["is_synthetic"],
+                    synthetic_source_chunk_id=row.get("synthetic_source_chunk_id"),
+                    amount_value=row["amount_value"],
+                    currency=Currency(row["currency"]) if row.get("currency") else Currency.KRW,
+                    amount_text=row["amount_text"],
+                    context_type=AmountContextType(row["context_type"]),
+                    snippet=row["snippet"],
+                    insurer_code=row.get("insurer_code"),
+                    product_id=row.get("product_id"),
+                    product_name=row.get("product_name"),
+                    document_id=row.get("document_id"),
+                    page_number=row.get("page_number")
+                )
+                for row in evidence_rows
+            ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
     debug_hard_rules = DebugHardRules(
         is_synthetic_filter_applied=not include_synthetic
@@ -36,12 +78,13 @@ async def get_amount_bridge_evidence(request: AmountBridgeRequest):
     return AmountBridgeResponse(
         axis=request.axis,
         coverage_code=request.coverage_code,
-        evidences=[],  # Skeleton: empty list
+        evidences=evidences,
         debug=DebugBlock(
             hard_rules=debug_hard_rules,
             notes=[
-                "Contract-only skeleton implementation",
-                f"include_synthetic={include_synthetic} (allowed in amount_bridge axis)"
+                "DB read-only implementation",
+                f"include_synthetic={include_synthetic} (allowed in amount_bridge axis)",
+                "SQL template controls is_synthetic filtering (see queries/evidence.py)"
             ]
         )
     )
