@@ -1,0 +1,2 @@
+insurer_code,product_code,product_name,document_type,file_path
+SAMSUNG,SAM-CA-001,삼성 암플러스,약관,data/raw/SAMSUNG/약관/sample.pdf
