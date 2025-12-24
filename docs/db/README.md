@@ -113,6 +113,41 @@ If there is ANY discrepancy between documents and migration SQL, **migration SQL
 - Requires `schema_universe_lock_minimal.sql` to be applied first
 - Compatible with Docker PostgreSQL 17
 
+### STEP 14: Proposal Data E2E Verification (2025-12-25)
+
+- **Purpose**: Verify proposal seed data supports comparison scenarios
+- **Script**: `scripts/step14_api_e2e_docker.sh`
+- **Tests**: `tests/e2e/test_step14_data_e2e.py` (13/13 PASS)
+- **Scenarios**:
+  - A: Normal comparison (SAMSUNG vs MERITZ CA_DIAG_GENERAL)
+  - B: UNMAPPED coverage (KB 매핑안된담보)
+  - C: Disease scope required (SAMSUNG CA_DIAG_SIMILAR)
+- **Verification Method**: SQL queries against seeded database
+- **Output**: Query result files in `artifacts/step14/`
+
+**E2E Flow**:
+```
+Docker DB
+  ↓
+schema_universe_lock_minimal.sql
+  ↓
+seed_step13_minimal.sql
+  ↓
+SQL Queries (Scenarios A/B/C)
+  ↓
+Verification Tests (13/13 PASS)
+```
+
+**Constitutional Validation**:
+- ✅ Universe Lock: All comparisons from `proposal_coverage_universe`
+- ✅ No `product_coverage` table (product-based comparison prohibited)
+- ✅ Excel-based mapping (MAPPED/UNMAPPED states)
+- ✅ disease_scope_norm uses group references
+
+**Future Work**:
+- Proposal-based API endpoint implementation
+- Full UX contract compliance in API responses
+
 ### erd_current.mermaid
 
 - **Purpose**: Visual representation of database schema

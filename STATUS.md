@@ -557,13 +557,79 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
 **Evidence:**
 - Excel file: `/data/담보명mapping자료.xlsx` (227 KB)
 - Sample PDF: Samsung proposal with 52 coverages extracted
-- All components verified with REAL data (no mocks)
 
-**Next Steps (Future Work):**
-1. ~~Policy document processing pipeline (disease_scope_norm population)~~ ✅ STEP 7 Phase B
-2. Admin UI for manual mapping disambiguation (AMBIGUOUS cases)
-3. Coverage alias learning system (expand Excel coverage)
-4. Disease code group management interface
+---
+
+### ✅ STEP 14: Proposal Data E2E Verification
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Verify proposal seed data supports comparison scenarios (A/B/C) with Universe Lock compliance.
+
+**Deliverables:**
+- `scripts/step14_api_e2e_docker.sh` - Docker E2E verification script
+- `tests/e2e/test_step14_data_e2e.py` - Data verification tests (13/13 PASS)
+- SQL-based scenario verification (A/B/C)
+
+**Scenarios Verified:**
+
+1. **Scenario A: Normal Comparison (삼성 vs 메리츠 일반암진단비)**
+   - Both insurers: CA_DIAG_GENERAL
+   - mapping_status: MAPPED
+   - Amount values: 50M (SAMSUNG), 30M (MERITZ)
+   - disease_scope_norm: NULL (no policy enrichment needed)
+   - ✅ Comparable
+
+2. **Scenario B: UNMAPPED Coverage (KB 매핑안된담보)**
+   - mapping_status: UNMAPPED
+   - canonical_coverage_code: NULL
+   - Exists in universe but not mapped
+   - ✅ Non-comparable (unmapped)
+
+3. **Scenario C: Disease Scope Required (삼성 유사암진단금)**
+   - CA_DIAG_SIMILAR
+   - disease_scope_norm: NOT NULL
+   - disease_code_group: SAMSUNG 유사암 (Seed)
+   - source_confidence: policy_required
+   - ✅ Policy evidence required
+
+**Constitutional Compliance:**
+- ✅ Universe Lock: All comparisons from proposal_coverage_universe
+- ✅ No product_coverage table (product-based comparison prohibited)
+- ✅ Excel-based mapping only (MAPPED/UNMAPPED states)
+- ✅ disease_scope_norm uses group references
+
+**Test Results (13/13 PASS):**
+- ✅ Scenario A: 4 tests (insurers exist, MAPPED status, amounts, NULL disease_scope)
+- ✅ Scenario B: 3 tests (universe exists, UNMAPPED status, no slots)
+- ✅ Scenario C: 4 tests (CA_DIAG_SIMILAR, disease_scope_norm, group exists, policy_required)
+- ✅ Universe Lock: 2 tests (all from universe, no product_coverage)
+
+**Script Execution:**
+```bash
+bash scripts/step14_api_e2e_docker.sh
+# Output: 3 scenario query result files in artifacts/step14/
+```
+
+**DoD Achieved:**
+- ✅ Docker fresh DB + schema + seed
+- ✅ 3 scenarios verified via SQL queries
+- ✅ All tests PASS (13/13)
+- ✅ Query artifacts generated
+- ✅ Constitutional principles verified
+- ✅ STATUS.md updated
+- ✅ Ready for commit + push
+
+**Key Files:**
+- `scripts/step14_api_e2e_docker.sh` (E2E verification)
+- `tests/e2e/test_step14_data_e2e.py` (13 tests)
+- `artifacts/step14/scenario_*.txt` (SQL query results)
+
+**Note:**
+Full proposal-based API endpoint implementation deferred to future STEP.
+Current verification establishes data foundation for API layer.
 
 ---
 
