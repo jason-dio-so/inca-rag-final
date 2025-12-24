@@ -327,9 +327,9 @@ Remaining Work:
 ---
 
 ### STEP 6-C: Proposal Universe Lock Implementation
-**Status:** COMPLETE (E2E Functional)
+**Status:** COMPLETE (Runtime VERIFIED ✅)
 **Branch:** feature/proposal-universe-lock-v1
-**Commits:** edc7289 (DDL), 0e478f7 (Implementation)
+**Commits:** edc7289 (DDL), 0e478f7 (Implementation), 71d363e (Runtime Verification)
 **Date:** 2025-12-24
 
 **Deliverables:**
@@ -428,6 +428,30 @@ disease_scope_norm (group references)
 - ❌ Create canonical codes outside Excel → mapping_status=UNMAPPED
 - ❌ Create KCD codes from insurance docs → disease_code_master=official only
 - ❌ insurer=NULL for insurance concepts → restricted to medical groups
+
+**Runtime Verification (STEP 6-C-β) ✅:**
+**Commit:** 71d363e
+**Script:** `scripts/verify_step6c_runtime.py`
+
+**Verification Results (4/4 PASS):**
+- ✅ Excel Loading: 154 aliases, 28 canonical codes loaded from `담보명mapping자료.xlsx`
+- ✅ Migration Syntax: All 7 tables + 4 enums defined correctly
+- ✅ PDF Parser: 52 coverages extracted from Samsung PDF with 100% evidence rate
+- ✅ Slot Extractor: 3/3 test cases passed with correct slot extraction
+
+**Critical Fixes Applied:**
+1. **Excel Column Names**: Fixed CoverageMapper to use actual Excel columns (`담보명(가입설계서)`, `cre_cvr_cd`) instead of documented names
+2. **Documentation Case**: Fixed STATUS.md reference in validation report
+3. **Verification Script**: Created comprehensive runtime check script
+
+**Constitutional Violations Found & Fixed:**
+- ❌ Original code expected columns `coverage_alias` and `canonical_coverage_code` (did not exist)
+- ✅ Fixed to use actual Excel structure: `ins_cd`, `보험사명`, `cre_cvr_cd`, `신정원코드명`, `담보명(가입설계서)`
+
+**Evidence:**
+- Excel file: `/data/담보명mapping자료.xlsx` (227 KB)
+- Sample PDF: Samsung proposal with 52 coverages extracted
+- All components verified with REAL data (no mocks)
 
 **Next Steps (Future Work):**
 1. Policy document processing pipeline (disease_scope_norm population)
