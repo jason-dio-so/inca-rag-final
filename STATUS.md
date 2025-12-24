@@ -261,7 +261,7 @@ pytest -q                    # 23 passed
    - Multi-layer safeguards: tests + architecture + DB gates
 
 4. **LLM Client Wrapper** (`apps/api/app/ingest_llm/llm_client.py`) - Commit [current]
-   - OpenAILLMClient with gpt-4o-mini (cost-optimized)
+   - OpenAILLMClient with gpt-4.1-mini (batch processing optimized, configurable)
    - FakeLLMClient for testing (no API calls)
    - Content-hash caching, retry with exponential backoff
    - Graceful degradation on failures

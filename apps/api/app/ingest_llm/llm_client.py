@@ -3,7 +3,7 @@ STEP 6-B: LLM Client Wrapper for Coverage Entity Extraction
 
 Constitutional Guarantees:
 - LLM = Proposal Generator ONLY (not decision maker)
-- OpenAI gpt-4.1-mini (batch processing optimized)
+- OpenAI gpt-4.1-mini (batch processing optimized, configurable)
 - Graceful degradation on failures
 - Content-hash based caching (no duplicate LLM calls)
 - Rate limiting + retry with exponential backoff
@@ -11,8 +11,9 @@ Constitutional Guarantees:
 
 Cost Optimization:
 - Prefilter upstream reduces 60-70% of chunks
-- Content hash caching prevents re-processing
+- Content hash caching prevents re-processing (30-50% savings)
 - Batch API usage when available
+- Model configurable (default: gpt-4.1-mini, can override per instance)
 """
 import json
 import logging
@@ -68,7 +69,7 @@ class OpenAILLMClient:
     """
 
     # Model configuration
-    DEFAULT_MODEL = "gpt-4o-mini"  # Cost-optimized model
+    DEFAULT_MODEL = "gpt-4.1-mini"  # Cost-optimized model (batch processing)
     DEFAULT_TEMPERATURE = 0.1  # Low temperature for consistent extraction
     DEFAULT_MAX_TOKENS = 500  # Conservative token limit per chunk
 
@@ -93,7 +94,7 @@ class OpenAILLMClient:
 
         Args:
             api_key: OpenAI API key
-            model: Model name (default: gpt-4o-mini)
+            model: Model name (default: gpt-4.1-mini, configurable)
             cache_store: Optional cache store (for testing)
             enable_cache: Enable content-hash caching
         """

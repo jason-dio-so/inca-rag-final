@@ -24,7 +24,7 @@ Phase 2-4 implements the complete LLM-assisted candidate generation pipeline wit
 
 **Key Features**:
 - **OpenAILLMClient**: Real OpenAI API integration
-  - Model: `gpt-4o-mini` (cost-optimized)
+  - Model: `gpt-4.1-mini` (batch processing optimized, configurable)
   - Retry logic: Exponential backoff (max 3 attempts)
   - Content-hash caching: Prevents duplicate LLM calls
   - Graceful degradation: Returns empty candidates on failures
@@ -39,6 +39,7 @@ Phase 2-4 implements the complete LLM-assisted candidate generation pipeline wit
 - Outputs are PROPOSALS only (resolver validates)
 - Never calls confirm function (manual-only operation)
 - Never writes to coverage_standard (FK verification only)
+- Model is configurable (default: gpt-4.1-mini, can override per instance)
 
 **Lines of Code**: 450+ lines
 
@@ -247,25 +248,85 @@ Makefile                         # Test targets + DB verification (Phase 2-3)
 
 ## Performance Characteristics
 
-### LLM API Costs (Estimated)
+### LLM API Costs (Conservative Estimates)
 
-**Assumptions**:
-- 15,000 chunks total
-- Prefilter passes 40% (6,000 chunks)
-- gpt-4o-mini pricing: $0.15/1M input tokens, $0.60/1M output tokens
-- Avg chunk: 300 tokens input, 100 tokens output
+**Model**: gpt-4.1-mini (batch processing)
+**Pricing** (2025 Q1 estimates):
+- Input: ~$0.15/1M tokens
+- Output: ~$0.60/1M tokens
+
+**Total Chunks**: 15,000 (production dataset)
+**Prefilter Pass Rate**: 40% (6,000 chunks sent to LLM)
+
+---
+
+#### Scenario 1: Conservative (Typical Case)
+
+**Token Assumptions**:
+- Input per chunk: **1,200 tokens**
+  - Chunk content: ~500 tokens
+  - System prompt: ~300 tokens
+  - User prompt template: ~200 tokens
+  - Context (insurer/product/doc_type): ~200 tokens
+- Output per chunk: **250 tokens**
+  - JSON response with candidates
+  - Avg 2-3 entities per chunk
 
 **Monthly Cost** (full re-processing):
 ```
-Input:  6,000 chunks × 300 tokens × $0.15/1M = $0.27
-Output: 6,000 chunks × 100 tokens × $0.60/1M = $0.36
-Total:  ~$0.63/month
+Input:  6,000 chunks × 1,200 tokens × $0.15/1M = $1.08
+Output: 6,000 chunks × 250 tokens × $0.60/1M  = $0.90
+────────────────────────────────────────────────────
+Total:  ~$2.00/month (baseline)
 ```
 
 **With Content-Hash Caching** (50% hit rate):
 ```
-Total: ~$0.32/month
+Total: ~$1.00/month (cached)
 ```
+
+---
+
+#### Scenario 2: Upper Bound (Complex Chunks)
+
+**Token Assumptions**:
+- Input per chunk: **2,000 tokens** (long chunks, detailed context)
+- Output per chunk: **400 tokens** (multiple entities, high detail)
+
+**Monthly Cost** (full re-processing):
+```
+Input:  6,000 × 2,000 × $0.15/1M = $1.80
+Output: 6,000 × 400 × $0.60/1M  = $1.44
+────────────────────────────────────────────
+Total:  ~$3.25/month (upper bound)
+```
+
+**With Content-Hash Caching** (50% hit rate):
+```
+Total: ~$1.63/month (cached upper bound)
+```
+
+---
+
+#### Cost Summary
+
+| Scenario | Full Re-processing | With Caching (50%) |
+|----------|-------------------:|-------------------:|
+| Conservative (typical) | $2.00/month | $1.00/month |
+| Upper Bound (complex) | $3.25/month | $1.63/month |
+
+**Expected Range**: **$1.00 - $2.00/month** (with caching)
+
+**Additional Cost Factors**:
+- Batch API discount: -50% (if using batch mode)
+- Re-processing frequency: monthly update vs. full rebuild
+- Cache hit rate variance: 30-70% depending on update patterns
+
+**Cost Control Mechanisms**:
+- Prefilter: 60% cost reduction (rejects synthetic/low-value chunks)
+- Content-hash caching: 30-50% additional savings
+- Batch processing: potential 50% discount (when available)
+- Model configurable: can downgrade to gpt-3.5-turbo if needed
 
 ### Pipeline Throughput
 
