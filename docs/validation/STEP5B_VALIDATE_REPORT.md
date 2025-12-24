@@ -668,7 +668,7 @@ WHERE
 | Amount Bridge SQL branching proven | ✅ PASS | Conditional structure tests |
 | BEGIN READ ONLY transaction hygiene | ✅ PASS | Exception handling + cleanup |
 | Test commands standardized | ✅ PASS | All 3 commands documented & work |
-| Documentation updated | ✅ PASS | This report + status.md |
+| Documentation updated | ✅ PASS | This report + STATUS.md |
 
 ### 12.7 Next Steps (STEP 5-C)
 

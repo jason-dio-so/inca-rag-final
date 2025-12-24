@@ -44,8 +44,8 @@ class CoverageMapper:
         Load Excel and build alias → canonical_code mapping.
 
         Expected Excel structure:
-        - coverage_alias (column): insurer-specific coverage names
-        - canonical_coverage_code (column): 신정원 통일 코드
+        - 담보명(가입설계서) (column): insurer-specific coverage names (alias)
+        - cre_cvr_cd (column): 신정원 통일 코드 (canonical coverage code)
         """
         try:
             df = pd.read_excel(self.excel_path)
@@ -53,14 +53,19 @@ class CoverageMapper:
             raise RuntimeError(f"Failed to load Excel: {e}")
 
         # Validate required columns
-        required = ['coverage_alias', 'canonical_coverage_code']
+        # Actual columns: ins_cd, 보험사명, cre_cvr_cd, 신정원코드명, 담보명(가입설계서)
+        required = ['담보명(가입설계서)', 'cre_cvr_cd']
         if not all(col in df.columns for col in required):
-            raise ValueError(f"Excel must have columns: {required}")
+            actual_cols = df.columns.tolist()
+            raise ValueError(
+                f"Excel must have columns: {required}\n"
+                f"Actual columns: {actual_cols}"
+            )
 
         # Build mapping
         for _, row in df.iterrows():
-            alias = str(row['coverage_alias']).strip()
-            canonical = str(row['canonical_coverage_code']).strip()
+            alias = str(row['담보명(가입설계서)']).strip()
+            canonical = str(row['cre_cvr_cd']).strip()
 
             # Normalize alias for lookup
             normalized_alias = self._normalize_alias(alias)
