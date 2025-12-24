@@ -1213,6 +1213,116 @@ E2E_DOCKER=1 pytest tests/e2e/test_step11_real_docker_db.py -v
 
 ---
 
+## ✅ STEP 12: UX User Message Contract (Deterministic)
+
+**Status:** COMPLETE
+**Branch:** feature/step9-proposal-based-3insurer-comparison
+**Date:** 2025-12-24
+
+### Purpose
+
+Deterministic user messages for all comparison states (no LLM, no value judgments)
+
+### Deliverables
+
+#### 1. User Message Module
+
+**File:** `src/ux/user_messages.py`
+
+**Components:**
+- `MessageCode` enum (8 codes): comparable, comparable_with_gaps, non_comparable, out_of_universe, unmapped, ambiguous, policy_required, manual_review_required
+- `NextAction` enum (5 actions): view_comparison, check_proposal, verify_policy, contact_admin, retry_with_different_coverage
+- `UserMessage` dataclass (message_code, message_ko, next_action, explanation)
+- `MESSAGE_TEMPLATES` dict (deterministic templates for all codes)
+- `get_user_message()` function (template lookup)
+- `validate_no_prohibited_phrases()` function (Constitutional enforcement)
+- `validate_all_templates()` function (validates all templates)
+
+**Key Features:**
+- Deterministic (same input → same output)
+- Template-based (no LLM generation)
+- Prohibited phrase validation
+- Constitutional compliance enforced
+
+#### 2. Contract Tests
+
+**File:** `tests/contract/test_step12_user_messages.py`
+
+**Tests (13, all PASS):**
+1. ✅ MessageCode enum complete
+2. ✅ NextAction enum deterministic
+3. ✅ All message codes have templates
+4. ✅ Prohibited phrase validation works
+5. ✅ All templates pass prohibited phrase check
+6. ✅ out_of_universe message
+7. ✅ unmapped message
+8. ✅ ambiguous message
+9. ✅ comparable_with_gaps message
+10. ✅ comparable message
+11. ✅ non_comparable message
+12. ✅ policy_required message
+13. ✅ Message templates deterministic
+
+**Usage:**
+```bash
+pytest tests/contract/test_step12_user_messages.py -v
+```
+
+**Test Results:** 13/13 PASS ✅
+
+### Message Templates
+
+**Success States:**
+- `comparable`: "비교 가능한 담보입니다. 모든 보험사의 정보가 확인되었습니다." → view_comparison
+- `comparable_with_gaps`: "비교 가능하나 일부 정보가 확인되지 않았습니다. 약관 확인이 필요합니다." → verify_policy
+
+**Error States:**
+- `out_of_universe`: "해당 담보는 가입설계서에 존재하지 않아 비교할 수 없습니다." → check_proposal
+- `unmapped`: "담보명이 매핑되지 않았습니다. 관리자 확인이 필요합니다." → contact_admin
+- `ambiguous`: "담보명이 여러 표준 담보 코드에 매칭됩니다. 수동 확인이 필요합니다." → contact_admin
+- `non_comparable`: "보험사 간 담보 정의가 달라 직접 비교가 어렵습니다." → verify_policy
+
+**System States:**
+- `policy_required`: "약관 확인이 필요합니다." → verify_policy
+- `manual_review_required`: "수동 검토가 필요합니다." → contact_admin
+
+### Constitutional Compliance
+
+**Prohibited Phrases Blocked:**
+- ❌ "가장 넓은", "가장 유리함", "추천"
+- ❌ "더 나은", "더 좋은", "최고", "최선", "우수"
+- ❌ "약관 중심", "policy-first", "약관 기준"
+
+**Principles Enforced:**
+- ✅ Factual statements only (no value judgments)
+- ✅ Deterministic templates (no LLM generation)
+- ✅ Guidance-only next_action (not recommendations)
+- ✅ NO policy-first language
+- ✅ 가입설계서 = Universe Lock principle maintained
+
+### Key Features
+
+**Deterministic Behavior:**
+- Same message_code always returns same message_ko
+- No randomness or LLM generation
+- Template-based (predictable)
+
+**Constitutional Enforcement:**
+- validate_no_prohibited_phrases() blocks violations
+- validate_all_templates() ensures compliance
+- All templates verified at test time
+
+**User Guidance:**
+- next_action provides clear guidance (not recommendations)
+- Factual explanations (optional)
+- NO value comparisons between insurers
+
+### Related Commits
+
+- e1f9d64 - feat: STEP 12 - UX User Message Contract (Deterministic)
+
+---
+
 ## Quick Reference
 
 ### Running the API
