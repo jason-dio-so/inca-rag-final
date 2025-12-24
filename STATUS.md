@@ -202,13 +202,15 @@ pytest -q                    # 23 passed
 ---
 
 ### STEP 6-B: LLM-Assisted Ingestion/Extraction (Implementation)
-**Status:** IN PROGRESS - Phase 1 COMPLETE
-**Commits:** c1810d3 (Phase 1)
+**Status:** IN PROGRESS - Phase 2 (Validator Complete)
+**Commits:** c1810d3 (Phase 1), b79b1e8 (Phase 2-1), 64b22fb (Phase 2-2)
 **Date:** 2025-12-23
 
-**Phase 1: Foundation (COMPLETE) ✅**
+---
 
-Delivered Components:
+**Phase 1: Foundation (Code Complete, DB Verification PENDING) ⏳**
+
+**Code Artifacts (✅ COMPLETE)**:
 1. **Database Migration** (`migrations/step6b/001_create_candidate_tables.sql`)
    - `chunk_entity_candidate` table (LLM proposals)
    - `amount_entity_candidate` table (amount context hints)
@@ -218,35 +220,58 @@ Delivered Components:
    - Constitutional constraints (FK, status checks, uniqueness)
 
 2. **Pydantic Models** (`apps/api/app/ingest_llm/models.py`)
-   - `EntityCandidate` - LLM proposal representation
-   - `LLMCandidateResponse` - API response wrapper
-   - `ResolverResult` - Resolution outcome
-   - `CandidateMetrics` - Performance tracking
+   - `EntityCandidate`, `LLMCandidateResponse`, `ResolverResult`, `CandidateMetrics`
    - Constitutional validation (coverage_code FK, confidence bounds)
 
 3. **Prefilter Module** (`apps/api/app/ingest_llm/prefilter.py`)
-   - Cost optimization (60-70% reduction)
-   - Synthetic chunk rejection (constitutional)
-   - Keyword/pattern-based filtering
-   - Doc type prioritization
+   - Cost optimization (60-70% reduction), synthetic rejection
 
 4. **Resolver Module** (`apps/api/app/ingest_llm/resolver.py`)
    - Coverage name → canonical code mapping
-   - Resolution strategy: alias → standard → fuzzy
    - FK verification (no auto-INSERT into coverage_standard)
-   - Batch processing support
 
-**Test Results:**
-- Contract tests: 8/8 PASS ✅
-- Integration tests: 22/22 PASS ✅
-- Total: 30/30 PASS ✅
-- **No STEP 5 regressions**
-
-**Progress Report:** `docs/validation/STEP6B_PROGRESS_REPORT.md`
+**DB Verification (⏳ PENDING - PostgreSQL not available)**:
+- Migration SQL ready but NOT applied to live database
+- Verification script created: `migrations/step6b/verify_migration.sh`
+- See: `docs/validation/STEP6B_PHASE1_VERIFICATION.md` for details
+- **Action Required**: Start PostgreSQL on port 5433, apply migration, run verification
 
 ---
 
-**Phase 2: Core Pipeline (PENDING) ⏳**
+**Phase 2: Validator + Repository (IN PROGRESS)**
+
+**Completed Components (✅)**:
+1. **Repository Layer** (`apps/api/app/ingest_llm/repository.py`) - Commit b79b1e8
+   - CandidateRepository with content-hash deduplication
+   - Metrics calculation, candidate CRUD
+   - **Constitutional guarantee**: NO auto-confirm methods
+
+2. **Validator Module** (`apps/api/app/ingest_llm/validator.py`) - Commit 64b22fb
+   - CandidateValidator with constitutional enforcement
+   - Synthetic chunk rejection (is_synthetic=true forbidden)
+   - FK integrity (coverage_code must exist in coverage_standard)
+   - Confidence thresholds, duplicate prevention
+   - Status determination logic
+
+3. **Confirm Function Sealing** (`docs/validation/STEP6B_CONFIRM_SEALING_EVIDENCE.md`) - Commit 64b22fb
+   - Code search proof: NO Python code calls confirm function
+   - Repository contract verified: NO confirm methods
+   - Multi-layer safeguards documented
+
+4. **Unit Tests** (`tests/unit/test_validator.py`) - Commit 64b22fb
+   - 39 test cases (ALL PASSING)
+   - Constitutional tests (synthetic rejection, FK enforcement)
+   - Defense-in-depth validation (Pydantic + Validator)
+
+**Test Results (Phase 2)**:
+- Validator unit tests: 39/39 PASS ✅
+- Contract tests: 8/8 PASS ✅
+- Integration tests: 22/22 PASS ✅
+- Total: 69/69 PASS ✅ (no regressions)
+
+---
+
+**Phase 2: Remaining Work (PENDING) ⏳**
 
 Remaining Components:
 1. Validator module (FK/type/duplicate checks)
