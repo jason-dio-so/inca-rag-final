@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CompareResponse",
+  "description": "STEP 10-C: API response schema for multi-insurer coverage comparison with document priority enforcement",
+  "type": "object",
+  "required": [
+    "request_id",
+    "query",
+    "insurers",
+    "comparison_state",
+    "coverage",
+    "document_priority",
+    "evidence",
+    "slots"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "Unique request identifier"
+    },
+    "query": {
+      "type": "string",
+      "description": "User query (coverage name)"
+    },
+    "insurers": {
+      "type": "array",
+      "description": "List of insurer codes being compared",
+      "items": {
+        "type": "string",
+        "enum": ["SAMSUNG", "MERITZ", "DB", "LOTTE", "KB"]
+      },
+      "minItems": 1
+    },
+    "comparison_state": {
+      "type": "string",
+      "description": "Overall comparison result state",
+      "enum": [
+        "comparable",
+        "comparable_with_gaps",
+        "non_comparable",
+        "unmapped",
+        "out_of_universe"
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "description": "Coverage identification and mapping status",
+      "required": ["canonical_coverage_code", "mapping_status"],
+      "properties": {
+        "canonical_coverage_code": {
+          "type": ["string", "null"],
+          "description": "Canonical coverage code from Excel (신정원 코드)"
+        },
+        "mapping_status": {
+          "type": "string",
+          "description": "Coverage mapping status",
+          "enum": ["MAPPED", "UNMAPPED", "AMBIGUOUS"]
+        },
+        "coverage_name_raw": {
+          "type": ["string", "null"],
+          "description": "Raw coverage name from proposal (가입설계서 원문)"
+        }
+      }
+    },
+    "document_priority": {
+      "type": "array",
+      "description": "Fixed document priority order (Constitutional requirement)",
+      "items": {
+        "type": "string",
+        "enum": ["PROPOSAL", "PRODUCT_SUMMARY", "BUSINESS_METHOD", "POLICY"]
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "const": ["PROPOSAL", "PRODUCT_SUMMARY", "BUSINESS_METHOD", "POLICY"]
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Evidence grouped by document type in priority order",
+      "required": ["proposal", "product_summary", "business_method", "policy"],
+      "properties": {
+        "proposal": {
+          "type": "array",
+          "description": "Evidence from proposal documents (가입설계서)",
+          "items": {
+            "$ref": "#/definitions/EvidenceItem"
+          }
+        },
+        "product_summary": {
+          "type": "array",
+          "description": "Evidence from product summary documents (상품요약서)",
+          "items": {
+            "$ref": "#/definitions/EvidenceItem"
+          }
+        },
+        "business_method": {
+          "type": "array",
+          "description": "Evidence from business method documents (사업방법서)",
+          "items": {
+            "$ref": "#/definitions/EvidenceItem"
+          }
+        },
+        "policy": {
+          "type": "array",
+          "description": "Evidence from policy documents (약관) - conditional only",
+          "items": {
+            "$ref": "#/definitions/EvidenceItem"
+          }
+        }
+      }
+    },
+    "slots": {
+      "type": "object",
+      "description": "Coverage slot values (Slot Schema v1.1.1)",
+      "properties": {
+        "disease_scope_raw": {
+          "type": ["string", "null"],
+          "description": "Raw disease scope from proposal (e.g., '유사암 제외')"
+        },
+        "disease_scope_norm": {
+          "type": ["object", "null"],
+          "description": "Normalized disease scope with group references",
+          "properties": {
+            "include_group_id": {
+              "type": ["string", "null"]
+            },
+            "exclude_group_id": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "amount_value": {
+          "type": ["number", "null"],
+          "description": "Coverage amount in KRW"
+        },
+        "currency": {
+          "type": ["string", "null"],
+          "enum": ["KRW", null],
+          "description": "Currency (KRW only)"
+        },
+        "payout_limit": {
+          "type": ["object", "null"],
+          "description": "Payout limit structure",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["count", "period", "lifetime", "unlimited"]
+            },
+            "count": {
+              "type": ["integer", "null"]
+            },
+            "period": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "comparison_reason": {
+      "type": ["object", "null"],
+      "description": "Explainable comparison reason (from STEP 9)",
+      "properties": {
+        "reason_code": {
+          "type": "string"
+        },
+        "summary_ko": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "insurer": {
+                "type": "string"
+              },
+              "doc_id": {
+                "type": "string"
+              },
+              "page": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "prohibited_phrases_check": {
+      "type": "string",
+      "description": "Prohibited phrases validation result",
+      "enum": ["PASS", "FAIL"]
+    }
+  },
+  "definitions": {
+    "EvidenceItem": {
+      "type": "object",
+      "description": "Single evidence item with source information",
+      "required": ["document_id", "doc_type", "page", "span_text", "source_confidence"],
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "Document identifier"
+        },
+        "doc_type": {
+          "type": "string",
+          "description": "Document type",
+          "enum": ["PROPOSAL", "PRODUCT_SUMMARY", "BUSINESS_METHOD", "POLICY"]
+        },
+        "page": {
+          "type": "integer",
+          "description": "Page number",
+          "minimum": 1
+        },
+        "span_text": {
+          "type": "string",
+          "description": "Extracted text span",
+          "minLength": 1
+        },
+        "source_confidence": {
+          "type": "string",
+          "description": "Source confidence level",
+          "enum": ["proposal_confirmed", "policy_required", "unknown"]
+        },
+        "extracted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Extraction timestamp (optional)"
+        }
+      }
+    }
+  }
+}
