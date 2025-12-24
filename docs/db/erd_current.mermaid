@@ -1,0 +1,289 @@
+```mermaid
+erDiagram
+    %% ========================================
+    %% Canonical ERD - 1:1 with schema_current.sql
+    %% Source of Truth: migrations/step6c/*
+    %% STEP 6-C: Proposal Universe Lock
+    %% ========================================
+
+    %% ========================================
+    %% Canonical Layer (기준/마스터)
+    %% ========================================
+
+    insurer {
+        serial insurer_id PK
+        varchar insurer_code UK "보험사 코드"
+        varchar insurer_name
+        varchar insurer_name_eng
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    product {
+        serial product_id PK
+        int insurer_id FK
+        varchar product_code "상품 코드"
+        varchar product_name
+        varchar product_type
+        date sale_start_date
+        date sale_end_date
+        boolean is_active
+        jsonb meta
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    coverage_standard {
+        serial coverage_id PK
+        varchar coverage_code UK "신정원 통일 코드 (READ-ONLY)"
+        varchar coverage_name
+        varchar domain
+        varchar coverage_type
+        int priority
+        boolean is_main
+        jsonb meta
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    document {
+        serial document_id PK
+        int product_id FK
+        varchar document_type
+        varchar document_version
+        text file_path
+        varchar file_hash
+        date effective_date
+        int doc_type_priority "1=약관 2=사업방법서 3=요약서 4=설계서"
+        jsonb meta
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ========================================
+    %% Normalization Layer (매핑/정규화)
+    %% ========================================
+
+    coverage_alias {
+        serial alias_id PK
+        int insurer_id FK
+        int coverage_id FK
+        varchar insurer_coverage_name UK
+        varchar insurer_coverage_code
+        varchar confidence "high/medium/low"
+        varchar mapping_method "manual/rule/llm"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    coverage_code_alias {
+        serial code_alias_id PK
+        int coverage_id FK
+        varchar legacy_code UK
+        varchar code_type
+        timestamp created_at
+    }
+
+    coverage_subtype {
+        serial subtype_id PK
+        int coverage_id FK
+        varchar subtype_name
+        varchar subtype_code
+        jsonb rules
+        timestamp created_at
+    }
+
+    coverage_condition {
+        serial condition_id PK
+        int coverage_id FK
+        varchar condition_type "지급/감액/면책"
+        text condition_text
+        jsonb condition_rules
+        timestamp created_at
+    }
+
+    %% ========================================
+    %% Document & Chunk Layer
+    %% ========================================
+
+    chunk {
+        serial chunk_id PK
+        int document_id FK
+        int page_number
+        text content
+        vector embedding "1536-dim"
+        boolean is_synthetic "Amount Bridge 전용"
+        int synthetic_source_chunk_id FK "원본 청크"
+        jsonb meta
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    chunk_entity {
+        serial entity_id PK
+        int chunk_id FK
+        varchar entity_type "coverage/amount/disease/surgery"
+        varchar coverage_code FK
+        jsonb entity_value
+        varchar extraction_method
+        float confidence
+        timestamp created_at
+    }
+
+    amount_entity {
+        serial amount_id PK
+        int chunk_id FK
+        varchar coverage_code FK
+        varchar context_type "payment/count/limit"
+        numeric amount_value
+        varchar amount_text
+        varchar amount_unit
+        varchar extraction_method
+        float confidence
+        jsonb meta
+        timestamp created_at
+    }
+
+    %% ========================================
+    %% STEP 6-C: Proposal Universe Lock
+    %% 3-Tier Disease Code Model + Proposal Universe
+    %% ========================================
+
+    disease_code_master {
+        varchar code PK "KCD-7 공식 코드"
+        varchar version "KCD-7 ONLY"
+        text name_ko
+        varchar source "KCD-7 Official Distribution"
+        boolean active_flag
+        timestamp created_at
+    }
+
+    disease_code_group {
+        varchar group_id PK "보험 개념 그룹"
+        varchar group_label
+        varchar insurer "NULL=의학적 범위만"
+        varchar version_tag
+        varchar basis_doc_id "근거 문서"
+        int basis_page
+        text basis_span
+        timestamp created_at
+    }
+
+    disease_code_group_member {
+        serial id PK
+        varchar group_id FK
+        enum member_type "CODE/RANGE"
+        varchar code FK "단일 코드"
+        varchar code_from FK "범위 시작"
+        varchar code_to FK "범위 끝"
+        timestamp created_at
+    }
+
+    coverage_disease_scope {
+        serial id PK
+        varchar canonical_coverage_code "신정원 코드"
+        varchar insurer
+        varchar proposal_id
+        varchar include_group_id FK
+        varchar exclude_group_id FK
+        varchar source_doc_id
+        int source_page
+        text span_text
+        varchar extraction_rule_id
+        timestamp created_at
+    }
+
+    proposal_coverage_universe {
+        serial id PK
+        varchar insurer
+        varchar proposal_id
+        text insurer_coverage_name "원본 담보명"
+        text normalized_name "정규화 담보명"
+        varchar currency "기본값: KRW"
+        bigint amount_value
+        varchar payout_amount_unit
+        int source_page "Evidence 필수"
+        text span_text "Evidence 필수"
+        varchar content_hash UK "SHA256 중복 방지"
+        timestamp created_at
+    }
+
+    proposal_coverage_mapped {
+        serial id PK
+        int universe_id FK UK
+        varchar canonical_coverage_code "nullable"
+        enum mapping_status "MAPPED/UNMAPPED/AMBIGUOUS"
+        jsonb mapping_evidence
+        timestamp created_at
+    }
+
+    proposal_coverage_slots {
+        serial id PK
+        int mapped_id FK UK
+        enum event_type "diagnosis/surgery/hospitalization/treatment/death/unknown"
+        text disease_scope_raw "설계서 원문"
+        jsonb disease_scope_norm "그룹 참조 or NULL"
+        int waiting_period_days
+        text coverage_start_rule
+        jsonb reduction_periods
+        jsonb payout_limit "v1.1.1 통합 포맷"
+        text_array treatment_method
+        jsonb hospitalization_exclusions
+        boolean renewal_flag
+        int renewal_period_years
+        int renewal_max_age
+        enum source_confidence "proposal_confirmed/policy_required/unknown"
+        text qualification_suffix
+        jsonb evidence "문서 근거"
+        timestamp created_at
+    }
+
+    %% ========================================
+    %% Relationships
+    %% ========================================
+
+    %% Canonical Layer
+    product ||--o{ document : "has"
+    insurer ||--o{ product : "owns"
+
+    %% Normalization Layer
+    coverage_standard ||--o{ coverage_alias : "maps to"
+    coverage_standard ||--o{ coverage_code_alias : "has legacy code"
+    coverage_standard ||--o{ coverage_subtype : "has subtype"
+    coverage_standard ||--o{ coverage_condition : "has condition"
+    insurer ||--o{ coverage_alias : "defines"
+
+    %% Document & Chunk Layer
+    document ||--o{ chunk : "chunked into"
+    chunk ||--o| chunk : "synthetic from (self-ref)"
+    chunk ||--o{ chunk_entity : "contains"
+    chunk ||--o{ amount_entity : "contains amount"
+    coverage_standard ||--o{ chunk_entity : "references"
+    coverage_standard ||--o{ amount_entity : "references"
+
+    %% STEP 6-C: 3-Tier Disease Code Model
+    disease_code_master ||--o{ disease_code_group_member : "belongs to groups"
+    disease_code_group ||--o{ disease_code_group_member : "has members"
+    disease_code_group ||--o{ coverage_disease_scope : "included in"
+    disease_code_group ||--o{ coverage_disease_scope : "excluded from"
+
+    %% STEP 6-C: Proposal Universe Lock Pipeline
+    proposal_coverage_universe ||--|| proposal_coverage_mapped : "maps to canonical"
+    proposal_coverage_mapped ||--|| proposal_coverage_slots : "extracts slots from"
+
+    %% ========================================
+    %% Legend
+    %% ========================================
+    %% READ-ONLY: coverage_standard (자동 INSERT 금지)
+    %% Universe Lock: proposal_coverage_universe (비교 절대 기준)
+    %% 3-Tier: disease_code_master → disease_code_group → coverage_disease_scope
+    %% Slot Schema v1.1.1: proposal_coverage_slots
+    %%
+    %% Constitutional Principles:
+    %% - Excel = coverage mapping single source
+    %% - KCD-7 = disease code single source
+    %% - Proposal = comparison universe single source
+    %% - Evidence required at every level
+    %%====================================== ==
+```

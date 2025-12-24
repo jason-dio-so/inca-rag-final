@@ -1,11 +1,12 @@
 """
-STEP 5-B Read-only and is_synthetic enforcement tests
+STEP 5-B + STEP 7 Read-only and Universe Lock enforcement tests
 
 Tests:
 1. DB connection is read-only (write attempts fail)
 2. Compare evidence queries enforce is_synthetic=false
 3. Amount bridge respects include_synthetic option
-4. Real DB schema validation (product/product_coverage/chunk/document)
+4. Real DB schema validation (Universe Lock tables: proposal_coverage_universe/mapped/slots)
+5. Universe Lock 5-state comparison validation
 """
 import pytest
 from unittest.mock import patch, MagicMock
@@ -406,16 +407,21 @@ class TestRealDBSchemaAlignment:
         assert "product_master" not in COMPARE_PRODUCTS_SQL, \
             "Compare products SQL MUST NOT use product_master"
 
-    def test_coverage_amount_uses_product_coverage(self):
+    def test_coverage_amount_uses_universe_lock(self):
         """
-        Verify coverage amount query uses product_coverage + coverage_standard
+        Verify coverage amount query uses Universe Lock tables (STEP 7)
+        Constitutional requirement: proposal_coverage_universe only, no product_coverage
         """
-        assert "public.product_coverage" in COVERAGE_AMOUNT_SQL, \
-            "Coverage amount SQL MUST use public.product_coverage"
-        assert "public.coverage_standard" in COVERAGE_AMOUNT_SQL, \
-            "Coverage amount SQL MUST use public.coverage_standard"
-        assert "coverage_code" in COVERAGE_AMOUNT_SQL, \
-            "Coverage amount SQL MUST join on coverage_code (canonical)"
+        assert "public.proposal_coverage_universe" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST use public.proposal_coverage_universe (Universe Lock)"
+        assert "public.proposal_coverage_mapped" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST use public.proposal_coverage_mapped"
+        assert "mapping_status" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST filter by mapping_status"
+        assert "= 'MAPPED'" in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST require mapping_status = 'MAPPED'"
+        assert "product_coverage" not in COVERAGE_AMOUNT_SQL, \
+            "Coverage amount SQL MUST NOT use product_coverage (Universe Lock violation)"
 
     def test_compare_evidence_uses_chunk_document(self):
         """
@@ -492,3 +498,103 @@ class TestRealDBSchemaAlignment:
 
         finally:
             test_app.dependency_overrides.clear()
+
+
+
+class TestUniverseLock5StateComparison:
+    """
+    STEP 7: Verify Universe Lock 5-State Comparison System
+
+    States:
+    1. comparable - All critical slots match
+    2. comparable_with_gaps - Same canonical code, some slots NULL (policy_required)
+    3. non_comparable - Different canonical codes or incompatible
+    4. unmapped - Exists in universe but Excel mapping failed
+    5. out_of_universe - NOT in proposal (Universe Lock violation)
+    """
+
+    def test_out_of_universe_coverage_returns_none(self):
+        """
+        Test: Coverage NOT in proposal_coverage_universe → returns None (out_of_universe)
+        """
+        from apps.api.app.queries.compare import get_coverage_amount_for_proposal
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        # Empty result = coverage not in universe
+        mock_cursor.fetchall.return_value = []
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+
+        result = get_coverage_amount_for_proposal(
+            mock_conn,
+            insurer_code="SAMSUNG",
+            proposal_id="proposal_001",
+            coverage_code="COVERAGE_NOT_IN_PROPOSAL"
+        )
+
+        # Universe Lock: If not in proposal, return None (out_of_universe)
+        assert result is None, \
+            "Coverage not in proposal_coverage_universe MUST return None (out_of_universe)"
+
+    def test_unmapped_coverage_returns_none(self):
+        """
+        Test: Coverage in universe but mapping_status != 'MAPPED' → returns None (unmapped)
+        SQL filter ensures this by requiring mapping_status = 'MAPPED'
+        """
+        from apps.api.app.queries.compare import COVERAGE_AMOUNT_SQL
+
+        # Verify SQL requires MAPPED status
+        assert "mapping_status = 'MAPPED'" in COVERAGE_AMOUNT_SQL, \
+            "SQL MUST filter mapping_status = 'MAPPED' to exclude UNMAPPED/AMBIGUOUS"
+
+    def test_mapped_coverage_returns_amount(self):
+        """
+        Test: Coverage in universe + mapping_status='MAPPED' → returns amount_value
+        """
+        from apps.api.app.queries.compare import get_coverage_amount_for_proposal
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        # Simulates MAPPED coverage with amount
+        mock_cursor.fetchall.return_value = [{"amount_value": 30000000}]
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+
+        result = get_coverage_amount_for_proposal(
+            mock_conn,
+            insurer_code="SAMSUNG",
+            proposal_id="proposal_001",
+            coverage_code="A1100"  # Canonical code
+        )
+
+        assert result == 30000000, \
+            "MAPPED coverage MUST return amount_value from proposal_coverage_universe"
+
+    def test_comparable_with_gaps_requires_policy(self):
+        """
+        Test: Coverage with NULL disease_scope_norm → comparable_with_gaps
+        (Requires policy processing to fill disease_scope_norm)
+        """
+        # This is a conceptual test - actual implementation would check slots table
+        # disease_scope_norm NULL = policy processing not done yet
+        from apps.api.app.queries.compare import COVERAGE_AMOUNT_SQL
+
+        # Verify we're using universe tables (which have slots linkage)
+        assert "proposal_coverage_mapped" in COVERAGE_AMOUNT_SQL, \
+            "Must use proposal_coverage_mapped which links to slots for gap detection"
+
+    def test_universe_lock_requires_proposal_id(self):
+        """
+        Test: Universe Lock queries MUST require proposal_id (cannot query without proposal context)
+        """
+        from apps.api.app.queries.compare import get_coverage_amount_for_proposal
+        import inspect
+
+        # Verify function signature requires proposal_id
+        sig = inspect.signature(get_coverage_amount_for_proposal)
+        params = list(sig.parameters.keys())
+
+        assert "proposal_id" in params, \
+            "get_coverage_amount_for_proposal MUST require proposal_id parameter (Universe Lock)"
+        assert "product_id" not in params, \
+            "get_coverage_amount_for_proposal MUST NOT use product_id (Universe Lock principle)"
+

@@ -110,39 +110,51 @@ def get_products_for_compare(
     return execute_readonly_query(conn, COMPARE_PRODUCTS_SQL, params)
 
 
-# SQL template for coverage amount
+# SQL template for coverage amount from Proposal Universe Lock
+# UNIVERSE LOCK PRINCIPLE: Only coverages in proposal_coverage_universe can be compared
 COVERAGE_AMOUNT_SQL = """
-SELECT pc.coverage_amount
-FROM public.product_coverage pc
-JOIN public.coverage_standard cs ON cs.coverage_id = pc.coverage_id
-WHERE pc.product_id = %(product_id)s
-  AND cs.coverage_code = %(coverage_code)s
+SELECT u.amount_value
+FROM public.proposal_coverage_universe u
+JOIN public.proposal_coverage_mapped m ON m.universe_id = u.id
+WHERE m.canonical_coverage_code = %(coverage_code)s
+  AND m.mapping_status = 'MAPPED'
+  AND u.insurer = %(insurer_code)s
+  AND u.proposal_id = %(proposal_id)s
 LIMIT 1;
 """
 
 
-def get_coverage_amount_for_product(
+def get_coverage_amount_for_proposal(
     conn: PGConnection,
-    product_id: int,
+    insurer_code: str,
+    proposal_id: str,
     coverage_code: str
-) -> Optional[float]:
+) -> Optional[int]:
     """
-    Get coverage amount for product from product_coverage table.
+    Get coverage amount from proposal universe (Universe Lock).
+
+    Constitutional guarantee:
+    - Only returns amounts from proposal_coverage_universe (가입설계서)
+    - Requires mapping_status = 'MAPPED'
+    - Returns out_of_universe if not in proposal
+    - No product-centered lookup allowed
 
     Args:
         conn: Read-only database connection
-        product_id: Product ID
+        insurer_code: Insurer code (e.g., 'SAMSUNG')
+        proposal_id: Proposal document ID
         coverage_code: Canonical coverage code (신정원 통일 코드)
 
     Returns:
-        Coverage amount or None
+        Coverage amount (KRW) or None if out_of_universe/unmapped
     """
     params = {
-        "product_id": product_id,
+        "insurer_code": insurer_code,
+        "proposal_id": proposal_id,
         "coverage_code": coverage_code
     }
 
     rows = execute_readonly_query(conn, COVERAGE_AMOUNT_SQL, params)
     if rows:
-        return rows[0].get("coverage_amount")
+        return rows[0].get("amount_value")
     return None

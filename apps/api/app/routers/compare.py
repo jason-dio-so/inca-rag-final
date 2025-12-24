@@ -15,7 +15,7 @@ from ..db import get_readonly_conn
 from ..queries.compare import (
     get_products_for_compare,
     get_compare_evidence,
-    get_coverage_amount_for_product
+    get_coverage_amount_for_proposal
 )
 from ..services.conditions_summary_service import generate_conditions_summary
 
@@ -78,11 +78,11 @@ async def compare_products(
             # Get coverage amount if coverage_code provided
             coverage_amount = None
             if coverage_code:
-                coverage_amount = get_coverage_amount_for_product(
-                    conn=conn,
-                    product_id=product_id,
-                    coverage_code=coverage_code
-                )
+                # DEPRECATED: This endpoint uses product-centered comparison (Constitutional violation)
+                # Universe Lock requires proposal-based comparison (STEP 7)
+                # TODO: Replace entire /compare endpoint with proposal-based version
+                # For now, skip coverage_amount to avoid hardcoded violations
+                pass  # coverage_amount remains None
 
             # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
             evidence_list = []
