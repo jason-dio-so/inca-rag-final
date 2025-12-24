@@ -226,8 +226,8 @@ Compare API는 Golden Snapshot 기반으로
 
 **Test Execution**:
 ```bash
-E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
-# Expected: 7/7 PASS
+env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+# Expected: 8/8 PASS
 ```
 
 **Prohibited Operations**:
@@ -645,11 +645,13 @@ python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 #### E2E Docker pytest 실행 (zsh / bash 공통)
 
 ```bash
-env E2E_DOCKER=1 python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
+env E2E_DOCKER=1 pytest tests/e2e/test_step14_api_compare_e2e.py -v
 ```
 
-zsh에서는 `E2E_DOCKER=1 python ...` 형태가 필요하며,
-`env` 사용 시 shell 차이 없이 동작한다.
+**Command standard (STEP 19):**
+- Unified format: `env E2E_DOCKER=1 pytest ...`
+- Works in zsh/bash/CI without modification
+- No shell-specific variants
 
 20 tests covering:
 - Scenario A: Normal comparison (일반암진단비) - 7 tests

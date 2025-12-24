@@ -38,24 +38,51 @@ jobs:
 
       - name: Start Docker services (STEP 14 compose)
         run: |
+          echo "Starting Docker services with STEP 14-only compose..."
           docker compose -f docker-compose.step14.yml down -v || true
-          docker compose -f docker-compose.step14.yml up -d
+          docker compose -f docker-compose.step14.yml up -d || {
+            echo "ERROR: Failed to start Docker services"
+            docker compose -f docker-compose.step14.yml logs
+            exit 1
+          }
 
       - name: Wait for PostgreSQL to be ready
         run: |
-          timeout 30 bash -c 'until docker exec inca_pg_step14 pg_isready -U postgres; do sleep 1; done'
+          echo "Waiting for PostgreSQL to be ready (max 30s)..."
+          timeout 30 bash -c 'until docker exec inca_pg_step14 pg_isready -U postgres 2>/dev/null; do sleep 1; done' || {
+            echo "ERROR: PostgreSQL did not become ready within 30 seconds"
+            docker logs inca_pg_step14
+            exit 1
+          }
+          echo "PostgreSQL is ready ✓"
 
       - name: Apply schema migration
         run: |
-          cat docs/db/schema_universe_lock_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final
+          echo "Applying schema migration..."
+          cat docs/db/schema_universe_lock_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final || {
+            echo "ERROR: Schema migration failed"
+            exit 1
+          }
+          echo "Schema migration complete ✓"
 
       - name: Apply seed data
         run: |
-          cat docs/db/seed_step13_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final
+          echo "Applying seed data..."
+          cat docs/db/seed_step13_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final || {
+            echo "ERROR: Seed data application failed"
+            exit 1
+          }
+          echo "Seed data complete ✓"
 
       - name: Wait for API to be ready
         run: |
-          timeout 30 bash -c 'until curl -s http://localhost:8000/health > /dev/null; do sleep 1; done'
+          echo "Waiting for API to be ready (max 30s)..."
+          timeout 30 bash -c 'until curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 1; done' || {
+            echo "ERROR: API did not become ready within 30 seconds"
+            docker logs inca_api_step14
+            exit 1
+          }
+          echo "API is ready ✓"
 
       - name: Run STEP 14 API E2E Tests
         run: |

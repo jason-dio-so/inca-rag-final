@@ -936,6 +936,77 @@ git diff --exit-code tests/snapshots/compare/
 
 ---
 
+### ✅ STEP 19: CI Stabilization and STEP 14 Boundary Enforcement
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Stabilize GitHub Actions CI for production reliability and enforce clear boundaries for STEP 14-specific resources.
+
+**Deliverables:**
+- Enhanced CI workflow with explicit error messages
+- STEP 14 boundary enforcement (docker-compose.step14.yml)
+- Unified command standard (env E2E_DOCKER=1)
+- Documentation alignment
+
+**CI Enhancements:**
+- Explicit progress messages ("PostgreSQL is ready ✓")
+- Failure detection with error logs on timeout
+- Docker logs on service startup failure
+- Schema/seed application error handling
+
+**STEP 14 Boundary Enforcement:**
+- docker-compose.step14.yml header updated:
+  ```
+  # =========================================
+  # STEP 14-α ONLY
+  # Compare API E2E / Contract Verification
+  # DO NOT reuse for other STEPs
+  # =========================================
+  ```
+- Clear separation from other STEP resources
+- Prevents accidental reuse in future steps
+
+**Command Standardization:**
+- Unified standard: `env E2E_DOCKER=1 pytest ...`
+- Applied to all documentation (STATUS.md, docs/db/README.md)
+- zsh/bash compatible
+- CI uses identical commands
+
+**Test Results (Local Verification):**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 8/8 PASS ✅
+- Golden snapshots: UNCHANGED ✅
+
+**Constitutional Guarantees:**
+- ✅ CI = final contract enforcer (always)
+- ✅ STEP 14 resources = exclusive boundary
+- ✅ Command examples = single standard
+- ✅ CI failure detection = proactive (not reactive)
+
+**Prohibited Operations:**
+- ❌ STEP 14 compose reuse for other steps
+- ❌ Ignoring CI failures ("works locally")
+- ❌ Multiple command example formats
+- ❌ CI-only issues documented without fix
+
+**DoD Achieved:**
+- ✅ CI workflow enhanced with error messages
+- ✅ docker-compose.step14.yml boundary enforced
+- ✅ Command examples unified (env E2E_DOCKER=1)
+- ✅ Documentation aligned
+- ✅ Local tests PASS
+- ✅ Committed and pushed
+
+**Key Files:**
+- `.github/workflows/ci-contract-guard.yml` (enhanced error handling)
+- `docker-compose.step14.yml` (STEP 14-only boundary)
+- `STATUS.md` (command examples unified)
+- `docs/db/README.md` (command examples unified)
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
@@ -1657,7 +1728,7 @@ Real Docker DB + actual tables + Universe Lock verification (no mocks/fixtures)
 
 **Usage:**
 ```bash
-E2E_DOCKER=1 pytest tests/e2e/test_step11_real_docker_db.py -v
+env E2E_DOCKER=1 pytest tests/e2e/test_step11_real_docker_db.py -v
 ```
 
 ### Constitutional Requirements Verified
