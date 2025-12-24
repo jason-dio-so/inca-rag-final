@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
-**Last Updated:** 2025-12-24
-**Current Phase:** STEP 10 Complete (User Response Contract - API Schema + Evidence Order)
+**Last Updated:** 2025-12-25
+**Current Phase:** STEP 13 Complete (Proposal-Based Minimal Seed Data for Docker E2E)
 
 ---
 
@@ -447,6 +447,76 @@ disease_scope_norm (group references)
 **Constitutional Violations Found & Fixed:**
 - ❌ Original code expected columns `coverage_alias` and `canonical_coverage_code` (did not exist)
 - ✅ Fixed to use actual Excel structure: `ins_cd`, `보험사명`, `cre_cvr_cd`, `신정원코드명`, `담보명(가입설계서)`
+
+---
+
+### ✅ STEP 13: Proposal-Based Minimal Seed Data for Docker E2E
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Enable Docker environment E2E testing with proposal-based comparison that complies with Constitution and UX Contract.
+
+**Deliverables:**
+- `docs/db/seed_step13_minimal.sql` - Minimal seed data SQL script
+- `tests/e2e/test_step13_seed_smoke.py` - Smoke test suite (12 tests)
+- Docker DB verified with seed data applied
+
+**Seed Data Coverage:**
+1. **Core Tables:**
+   - 3 insurers: SAMSUNG, MERITZ, KB
+   - 3 products (1 per insurer)
+   - 3 proposal documents
+
+2. **Coverage Canonical:**
+   - coverage_standard: CA_DIAG_GENERAL, CA_DIAG_SIMILAR, UNMAPPED_TEST
+   - coverage_alias: 4 aliases mapped to canonical codes
+   - Excel-based mapping simulation
+
+3. **Universe Lock (SSOT):**
+   - proposal_coverage_universe: 5 records (4 MAPPED + 1 UNMAPPED)
+   - proposal_coverage_mapped: MAPPED and UNMAPPED states
+   - proposal_coverage_slots: 4 records with evidence
+
+4. **Disease Code System:**
+   - disease_code_master: 8 KCD-7 codes (C00, C73, C44, D05, D09, D37, D48, C97)
+   - disease_code_group: 1 Samsung similar cancer group
+   - disease_code_group_member: 6 members
+   - coverage_disease_scope: 1 scope definition for CA_DIAG_SIMILAR
+
+**Verification Results (12/12 PASS):**
+- ✅ 3 insurers exist (SAMSUNG, MERITZ, KB)
+- ✅ 5 universe records
+- ✅ MAPPED and UNMAPPED states present
+- ✅ disease_scope_norm NULL and NOT NULL states present
+- ✅ All slots have proposal evidence
+- ✅ All slots link to valid universe records
+- ✅ Canonical codes exist
+- ✅ Disease code group exists
+- ✅ Disease code group members exist
+- ✅ Coverage disease scope exists
+
+**Constitutional Compliance:**
+- ✅ Proposal = SSOT (Universe Lock enforced)
+- ✅ Excel = only mapping source (no LLM inference)
+- ✅ KCD-7 = official source only
+- ✅ Evidence required for all slots
+- ✅ disease_scope_norm uses group references (not raw codes)
+- ✅ Policy evidence conditional (only when disease_scope_norm present)
+
+**DoD Achieved:**
+- ✅ Seed SQL file created and schema-aligned
+- ✅ Docker DB successfully loaded
+- ✅ Smoke test suite passes (12/12)
+- ✅ Existing tests pass (136/143 non-skipped)
+- ✅ No regression introduced
+- ✅ STATUS.md updated
+- ✅ Ready for commit + push
+
+**Key Files:**
+- `docs/db/seed_step13_minimal.sql`
+- `tests/e2e/test_step13_seed_smoke.py`
 
 **Evidence:**
 - Excel file: `/data/담보명mapping자료.xlsx` (227 KB)
