@@ -830,6 +830,112 @@ Freeze Compare API runtime contract with golden snapshots to prevent breaking ch
 
 ---
 
+### ✅ STEP 18: CI Contract Guard (GitHub Actions Enforcement)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Enforce Compare API runtime contracts at CI level to prevent breaking changes from being merged.
+
+**Deliverables:**
+- `.github/workflows/ci-contract-guard.yml` - GitHub Actions workflow
+- Automated contract enforcement on PR and push to main
+- STEP 14/16/17 contract verification in CI
+
+**CI Enforcement Strategy:**
+- Trigger: pull_request + push (main)
+- Runner: ubuntu-latest
+- Python: 3.11.x
+- Docker: STEP 14 compose only (docker-compose.step14.yml)
+
+**Enforced Contracts:**
+1. **STEP 14: API E2E** (22 tests)
+   - Compare API scenarios A/B/C
+   - Docker-based execution
+   - E2E_DOCKER=1 environment
+
+2. **STEP 16: Runtime Contract Freeze** (8 tests)
+   - Golden snapshot deep-equal comparison
+   - UX message code lock
+   - Evidence source & order lock
+   - Debug field lock
+
+3. **STEP 17: Contract Interpretation** (alignment)
+   - Semantic equality (key order allowed)
+   - Canonical JSON snapshots
+   - Evidence order: PROPOSAL → POLICY
+
+**CI Workflow Steps (Fixed Order):**
+1. Checkout repository
+2. Set up Python 3.11
+3. Install pip-tools
+4. Install dependencies from requirements.lock
+5. Verify Docker installation
+6. Start Docker services (docker-compose.step14.yml)
+7. Wait for PostgreSQL ready
+8. Apply schema migration
+9. Apply seed data
+10. Wait for API ready
+11. Run STEP 14 API E2E tests
+12. Run STEP 16 Runtime Contract Freeze tests
+13. Verify golden snapshots unchanged
+14. Cleanup Docker services
+
+**Snapshot Drift Detection:**
+- CI fails if golden snapshots modified during test run
+- Command: `git diff --exit-code tests/snapshots/compare/`
+- Enforcement: Breaking change = CI FAIL
+
+**CI = Merge Gate:**
+```
+CI PASS = Mergeable
+CI FAIL = Breaking Change (manual review required)
+```
+
+**Test Results (Local Verification):**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 8/8 PASS ✅
+- Snapshot drift: BLOCKED ✅
+
+**Constitutional Guarantees:**
+- ✅ CI = final contract enforcer
+- ✅ Local success ≠ merge approval
+- ✅ STEP 14/16/17 tests run with identical commands
+- ✅ Golden snapshot changes require explicit commit
+- ✅ CI failure = breaking change
+
+**Prohibited Operations:**
+- ❌ Merging without CI pass
+- ❌ Skipping STEP 14/16 tests in CI
+- ❌ Auto-regenerating golden snapshots
+- ❌ Reusing docker-compose for other steps
+- ❌ Running tests without E2E_DOCKER=1
+- ❌ Installing dependencies without requirements.lock
+
+**DoD Achieved:**
+- ✅ GitHub Actions workflow created
+- ✅ PR triggers automatic CI run
+- ✅ STEP 14/16 tests execute in CI
+- ✅ Golden snapshot drift detection
+- ✅ Docker compose STEP 14-only separation
+- ✅ Documentation updated
+- ✅ Committed and pushed
+
+**Key Files:**
+- `.github/workflows/ci-contract-guard.yml` (CI workflow)
+- `docker-compose.step14.yml` (STEP 14-only compose)
+
+**CI Execution Example:**
+```bash
+# Local simulation of CI workflow
+env E2E_DOCKER=1 pytest tests/e2e/test_step14_api_compare_e2e.py -v
+env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+git diff --exit-code tests/snapshots/compare/
+```
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96

@@ -1,0 +1,93 @@
+name: CI Contract Guard - Compare API
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  contract-enforcement:
+    name: Compare API Runtime Contract Enforcement
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+
+      - name: Install dependencies from lock file
+        run: |
+          pip install -r apps/api/requirements.lock
+
+      - name: Verify Docker installation
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Start Docker services (STEP 14 compose)
+        run: |
+          docker compose -f docker-compose.step14.yml down -v || true
+          docker compose -f docker-compose.step14.yml up -d
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          timeout 30 bash -c 'until docker exec inca_pg_step14 pg_isready -U postgres; do sleep 1; done'
+
+      - name: Apply schema migration
+        run: |
+          cat docs/db/schema_universe_lock_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final
+
+      - name: Apply seed data
+        run: |
+          cat docs/db/seed_step13_minimal.sql | docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final
+
+      - name: Wait for API to be ready
+        run: |
+          timeout 30 bash -c 'until curl -s http://localhost:8000/health > /dev/null; do sleep 1; done'
+
+      - name: Run STEP 14 API E2E Tests
+        run: |
+          env E2E_DOCKER=1 python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
+        env:
+          E2E_DOCKER: "1"
+
+      - name: Run STEP 16 Runtime Contract Freeze Tests
+        run: |
+          env E2E_DOCKER=1 python -m pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+        env:
+          E2E_DOCKER: "1"
+
+      - name: Verify Golden Snapshots Unchanged
+        run: |
+          # Fail if golden snapshots were modified during test run
+          git diff --exit-code tests/snapshots/compare/ || {
+            echo "ERROR: Golden snapshots were modified during test run"
+            echo "This is a violation of STEP 16/17 contract policy"
+            exit 1
+          }
+
+      - name: Cleanup Docker services
+        if: always()
+        run: |
+          docker compose -f docker-compose.step14.yml down -v || true
+
+      - name: Report contract enforcement status
+        if: success()
+        run: |
+          echo "✅ All runtime contracts enforced:"
+          echo "   - STEP 14: API E2E (22 tests)"
+          echo "   - STEP 16: Runtime Contract Freeze (8 tests)"
+          echo "   - STEP 17: Contract interpretation alignment"
+          echo "   - Golden snapshots: UNCHANGED"

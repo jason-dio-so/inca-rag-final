@@ -236,6 +236,60 @@ E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
 - ❌ Removing debug fields
 - ❌ Changing evidence order
 
+### STEP 18: CI Contract Guard (GitHub Actions) (2025-12-25)
+
+- **Purpose**: Enforce Compare API runtime contracts at CI level
+- **Workflow**: `.github/workflows/ci-contract-guard.yml`
+- **Triggers**: pull_request + push (main)
+- **Runner**: ubuntu-latest, Python 3.11
+
+**CI Enforcement Flow**:
+```
+PR/Push → GitHub Actions
+    ↓
+Docker Compose (step14-only)
+    ↓
+STEP 14 API E2E (22 tests)
+    ↓
+STEP 16 Runtime Contract (8 tests)
+    ↓
+Snapshot Drift Check
+    ↓
+CI PASS/FAIL → Merge Gate
+```
+
+**Enforced Contracts**:
+1. STEP 14: API E2E (Compare scenarios A/B/C)
+2. STEP 16: Runtime Contract Freeze (golden snapshots)
+3. STEP 17: Contract interpretation alignment
+
+**Test Execution (zsh/bash compatible)**:
+```bash
+# STEP 14 API E2E
+env E2E_DOCKER=1 pytest tests/e2e/test_step14_api_compare_e2e.py -v
+
+# STEP 16 Runtime Contract Freeze
+env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+
+# Snapshot drift check
+git diff --exit-code tests/snapshots/compare/
+```
+
+**CI = Merge Gate**:
+- CI PASS → Mergeable
+- CI FAIL → Breaking change (manual review required)
+
+**Snapshot Drift Detection**:
+- Golden snapshots modified during test run → CI FAIL
+- Prevents accidental contract changes
+- Requires explicit commit for intentional changes
+
+**Prohibited Operations**:
+- ❌ Merging without CI pass
+- ❌ Skipping contract tests in CI
+- ❌ Running tests without E2E_DOCKER=1
+- ❌ Reusing docker-compose.step14.yml for other steps
+
 ### erd_current.mermaid
 
 - **Purpose**: Visual representation of database schema
