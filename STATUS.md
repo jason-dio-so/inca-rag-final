@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
-**Last Updated:** 2025-12-24
-**Current Phase:** STEP 6-B Phase 3 Complete (DB Realization)
+**Last Updated:** 2025-12-23
+**Current Phase:** STEP 5-B Complete (γ release)
 
 ---
 
@@ -202,15 +202,15 @@ pytest -q                    # 23 passed
 ---
 
 ### STEP 6-B: LLM-Assisted Ingestion/Extraction (Implementation)
-**Status:** Phase 3 COMPLETE - DB Realization + Verification ✅
-**Commits:** c1810d3 (Phase 1), b79b1e8 (Phase 2-1), 64b22fb (Phase 2-2), 86fa6cd (Phase 2-3), 4e2bf6a (Phase 2-4), [current] (Phase 3)
+**Status:** Phase 2 COMPLETE - LLM Pipeline Ready (DB Verification Pending)
+**Commits:** c1810d3 (Phase 1), b79b1e8 (Phase 2-1), 64b22fb (Phase 2-2), 86fa6cd (Phase 2-3), [current] (Phase 2-4)
 **Date:** 2025-12-24
 
 ---
 
-**Phase 1: Foundation (✅ COMPLETE)**
+**Phase 1: Foundation (Code Complete, DB Verification PENDING) ⏳**
 
-**Code Artifacts**:
+**Code Artifacts (✅ COMPLETE)**:
 1. **Database Migration** (`migrations/step6b/001_create_candidate_tables.sql`)
    - `chunk_entity_candidate` table (LLM proposals)
    - `amount_entity_candidate` table (amount context hints)
@@ -229,6 +229,12 @@ pytest -q                    # 23 passed
 4. **Resolver Module** (`apps/api/app/ingest_llm/resolver.py`)
    - Coverage name → canonical code mapping
    - FK verification (no auto-INSERT into coverage_standard)
+
+**DB Verification (⏳ PENDING - PostgreSQL not available)**:
+- Migration SQL ready but NOT applied to live database
+- Verification script created: `migrations/step6b/verify_migration.sh`
+- See: `docs/validation/STEP6B_PHASE1_VERIFICATION.md` for details
+- **Action Required**: Start PostgreSQL on port 5433, apply migration, run verification
 
 ---
 
@@ -297,81 +303,26 @@ pytest -q                    # 23 passed
 
 ---
 
-**Phase 3: DB Realization + Verification (✅ COMPLETE)**
-
-**Infrastructure Setup:**
-1. ✅ Docker Compose PostgreSQL (port 5433, postgres:15-alpine)
-   - Container: `inca_pg_5433`
-   - Database: `inca_rag_final`
-   - Health check: verified
-   - Volume: persistent storage
-
-2. ✅ Base Schema Migration (`migrations/step6b/000_base_schema.sql`)
-   - Tables: coverage_standard, coverage_alias, insurer, product, document, chunk
-   - **pgvector excluded** (Phase 3 minimal scope)
-   - **coverage_code canonical key**: TEXT UNIQUE NOT NULL (all FKs reference this)
-   - Schema principle: coverage_id SERIAL PK + coverage_code UNIQUE
-
-3. ✅ Excel-Based Coverage Initialization (`scripts/init_coverage_standard.py`)
-   - **ONLY source**: `data/담보명mapping자료.xlsx`
-   - 28 canonical codes loaded (신정원 통일 담보 코드)
-   - 264 coverage aliases loaded (보험사별 담보명 매핑)
-   - Upsert logic (idempotent)
-   - ❌ NO data from inca-rag DB
-   - ❌ NO LLM-based inference
-
-4. ✅ Candidate Tables Migration (`migrations/step6b/001_create_candidate_tables.sql`)
-   - chunk_entity_candidate: 0 records (ready)
-   - amount_entity_candidate: 0 records (ready)
-   - candidate_metrics view: created
-   - confirm_candidate_to_entity() function: verified
-   - All FK constraints: enforced
-   - All indexes: created
-
-5. ✅ DB Verification (`migrations/step6b/verify_migration.sh`)
-   - All tables verified
-   - All views verified
-   - All functions verified
-   - All constraints verified
-   - Row counts: 0 (expected for new migration)
-
-**Evidence Document:**
-- `docs/validation/STEP6B_PHASE3_DB_REALIZATION.md`
-
-**Constitutional Compliance:**
-- ✅ coverage_standard source: Excel ONLY (no DB dump reuse)
-- ✅ coverage_code as canonical key (FK references)
-- ✅ Synthetic chunk filtering maintained (is_synthetic column)
-- ✅ LLM pipeline stops at candidate storage (no auto-confirm)
-
-**DoD Checklist (All Passed):**
-- [x] docker compose ps → healthy
-- [x] PostgreSQL listening on port 5433
-- [x] coverage_standard: 28 records (Excel match)
-- [x] coverage_alias: 264 records
-- [x] Candidate tables created
-- [x] Views/functions verified
-- [x] Migration verification: PASS
-
----
-
-**Phase 4: Minimal E2E Test (PENDING) ⏳**
+**Phase 3: E2E Integration (PENDING) ⏳**
 
 Remaining Work:
-1. ⏳ Ingest 1 PDF (insurance company selection)
-2. ⏳ Run Orchestrator with LLM pipeline
-3. ⏳ Verify chunk_entity_candidate INSERT
-4. ⏳ OpenAI API key configuration (optional - FakeLLMClient can be used)
-5. ⏳ Admin CLI for manual confirmation (future enhancement)
+1. ⏳ PostgreSQL database setup (port 5433)
+2. ⏳ Apply Phase 1 migration: `migrations/step6b/001_create_candidate_tables.sql`
+3. ⏳ Run DB verification: `make step6b-verify-db`
+4. ⏳ OpenAI API key configuration
+5. ⏳ E2E test with real LLM (optional, cost consideration)
+6. ⏳ Admin CLI for manual confirmation (future enhancement)
 
-**Prerequisites for Phase 4:**
-- ✅ PostgreSQL database running (port 5433)
-- ✅ Base schema applied
-- ✅ Coverage standard initialized (Excel)
-- ✅ Candidate tables created
-- ✅ LLM pipeline code complete
-- ⏳ Insurance PDF data prepared
-- ⏳ OpenAI API key (or FakeLLMClient)
+**Prerequisites for Phase 3:**
+- ✅ STEP 6-A design approved
+- ✅ Database migration SQL ready
+- ✅ Resolver logic implemented
+- ✅ Validator logic implemented
+- ✅ LLM client wrapper implemented
+- ✅ Orchestrator implemented
+- ✅ Integration tests (FakeLLMClient)
+- ⏳ PostgreSQL database running
+- ⏳ OpenAI API key
 
 ---
 

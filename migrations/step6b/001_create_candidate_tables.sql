@@ -57,9 +57,11 @@ CREATE TABLE IF NOT EXISTS chunk_entity_candidate (
     CONSTRAINT resolved_code_required CHECK (
         (resolver_status = 'resolved' AND resolved_coverage_code IS NOT NULL) OR
         (resolver_status != 'resolved')
+    ),
+    CONSTRAINT resolved_code_fk_check CHECK (
+        resolved_coverage_code IS NULL OR
+        EXISTS (SELECT 1 FROM coverage_standard WHERE coverage_code = resolved_coverage_code)
     )
-    -- NOTE: FK integrity check moved to TRIGGER (PostgreSQL doesn't support subqueries in CHECK constraints)
-    -- See: verify_candidate_coverage_code_fk() trigger below
 );
 
 -- Indexes for performance
@@ -205,49 +207,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION confirm_candidate_to_entity IS 'Confirm resolved candidate to production chunk_entity (STEP 6-B). Enforces FK and prevents duplicates.';
-
--- ============================================================================
--- Trigger Functions for FK Integrity (Constitutional Enforcement)
--- ============================================================================
-
--- Trigger function to verify coverage_code FK integrity
--- (PostgreSQL doesn't support subqueries in CHECK constraints)
-CREATE OR REPLACE FUNCTION verify_candidate_coverage_code_fk()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Only check if resolved_coverage_code is provided
-    IF NEW.resolved_coverage_code IS NOT NULL THEN
-        -- Verify that coverage_code exists in coverage_standard
-        -- NOTE: This assumes coverage_standard table exists
-        -- For testing without coverage_standard, this check is commented out
-
-        -- Uncomment when coverage_standard table is available:
-        /*
-        IF NOT EXISTS (
-            SELECT 1 FROM coverage_standard
-            WHERE coverage_code = NEW.resolved_coverage_code
-        ) THEN
-            RAISE EXCEPTION 'Coverage code % does not exist in coverage_standard (FK violation)',
-                NEW.resolved_coverage_code;
-        END IF;
-        */
-
-        -- For Phase 3 testing: allow any coverage_code
-        -- (Will be enforced when coverage_standard is populated)
-        NULL;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Attach trigger to chunk_entity_candidate table
-CREATE TRIGGER trg_verify_coverage_code_fk
-    BEFORE INSERT OR UPDATE ON chunk_entity_candidate
-    FOR EACH ROW
-    EXECUTE FUNCTION verify_candidate_coverage_code_fk();
-
-COMMENT ON FUNCTION verify_candidate_coverage_code_fk IS 'Trigger function to enforce coverage_code FK integrity (constitutional safeguard)';
 
 -- ============================================================================
 -- Rollback Script (for testing/development)
