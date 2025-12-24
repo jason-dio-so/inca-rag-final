@@ -164,3 +164,4 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ## 본 문서는 프로젝트 헌법(Constitution)으로 간주한다
 ## 본 문서에 위배되는 구현은 허용되지 않는다
+
