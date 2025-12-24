@@ -617,6 +617,63 @@ disease_scope_norm (group references)
 
 ---
 
+## STEP 7 Verification Report (2025-12-24)
+
+**Verification Purpose:** Confirm STEP 7 implementation matches DoD requirements and Constitution v1.0
+
+### Phase A Verification: Universe Lock Refactor
+
+| Requirement | Status | Evidence |
+|------------|--------|----------|
+| product_coverage complete removal | ✅ PASS | 0 references in apps/ and src/ |
+| Compare query axis replacement | ✅ PASS | Uses proposal_coverage_universe + proposal_coverage_mapped |
+| mapping_status = 'MAPPED' filter | ✅ PASS | apps/api/app/queries/compare.py:120 |
+| Integration test replacement | ✅ PASS | 5-State tests exist (out_of_universe, unmapped, comparable_with_gaps, non_comparable, comparable) |
+| Constitutional prohibition test | ✅ PASS | tests/contract/test_product_coverage_prohibition.py (4 tests) |
+| No product_id in Universe queries | ✅ PASS | get_coverage_amount_for_proposal() uses proposal_id, not product_id |
+
+**Phase A Commits:**
+- 917b595 - refactor: STEP 7 Phase A - Remove product_coverage, align with Universe Lock
+
+### Phase B Verification: Policy Scope Pipeline v1 (MVP)
+
+| Requirement | Status | Evidence |
+|------------|--------|----------|
+| Scope: Samsung only | ✅ PASS | parse_samsung_similar_cancer() only, insurer='SAMSUNG' hardcoded |
+| Scope: 1 보험사 / 1 담보 | ✅ PASS | MVP documented, no multi-insurer logic |
+| Deterministic regex extraction | ✅ PASS | src/policy_scope/parser.py:60-88 uses re.search() only |
+| NO LLM/inference | ✅ PASS | Explicit comments "NO LLM/inference/similarity" |
+| 3-table creation | ✅ PASS | disease_code_group + disease_code_group_member + coverage_disease_scope |
+| disease_scope_norm population | ✅ PASS | pipeline.py:225-263 creates {include_group_id, exclude_group_id} |
+| Evidence required | ✅ PASS | Validates basis_span, span_text not empty (raises ValueError) |
+| Test: E2E pipeline | ✅ PASS | test_create_samsung_similar_cancer_group_with_evidence() |
+| Test: Evidence required | ✅ PASS | test_evidence_required_fails_without_basis_span() |
+| Test: FK validation | ✅ PASS | test_kcd7_fk_validation_fails_for_invalid_code() |
+| KCD-7 test subset only | ✅ PASS | tests/fixtures/kcd7_test_subset.py with TEST ONLY warnings |
+
+**Phase B Commits:**
+- 5f4de04 - feat: STEP 7 Phase B MVP - Policy Scope Pipeline v1
+- 64f5159 - docs: STEP 7 complete - Universe Lock + Policy Scope Pipeline v1
+
+### Constitutional Compliance Checklist
+
+- ✅ Coverage Universe Lock enforced (proposal_coverage_universe as SSOT)
+- ✅ Excel mapping single source (no LLM inference for canonical codes)
+- ✅ Deterministic compiler principle (no probabilistic disease_scope_norm generation)
+- ✅ Evidence rule (basis_doc_id/page/span required, empty evidence raises error)
+- ✅ KCD-7 authority (FK validation against disease_code_master)
+- ✅ 3-tier disease code model (master → group → scope)
+- ✅ insurer=NULL restricted to medical/KCD classification (validated in tests)
+
+### Architecture Integrity: 100% ✅
+
+All STEP 7 requirements verified complete with no gaps, no LLM violations, no Universe Lock circumvention.
+
+**Branch:** feature/step7-universe-refactor-policy-scope-v1
+**Ready for:** Merge to main
+
+---
+
 ## Quick Reference
 
 ### Running the API
