@@ -1135,6 +1135,84 @@ tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::
 
 ---
 
+## ✅ STEP 11: Docker DB Real E2E Verification
+
+**Status:** COMPLETE
+**Branch:** feature/step9-proposal-based-3insurer-comparison
+**Date:** 2025-12-24
+
+### Purpose
+
+Real Docker DB + actual tables + Universe Lock verification (no mocks/fixtures)
+
+### Deliverables
+
+#### 1. E2E Verification Script
+
+**File:** `scripts/step11_e2e_docker.sh`
+
+**Functions:**
+- Docker compose down/up automation
+- DB ready check (pg_isready with 30s timeout)
+- Table existence verification (7 required tables)
+- Excel mapping status check (MAPPED/UNMAPPED/AMBIGUOUS counts)
+- Universe entries validation (insurer list)
+- Schema column validation (disease_scope_norm, etc.)
+- Constitutional compliance summary
+
+**Usage:**
+```bash
+./scripts/step11_e2e_docker.sh
+```
+
+**Output:** `artifacts/step11/e2e_run.log`
+
+#### 2. Real DB pytest
+
+**File:** `tests/e2e/test_step11_real_docker_db.py`
+
+**Tests (7):**
+1. ✅ Required tables exist
+2. ✅ proposal_coverage_universe schema
+3. ✅ proposal_coverage_mapped schema
+4. ✅ disease_scope_norm column exists
+5. ✅ disease_code_group has insurer column
+6. ✅ mapping_status enum values
+7. ✅ Universe Lock principle
+
+**Usage:**
+```bash
+E2E_DOCKER=1 pytest tests/e2e/test_step11_real_docker_db.py -v
+```
+
+### Constitutional Requirements Verified
+
+- ✅ proposal_coverage_universe exists (Universe Lock SSOT)
+- ✅ Excel mapping schema (mapping_status: MAPPED/UNMAPPED/AMBIGUOUS)
+- ✅ disease_scope_norm column (Policy enrichment ready)
+- ✅ Multi-insurer support (insurer column in disease_code_group)
+- ✅ Evidence columns (source_doc_id, source_page, source_span_text)
+- ✅ Slot Schema v1.1.1 structure
+- ✅ No product_coverage dependency (Universe Lock enforced)
+
+### Key Features
+
+**Deterministic Verification:**
+- All checks are deterministic (no LLM/probabilistic)
+- Schema-level validation (columns, enums, constraints)
+- Fresh DB compatible (OK if empty)
+
+**Constitutional Compliance:**
+- Verifies Universe Lock infrastructure exists
+- Validates Excel mapping readiness
+- Confirms Policy enrichment structure (disease_scope_norm)
+
+### Related Commits
+
+- 6efe613 - feat: STEP 11 - Docker DB Real E2E verification
+
+---
+
 ## Quick Reference
 
 ### Running the API
