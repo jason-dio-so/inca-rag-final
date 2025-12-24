@@ -27,6 +27,7 @@ If there is ANY discrepancy between documents and migration SQL, **migration SQL
 | File | Purpose | Status |
 |------|---------|--------|
 | **schema_current.sql** | Full canonical schema (all tables, indexes, constraints) | ✅ CANONICAL |
+| **schema_universe_lock_minimal.sql** | Minimal Universe Lock schema (Docker E2E, no vector/chunk) | ✅ E2E DEPLOY |
 | **erd_current.mermaid** | Entity-Relationship Diagram (1:1 with schema_current.sql) | ✅ CANONICAL |
 | **schema_inventory.md** | Table classification by architectural status (ACTIVE/ARCHIVED) | ✅ INVENTORY |
 | **table_usage_report.md** | Code usage analysis for each table | ✅ ANALYSIS |
@@ -47,6 +48,28 @@ If there is ANY discrepancy between documents and migration SQL, **migration SQL
 - 3-Tier Disease Code Model: `disease_code_master` → `disease_code_group` → `coverage_disease_scope`
 - Slot Schema v1.1.1: `proposal_coverage_slots` with 20 slots
 - Evidence required at every level (document_id, page, span_text)
+
+### schema_universe_lock_minimal.sql (STEP 11)
+
+- **Purpose**: Idempotent Universe Lock schema for Docker E2E testing
+- **Scope**: Constitutional tables ONLY (no vector extension, no chunk/RAG tables)
+- **Tables Included**:
+  - Core: `insurer`, `product`, `document`
+  - Coverage: `coverage_standard`, `coverage_alias`, `coverage_code_alias`
+  - Universe Lock: `proposal_coverage_universe`, `proposal_coverage_mapped`, `proposal_coverage_slots`
+  - Disease 3-Tier: `disease_code_master`, `disease_code_group`, `disease_code_group_member`, `coverage_disease_scope`
+- **Idempotency**:
+  - All tables use `CREATE TABLE IF NOT EXISTS`
+  - Enums use `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object` blocks
+  - Triggers use `DROP TRIGGER IF EXISTS` before `CREATE TRIGGER`
+- **Usage**: `cat schema_universe_lock_minimal.sql | psql ...` (0 errors guaranteed)
+- **E2E Script**: `scripts/step11_e2e_docker.sh` applies this schema automatically
+
+**Strictness Policy (STEP 11)**:
+- Schema apply errors are **NEVER ignored**
+- Script fails immediately if ERROR count > 0
+- `set -euo pipefail` enforced
+- All output logged to `artifacts/step11/e2e_run.log`
 
 ### erd_current.mermaid
 

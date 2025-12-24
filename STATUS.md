@@ -1323,6 +1323,129 @@ pytest tests/contract/test_step12_user_messages.py -v
 
 ---
 
+## ✅ STEP 11 Stabilization: Schema Apply Reliability + Strict Error Handling
+
+**Status:** COMPLETE
+**Branch:** feature/step9-proposal-based-3insurer-comparison
+**Date:** 2025-12-24
+
+### Purpose
+
+Make `scripts/step11_e2e_docker.sh` reliable and strict:
+- Schema apply with **0 errors guaranteed** (idempotent)
+- Script error handling with **no error suppression**
+- Fresh DB compatible (docker compose down -v)
+
+### Deliverables
+
+#### 1. Minimal Universe Lock Schema
+
+**File:** `docs/db/schema_universe_lock_minimal.sql`
+
+**Purpose:** Idempotent schema for Docker E2E (Constitutional tables only)
+
+**Tables Included (13 total):**
+- Core: `insurer`, `product`, `document`
+- Coverage: `coverage_standard`, `coverage_alias`, `coverage_code_alias`
+- Universe Lock: `proposal_coverage_universe`, `proposal_coverage_mapped`, `proposal_coverage_slots`
+- Disease 3-Tier: `disease_code_master`, `disease_code_group`, `disease_code_group_member`, `coverage_disease_scope`
+
+**Idempotency Features:**
+- `CREATE TABLE IF NOT EXISTS` for all tables
+- `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object` for enums (doc_type_enum, mapping_status_enum)
+- `DROP TRIGGER IF EXISTS` before `CREATE TRIGGER`
+- **NO vector extension** (not available in base Postgres Docker)
+- **NO chunk/amount_entity tables** (not needed for Universe Lock)
+
+**Verification:** 0 errors on repeated application
+
+#### 2. Strict E2E Script
+
+**File:** `scripts/step11_e2e_docker.sh`
+
+**Strictness Policy:**
+- `set -euo pipefail` (fail fast on any error)
+- Schema apply errors **NOT suppressed**
+- Exit code validation (psql must return 0)
+- ERROR string count validation (must be 0)
+- Output logged to `artifacts/step11/e2e_run.log`
+
+**Error Handling:**
+```bash
+# Apply schema
+cat "$SCHEMA_FILE" | docker exec -i inca_pg_5433 psql ... > "$SCHEMA_APPLY_LOG" 2>&1
+PSQL_EXIT=$?
+
+# Check exit code
+if [ $PSQL_EXIT -ne 0 ]; then
+    echo "ERROR: psql failed with exit code $PSQL_EXIT"
+    exit 1
+fi
+
+# Check ERROR count (grep returns 1 if no match, handle gracefully)
+ERROR_COUNT=$(grep -c -i "ERROR:" "$SCHEMA_APPLY_LOG" 2>/dev/null || echo "0")
+if [ "$ERROR_COUNT" -gt "0" ]; then
+    echo "ERROR: Schema apply produced $ERROR_COUNT errors"
+    exit 1
+fi
+```
+
+**Verification Steps (7):**
+1. Docker compose down -v / up -d
+2. Wait for DB ready (pg_isready)
+3. Apply schema migration (schema_universe_lock_minimal.sql)
+4. Verify required tables exist
+5. Verify Excel mapping columns
+6. Verify schema columns (disease_scope_norm)
+7. Constitutional compliance summary
+
+#### 3. Documentation Update
+
+**File:** `docs/db/README.md`
+
+Added section for `schema_universe_lock_minimal.sql`:
+- Purpose: Idempotent E2E schema
+- Scope: Constitutional tables only
+- Usage: E2E script applies automatically
+- Strictness policy documented
+
+### Test Results
+
+**E2E Script:**
+```
+✓ Schema applied: 0 errors (from docs/db/schema_universe_lock_minimal.sql)
+✓ All required tables exist (13 tables)
+✓ Schema columns validated
+✓ Constitutional Compliance verified
+```
+
+**Contract Tests:**
+- STEP 11: 7 tests (skipped without E2E_DOCKER=1, as expected)
+- STEP 12: 13/13 PASS
+
+### Constitutional Compliance
+
+✅ **Schema Idempotency:**
+- Repeated application produces 0 errors
+- Fresh DB initialization works reliably
+
+✅ **Error Handling:**
+- No error suppression (`> /dev/null 2>&1` removed from critical sections)
+- Script fails immediately on schema errors
+- All output logged for debugging
+
+✅ **Universe Lock Infrastructure:**
+- proposal_coverage_universe exists (SSOT)
+- proposal_coverage_mapped exists (Excel mapping)
+- disease_scope_norm exists (Policy enrichment ready)
+
+### Related Commits
+
+- f689a46 - fix: STEP 11 E2E script - add schema migration step
+- (pending) - feat: STEP 11 Stabilization - Schema idempotency + strict error handling
+
+---
+
 ## Quick Reference
 
 ### Running the API

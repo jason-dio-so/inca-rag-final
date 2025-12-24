@@ -10,11 +10,19 @@
 # - Evidence order: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
 # - Policy evidence conditional (only when disease_scope_norm exists)
 #
+# Strictness Policy:
+# - set -euo pipefail (fail fast)
+# - Schema apply errors NOT ignored
+# - All output logged
+#
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 ARTIFACTS_DIR="artifacts/step11"
 LOG_FILE="$ARTIFACTS_DIR/e2e_run.log"
+
+# Ensure artifacts directory exists
+mkdir -p "$ARTIFACTS_DIR"
 
 echo "=== STEP 11: Docker DB Real E2E ===" | tee "$LOG_FILE"
 echo "Started at: $(date)" | tee -a "$LOG_FILE"
@@ -40,16 +48,42 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Step 2.5: Apply schema migration
+# Step 2.5: Apply schema migration (Universe Lock minimal)
 echo "" | tee -a "$LOG_FILE"
 echo "[2.5/7] Applying schema migration..." | tee -a "$LOG_FILE"
-if [ -f "docs/db/schema_current.sql" ]; then
-    cat docs/db/schema_current.sql | docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final > /dev/null 2>&1
-    echo "✓ Schema applied from docs/db/schema_current.sql" | tee -a "$LOG_FILE"
-else
-    echo "ERROR: Schema file docs/db/schema_current.sql not found" | tee -a "$LOG_FILE"
+
+SCHEMA_FILE="docs/db/schema_universe_lock_minimal.sql"
+if [ ! -f "$SCHEMA_FILE" ]; then
+    echo "ERROR: Schema file $SCHEMA_FILE not found" | tee -a "$LOG_FILE"
     exit 1
 fi
+
+# Apply schema with full error capture
+SCHEMA_APPLY_LOG=$(mktemp)
+cat "$SCHEMA_FILE" | docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final > "$SCHEMA_APPLY_LOG" 2>&1
+PSQL_EXIT=$?
+
+# Log schema output
+cat "$SCHEMA_APPLY_LOG" >> "$LOG_FILE"
+
+# Check psql exit code
+if [ $PSQL_EXIT -ne 0 ]; then
+    echo "ERROR: psql command failed with exit code $PSQL_EXIT" | tee -a "$LOG_FILE"
+    rm -f "$SCHEMA_APPLY_LOG"
+    exit 1
+fi
+
+# Check for ERROR strings in output (grep returns 1 if no match, handle gracefully)
+ERROR_COUNT=$(grep -c -i "ERROR:" "$SCHEMA_APPLY_LOG" 2>/dev/null || echo "0")
+if [ "$ERROR_COUNT" -gt "0" ]; then
+    echo "ERROR: Schema apply produced $ERROR_COUNT errors" | tee -a "$LOG_FILE"
+    grep -i "ERROR:" "$SCHEMA_APPLY_LOG" | head -10 | tee -a "$LOG_FILE" || true
+    rm -f "$SCHEMA_APPLY_LOG"
+    exit 1
+fi
+
+rm -f "$SCHEMA_APPLY_LOG"
+echo "✓ Schema applied: 0 errors (from $SCHEMA_FILE)" | tee -a "$LOG_FILE"
 
 # Step 3: Verify migration/tables exist
 echo "" | tee -a "$LOG_FILE"
