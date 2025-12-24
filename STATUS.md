@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-24
-**Current Phase:** STEP 6-C Complete (Proposal Universe Lock v1)
+**Current Phase:** STEP 7 Complete (Universe Lock + Policy Scope Pipeline v1)
 
 ---
 
@@ -454,10 +454,166 @@ disease_scope_norm (group references)
 - All components verified with REAL data (no mocks)
 
 **Next Steps (Future Work):**
-1. Policy document processing pipeline (disease_scope_norm population)
+1. ~~Policy document processing pipeline (disease_scope_norm population)~~ ✅ STEP 7 Phase B
 2. Admin UI for manual mapping disambiguation (AMBIGUOUS cases)
 3. Coverage alias learning system (expand Excel coverage)
 4. Disease code group management interface
+
+---
+
+### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
+**Status:** COMPLETE
+**Commit:** e294b96
+**Date:** 2025-12-24
+
+**Deliverables:**
+- Updated CLAUDE.md with Excel schema reality section
+- Documented actual columns: `담보명(가입설계서)`, `cre_cvr_cd`
+- Clarified conceptual names vs physical columns
+- Removed hardcoded numbers (alias/canonical counts)
+
+**Key Changes:**
+- Added "Excel 스키마 현실 정합성 (Runtime Verified)" section
+- Aligned documentation with commit 71d363e runtime verification
+- Documentation-only task (NO code changes)
+
+---
+
+### ✅ STEP 6-D α: DB Documentation Cleanup & Archive
+**Status:** COMPLETE
+**Commits:** a512d9f (inventory), 380d66d (schema/ERD)
+**Date:** 2025-12-24
+
+**Deliverables:**
+1. `docs/db/schema_current.sql` - Canonical full schema (baseline + STEP 6-C)
+2. `docs/db/erd_current.mermaid` - Visual ERD 1:1 with schema
+3. `docs/db/schema_inventory.md` - Table classification (ACTIVE/ARCHIVED)
+4. `docs/db/table_usage_report.md` - Code usage analysis
+5. Updated `docs/db/README.md` - Architecture principles
+
+**Key Findings:**
+- 18 ACTIVE tables + 2 ARCHIVED (product_coverage, premium - not implemented)
+- Identified product_coverage usage in STEP 5 queries (conflicts with Universe Lock)
+- All legacy files moved to `docs/db/archive/` (NO deletion)
+
+**Critical Discovery:**
+- `apps/api/app/queries/compare.py` uses product_coverage (Line 116)
+- Product-centered comparison violates "가입설계서 담보만 비교" principle
+- **Action Required:** ✅ STEP 7 refactoring (completed)
+
+---
+
+### ✅ STEP 7: Universe Lock Query Refactor + Policy Scope Pipeline v1
+**Status:** COMPLETE (Phase A + Phase B MVP)
+**Branch:** feature/step7-universe-refactor-policy-scope-v1
+**Commits:** 917b595 (Phase A), 5f4de04 (Phase B)
+**Date:** 2025-12-24
+
+---
+
+#### Phase A: Universe Lock Query Refactor ✅
+**Commit:** 917b595
+
+**Deliverables:**
+1. **Query Refactoring** (`apps/api/app/queries/compare.py`)
+   - Removed product_coverage dependency
+   - Replaced with proposal_coverage_universe + proposal_coverage_mapped
+   - Added filter: mapping_status = 'MAPPED'
+   - Function rename: get_coverage_amount_for_product → get_coverage_amount_for_proposal
+   - Params changed: (product_id) → (insurer_code, proposal_id, coverage_code)
+
+2. **Integration Tests Update** (`tests/integration/test_step5_readonly.py`)
+   - Docstring updated: "STEP 5-B + STEP 7 Read-only and Universe Lock enforcement tests"
+   - New test class: TestUniverseLock5StateComparison (5 tests)
+   - Tests validate: out_of_universe, unmapped, proposal_id requirement
+   - Removed product_coverage schema tests
+
+3. **Prohibition Test** (`tests/contract/test_product_coverage_prohibition.py`)
+   - 4 prohibition tests to prevent future violations
+   - Searches all .py files for product_coverage/premium references
+   - Validates Universe Lock pattern usage
+   - Prevents product_id parameters in Universe queries
+
+**Constitutional Guarantees Enforced:**
+- ✅ proposal_coverage_universe as comparison SSOT
+- ✅ product as context axis ONLY (not primary comparison)
+- ✅ mapping_status = 'MAPPED' filter required
+- ✅ out_of_universe state for coverages not in proposal
+- ✅ Product-centered comparison completely removed
+
+---
+
+#### Phase B: Policy Scope Pipeline v1 (MVP) ✅
+**Commit:** 5f4de04
+
+**Deliverables:**
+1. **Core Modules**
+   - `src/policy_scope/parser.py` - PolicyScopeParser (deterministic regex)
+   - `src/policy_scope/pipeline.py` - PolicyScopePipeline (5 methods)
+   - `src/policy_scope/__init__.py` - Package initialization
+
+2. **Test Fixtures**
+   - `tests/fixtures/kcd7_test_subset.py` - KCD-7 test codes (marked "TEST ONLY")
+   - 4 test codes: C73 (갑상선암), C44 (피부암), C00, C97 (range markers)
+
+3. **Integration Tests**
+   - `tests/integration/test_policy_scope_pipeline.py` - Full pipeline validation
+   - 5 test cases covering all constitutional requirements
+
+**MVP Scope:**
+- Samsung 유사암 definition extraction (deterministic regex only)
+- disease_code_group + disease_code_group_member + coverage_disease_scope creation
+- proposal_coverage_slots.disease_scope_norm population
+- Evidence required at every step
+
+**Pipeline Methods:**
+1. `create_disease_code_group()` - Creates group with evidence validation
+2. `add_disease_code_group_member()` - Adds members with FK validation
+3. `create_coverage_disease_scope()` - Creates scope with evidence
+4. `update_proposal_slots_disease_scope_norm()` - Updates with group references
+5. Parser methods for Samsung 유사암 extraction
+
+**Constitutional Guarantees Enforced:**
+- ✅ Evidence required (basis_doc_id, basis_page, basis_span)
+- ✅ KCD-7 FK validation against disease_code_master
+- ✅ insurer=NULL restricted to medical/KCD classification
+- ✅ Insurance concepts (유사암) must be insurer-specific
+- ✅ disease_scope_norm = group references (NOT raw code arrays)
+- ✅ Deterministic extraction only (NO LLM)
+
+**Test Coverage:**
+- test_create_samsung_similar_cancer_group_with_evidence() - Full pipeline E2E
+- test_evidence_required_fails_without_basis_span() - Evidence validation
+- test_insurer_null_forbidden_for_insurance_concepts() - Constitutional enforcement
+- test_kcd7_fk_validation_fails_for_invalid_code() - FK constraint validation
+- test_disease_scope_norm_uses_group_references_not_raw_codes() - Group reference structure
+
+**Test Database Setup:**
+- KCD-7 test codes loaded via fixture
+- NO external file commits (test-only subset)
+- All FK constraints validated
+
+**Key Files:**
+- `src/policy_scope/parser.py` (PolicyScopeParser)
+- `src/policy_scope/pipeline.py` (PolicyScopePipeline)
+- `tests/fixtures/kcd7_test_subset.py` (KCD-7 test codes)
+- `tests/integration/test_policy_scope_pipeline.py` (5 integration tests)
+
+**Prohibited Operations (All Blocked):**
+- ❌ LLM-based disease scope extraction
+- ❌ insurer=NULL for insurance concepts (유사암, 소액암)
+- ❌ Raw code arrays in disease_scope_norm
+- ❌ Missing evidence (basis_span, span_text)
+- ❌ KCD-7 codes without disease_code_master validation
+- ❌ Committing external KCD-7 files (test fixtures only)
+
+**DoD Achieved:**
+- ✅ 1 보험사 (Samsung) 유사암 정의 deterministic regex 추출
+- ✅ disease_code_group + disease_code_group_member + coverage_disease_scope 1세트 생성
+- ✅ disease_scope_norm = {include_group_id, exclude_group_id} 형태 채우기
+- ✅ Evidence 필수 (basis_doc_id/page/span, source_doc_id/page/span_text)
+- ✅ 테스트로 검증 (evidence 없으면 fail)
+- ✅ KCD-7 테스트 subset만 (TEST ONLY 명시, 외부파일 커밋 금지)
 
 ---
 
