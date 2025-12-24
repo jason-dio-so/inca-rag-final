@@ -137,25 +137,98 @@ pytest -q                    # 23 passed
 
 ---
 
+## Recent Steps
+
+### ✅ STEP 5-C: Conditions Summary (Presentation-Only LLM)
+**Status:** COMPLETE
+**Commits:** 4498599 (implementation) + 029afa6 (hotfix)
+**Date:** 2025-12-23
+
+**Deliverables:**
+- `conditions_summary` field for compare API (opt-in)
+- LLM-based text summarization service (presentation-only)
+- Constitutional compliance: non-synthetic evidence only
+- Graceful degradation (null on failure)
+- Integration tests (6 new tests)
+- Hotfix: coverage_code optional for summary generation
+
+**Key Features:**
+1. **Opt-in Design**: `include_conditions_summary=false` (default)
+2. **Presentation-Only**: LLM used for text summarization, not decision-making
+3. **Constitutional**: Only uses non-synthetic evidence (SQL-enforced)
+4. **Graceful Degradation**: Returns null on failure (200 OK)
+5. **Coverage Code Optional**: Works with or without coverage_code filter
+
+**Test Coverage:**
+- Contract tests: 8/8 PASS
+- Integration tests: 22/22 PASS (including 6 STEP 5-C tests)
+- Total: 30/30 PASS
+
+**Validation Evidence:**
+- Hotfix validation report: `docs/validation/STEP5C_HOTFIX_029afa6.md`
+- Server identity verification completed
+- Runtime prerequisites documented
+
+**Key Files:**
+- `apps/api/app/services/conditions_summary_service.py`
+- `apps/api/app/routers/compare.py` (conditions_summary integration)
+- `apps/api/app/schemas/compare.py` (CompareOptions + CompareItem)
+- `tests/integration/test_step5c_conditions.py`
+
+---
+
 ## Next Steps
 
-### STEP 5-C: Premium Calculation + Conditions Extraction
-**Status:** NOT STARTED
-**Estimated Start:** After STEP 5-B γ commit
+### STEP 6-A: LLM-Assisted Ingestion/Extraction (Design Only)
+**Status:** IN PROGRESS (DESIGN PHASE)
+**Estimated Completion:** 2025-12-23
 
-**Planned Features:**
-1. Premium calculation implementation
-2. Conditions extraction from chunks
-3. Vector search for semantic matching
-4. Caching layer (Redis/memory)
-5. Performance optimization
-6. Monitoring/observability
+**Scope:**
+- Design document for LLM-assisted ingestion/extraction
+- LLM as candidate generator only (not decision-maker)
+- Candidate→Resolver→Confirmation pipeline
+- Database schema for candidate storage
+- Validation/verification strategy
+- Test plan (5+ scenarios)
+- Cost/performance estimation
+
+**Constitutional Principles:**
+- ✅ LLM proposes candidates only
+- ✅ Code-based resolver validates and confirms
+- ✅ coverage_standard auto-INSERT forbidden
+- ✅ All entities use canonical coverage_code
+- ✅ Compare-axis constitution unchanged (STEP 5 preserved)
+
+**Deliverables:**
+- `docs/step6/STEP6A_LLM_INGESTION_DESIGN.md`
+- `docs/step6/diagrams/step6a_flow.mmd`
+- STATUS.md update
 
 **Prerequisites (All Met):**
-- ✅ Constitutional enforcement sealed
-- ✅ SQL templates validated at string level
-- ✅ Test infrastructure DB-agnostic
-- ✅ Read-only transactions properly managed
+- ✅ STEP 5 constitutional enforcement sealed
+- ✅ Entity-based filtering operational (chunk_entity/amount_entity)
+- ✅ Canonical coverage_code enforcement proven
+- ✅ Read-only transactions validated
+
+---
+
+### STEP 6-B: LLM-Assisted Ingestion/Extraction (Implementation)
+**Status:** NOT STARTED
+**Estimated Start:** After STEP 6-A design approval
+
+**Planned Features:**
+1. LLM candidate generator (coverage entity extraction)
+2. Coverage name→code resolver (rule-based)
+3. Entity validator (FK/type/duplicate checks)
+4. Candidate storage tables
+5. Metrics/audit logging
+6. Feature flag + configuration
+
+**Prerequisites:**
+- ✅ STEP 6-A design document approved
+- ⏳ Database candidate tables created
+- ⏳ LLM integration module implemented
+- ⏳ Resolver logic validated
 
 ---
 

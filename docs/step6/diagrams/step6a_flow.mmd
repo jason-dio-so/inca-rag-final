@@ -1,0 +1,111 @@
+%% STEP 6-A: LLM-Assisted Ingestion Pipeline Flow
+%% Constitutional Design: LLM = Proposal Only, Code = Decision Maker
+
+graph TD
+    %% Ingestion Entry Point
+    A[PDF Ingestion] --> B[Chunk Extraction]
+    B --> B1{LLM_EXTRACTION_ENABLED?}
+
+    %% LLM Path
+    B1 -->|true| C[LLM Candidate Generator]
+    B1 -->|false| R[Rule-Based Extraction Only]
+
+    %% LLM Candidate Generation
+    C --> C1[Prepare LLM Input]
+    C1 --> C2[chunk_content + doc_type + context]
+    C2 --> C3[Call LLM API]
+    C3 --> C4{LLM Success?}
+
+    C4 -->|failure| R
+    C4 -->|success| D[Parse JSON Candidates]
+
+    D --> E[Validate JSON Schema]
+    E --> E1{Valid?}
+    E1 -->|no| R
+    E1 -->|yes| F[Insert into chunk_entity_candidate]
+
+    F --> F1[status=pending]
+    F1 --> G[Coverage Resolver]
+
+    %% Coverage Resolution
+    G --> G1[Lookup coverage_alias]
+    G1 --> G2{Exact Match?}
+    G2 -->|yes| H[resolved_coverage_code]
+
+    G2 -->|no| G3[Lookup coverage_standard]
+    G3 --> G4{Exact Match?}
+    G4 -->|yes| H
+
+    G4 -->|no| G5[Fuzzy Match Levenshtein >= 85%]
+    G5 --> G6{Unique Match?}
+    G6 -->|yes| H
+    G6 -->|no, multiple| I[status=needs_review reason=ambiguous]
+    G6 -->|no matches| J[status=rejected reason=no_match]
+
+    %% Validation
+    H --> K[Entity Validator]
+    K --> K1[FK Check: coverage_code in coverage_standard]
+    K1 --> K2{Valid?}
+    K2 -->|no| J
+
+    K2 -->|yes| K3[Entity Type Check]
+    K3 --> K4{Valid?}
+    K4 -->|no| J
+
+    K4 -->|yes| K5[Duplicate Check: chunk_id + coverage_code]
+    K5 --> K6{Unique?}
+    K6 -->|no| K7[Skip Insert Duplicate]
+
+    K6 -->|yes| K8[Confidence Check >= 0.7]
+    K8 --> K9{Pass?}
+    K9 -->|no| I
+    K9 -->|yes| L[status=resolved]
+
+    %% Confirmation
+    L --> M[Insert into chunk_entity]
+    M --> M1[source=llm in meta]
+    M1 --> N[Update candidate.resolved_at]
+
+    %% Metrics & Audit
+    N --> O[Metrics Logger]
+    I --> O
+    J --> O
+    K7 --> O
+    R --> O
+
+    O --> P[Audit Trail]
+    P --> P1[LLM requests/responses JSONB]
+    P1 --> P2[Resolver decisions + reasons]
+    P2 --> Q[Ingestion Complete]
+
+    %% Manual Review Queue
+    I --> MR[Manual Review Dashboard]
+    MR -.->|human action| M
+
+    %% Rule-Based Fallback
+    R --> R1[Existing Regex/Rule Extraction]
+    R1 --> R2[Direct Insert into chunk_entity]
+    R2 --> O
+
+    %% Legend
+    style C fill:#e1f5ff
+    style G fill:#fff4e6
+    style K fill:#f0f9ff
+    style M fill:#d4edda
+    style J fill:#f8d7da
+    style I fill:#fff3cd
+    style R fill:#e2e3e5
+
+    classDef constitutional fill:#ffe6e6,stroke:#cc0000,stroke-width:3px
+    classDef llmNode fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
+    classDef validationNode fill:#f0f9ff,stroke:#0099cc,stroke-width:2px
+    classDef successNode fill:#d4edda,stroke:#28a745,stroke-width:2px
+    classDef failureNode fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    classDef reviewNode fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+
+    class C,C1,C2,C3,D,E llmNode
+    class K,K1,K3,K5,K8 validationNode
+    class M,M1,N,R2 successNode
+    class J failureNode
+    class I,MR reviewNode
+    class G1,G3,K1 constitutional
