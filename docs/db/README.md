@@ -148,6 +148,48 @@ Verification Tests (13/13 PASS)
 - Proposal-based API endpoint implementation
 - Full UX contract compliance in API responses
 
+### STEP 15: Dependency Lock with pip-tools (2025-12-25)
+
+- **Purpose**: Lock all API dependencies for reproducible builds
+- **Tool**: pip-tools (pip-compile)
+- **SSOT**: `apps/api/requirements.in` (7 top-level dependencies)
+- **Lock File**: `apps/api/requirements.lock` (36 packages, all versions ==)
+- **Dockerfile Update**: Installs from requirements.lock ONLY
+
+**Dependency SSOT Architecture**:
+```
+apps/api/requirements.in         # Human-managed (>=)
+         ↓ pip-compile
+apps/api/requirements.lock       # Machine-generated (==)
+         ↓ Dockerfile.api
+Docker Image                     # Reproducible build
+```
+
+**Lock Regeneration** (when adding/updating dependencies):
+```bash
+cd apps/api
+pip-compile --output-file=requirements.lock requirements.in
+```
+
+**Key Principles**:
+- ✅ requirements.in = SSOT for dependencies
+- ✅ requirements.lock = SSOT for versions
+- ✅ NO root requirements files (SSOT is apps/api)
+- ✅ Docker installs from lock file ONLY
+- ✅ Lock file is committed (version control)
+- ✅ STEP 14-α E2E verified with lock (22/22 PASS)
+
+**Prohibited Operations**:
+- ❌ Manual editing of requirements.lock
+- ❌ Docker install from requirements.in
+- ❌ Root-level requirements files
+- ❌ Unlocked dependency versions in production
+
+**Regeneration Policy**:
+- Lock file modification ONLY via pip-compile
+- Lock changes must be verified with full E2E suite
+- STEP 14-α scenarios must PASS before commit
+
 ### erd_current.mermaid
 
 - **Purpose**: Visual representation of database schema

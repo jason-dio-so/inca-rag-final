@@ -380,7 +380,7 @@ class TestDependencySSoT:
             "Root requirements.txt should not exist. SSOT is apps/api/requirements.txt"
 
     def test_dockerfile_uses_api_requirements(self):
-        """Verify Dockerfile.api references apps/api/requirements.txt"""
+        """Verify Dockerfile.api references apps/api/requirements.lock (STEP 15 update)"""
         import os
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         dockerfile_path = os.path.join(project_root, "Dockerfile.api")
@@ -388,13 +388,13 @@ class TestDependencySSoT:
         with open(dockerfile_path, 'r') as f:
             dockerfile_content = f.read()
 
-        # Must contain apps/api/requirements.txt reference
-        assert "apps/api/requirements.txt" in dockerfile_content, \
-            "Dockerfile.api must COPY apps/api/requirements.txt (not root requirements.txt)"
+        # Must contain apps/api/requirements.lock reference (STEP 15 lock-based install)
+        assert "apps/api/requirements.lock" in dockerfile_content, \
+            "Dockerfile.api must COPY apps/api/requirements.lock (dependency lock)"
 
-        # Must NOT contain root requirements.txt reference
-        assert "COPY requirements.txt" not in dockerfile_content, \
-            "Dockerfile.api must not COPY root requirements.txt"
+        # Must NOT contain root requirements reference
+        assert "COPY requirements.txt" not in dockerfile_content and "COPY requirements.lock" not in dockerfile_content, \
+            "Dockerfile.api must not COPY root requirements files"
 
 
 if __name__ == "__main__":

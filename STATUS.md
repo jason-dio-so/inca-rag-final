@@ -676,6 +676,71 @@ Previous SQL-based data verification remains in `tests/e2e/test_step14_data_e2e.
 
 ---
 
+### ✅ STEP 15: Dependency Lock with pip-tools (Reproducibility Guarantee)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Lock all API dependencies with pip-tools to ensure reproducibility across Docker, local, and CI environments.
+
+**Deliverables:**
+- `apps/api/requirements.in` - Human-managed dependencies (source)
+- `apps/api/requirements.lock` - Machine-generated lock file (all versions pinned with ==)
+- Updated `Dockerfile.api` - Uses requirements.lock for reproducible builds
+- Updated test: `test_dockerfile_uses_api_requirements` - Validates lock-based install
+
+**Dependency Lock Structure:**
+- `requirements.in`: 7 top-level dependencies (fastapi, uvicorn, pydantic, psycopg2-binary, pytest, httpx, requests)
+- `requirements.lock`: 36 packages (all transitive dependencies pinned)
+- Lock generated with: `pip-compile --output-file=requirements.lock requirements.in`
+
+**Key Features:**
+- All package versions fixed with == (no >= drift)
+- Transitive dependencies locked (h11, httpcore, idna, certifi, etc.)
+- Python 3.11 baseline (verified)
+- Platform-independent (no platform-specific flags)
+
+**Constitutional Compliance:**
+- ✅ requirements.in = SSOT for API dependencies
+- ✅ Dockerfile.api installs from requirements.lock ONLY
+- ✅ NO root requirements files (dependency SSOT is apps/api)
+- ✅ STEP 14-α E2E PASS (Docker API scenarios A/B/C)
+- ✅ pytest 22/22 PASS (no regressions)
+
+**Verification Results:**
+- Docker E2E: Scenarios A/B/C PASS ✅
+- pytest E2E: 22/22 PASS ✅ (test updated to validate requirements.lock)
+- Dependency drift: ELIMINATED ✅
+- Reproducibility: GUARANTEED ✅
+
+**Test Updates:**
+- `test_dockerfile_uses_api_requirements` updated to check for `apps/api/requirements.lock` reference
+- Regression guard prevents future Dockerfile changes from breaking lock-based install
+
+**DoD Achieved:**
+- ✅ requirements.in created from existing requirements.txt
+- ✅ requirements.lock generated with pip-compile (36 packages pinned)
+- ✅ Dockerfile.api uses requirements.lock for install
+- ✅ Docker E2E PASS (STEP 14-α scenarios)
+- ✅ pytest E2E PASS (22/22)
+- ✅ Documentation updated (STATUS.md, docs/db/README.md)
+- ✅ All changes committed and pushed
+
+**Key Files:**
+- `apps/api/requirements.in` (7 dependencies)
+- `apps/api/requirements.lock` (36 packages, all versions ==)
+- `Dockerfile.api` (lock-based install)
+- `tests/e2e/test_step14_api_compare_e2e.py` (22 tests, STEP 15 update applied)
+
+**Long-term Benefits:**
+- Version drift prevention (Docker builds reproducible)
+- CI/CD reliability (same versions everywhere)
+- Security audit ready (all versions tracked)
+- Future dependency updates controlled (via pip-compile)
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
