@@ -40,6 +40,17 @@ for i in {1..30}; do
     sleep 1
 done
 
+# Step 2.5: Apply schema migration
+echo "" | tee -a "$LOG_FILE"
+echo "[2.5/7] Applying schema migration..." | tee -a "$LOG_FILE"
+if [ -f "docs/db/schema_current.sql" ]; then
+    cat docs/db/schema_current.sql | docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final > /dev/null 2>&1
+    echo "✓ Schema applied from docs/db/schema_current.sql" | tee -a "$LOG_FILE"
+else
+    echo "ERROR: Schema file docs/db/schema_current.sql not found" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
 # Step 3: Verify migration/tables exist
 echo "" | tee -a "$LOG_FILE"
 echo "[3/7] Verifying tables exist..." | tee -a "$LOG_FILE"
