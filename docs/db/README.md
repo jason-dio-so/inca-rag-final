@@ -589,8 +589,16 @@ python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 - `apps/api/app/queries/compare.py` - Proposal coverage queries
 - `apps/api/app/schemas/compare.py` - Request/response schemas
 - `scripts/step14_api_e2e_docker.sh` - E2E verification script
-- `tests/e2e/test_step14_api_compare_e2e.py` - 20 HTTP API tests
+- `tests/e2e/test_step14_api_compare_e2e.py` - 22 HTTP API tests (20 + 2 regression guards)
 - `artifacts/step14/*.json` - Scenario response files
+
+### Dependency SSOT
+
+**Single source of truth for API dependencies:**
+- `apps/api/requirements.txt` - SSOT for API dependencies
+- `Dockerfile.api` installs from `apps/api/requirements.txt` only
+- Root `requirements.txt` does NOT exist (removed to prevent duplication)
+- Regression tests enforce this constraint
 
 ---
 

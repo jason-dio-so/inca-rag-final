@@ -645,7 +645,7 @@ python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 - ✅ Docker Compose with db + api services
 - ✅ /compare endpoint completely refactored to proposal-universe
 - ✅ HTTP /compare calls for scenarios A/B/C
-- ✅ All 20 pytest tests PASS
+- ✅ All 22 pytest tests PASS (20 original + 2 regression guards)
 - ✅ JSON responses saved and validated
 - ✅ UX Message Contract enforced
 - ✅ Evidence order deterministic
@@ -659,8 +659,16 @@ python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 - `apps/api/app/routers/compare.py` (refactored endpoint)
 - `apps/api/app/queries/compare.py` (proposal queries)
 - `scripts/step14_api_e2e_docker.sh` (HTTP E2E script)
-- `tests/e2e/test_step14_api_compare_e2e.py` (20 HTTP tests)
+- `tests/e2e/test_step14_api_compare_e2e.py` (22 HTTP tests)
 - `artifacts/step14/scenario_*.json` (HTTP responses)
+
+**Dependency SSOT (Cleanup):**
+- ✅ `apps/api/requirements.txt` = single source of truth for API dependencies
+- ✅ Root `requirements.txt` removed (no duplication)
+- ✅ `Dockerfile.api` installs from `apps/api/requirements.txt` only
+- ✅ PYTHONPATH=/app/apps/api for correct module resolution
+- ✅ uvicorn entrypoint: `app.main:app` (no longer `apps.api.app.main:app`)
+- ✅ Regression guard tests prevent root requirements re-creation
 
 **Previous STEP 14 (SQL-only):**
 Deprecated. Replaced by HTTP API verification.

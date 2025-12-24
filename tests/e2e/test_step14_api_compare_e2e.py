@@ -360,5 +360,42 @@ class TestUniverseLockPrinciple:
         assert data["debug"]["universe_lock_enforced"] is True
 
 
+class TestDependencySSoT:
+    """
+    Regression guard: Ensure single-source requirements
+
+    STEP 14-α cleanup enforces:
+    - apps/api/requirements.txt = SSOT for API dependencies
+    - Root requirements.txt must NOT exist
+    - Dockerfile.api must reference apps/api/requirements.txt only
+    """
+
+    def test_root_requirements_does_not_exist(self):
+        """Verify root requirements.txt does not exist"""
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        root_requirements = os.path.join(project_root, "requirements.txt")
+
+        assert not os.path.exists(root_requirements), \
+            "Root requirements.txt should not exist. SSOT is apps/api/requirements.txt"
+
+    def test_dockerfile_uses_api_requirements(self):
+        """Verify Dockerfile.api references apps/api/requirements.txt"""
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        dockerfile_path = os.path.join(project_root, "Dockerfile.api")
+
+        with open(dockerfile_path, 'r') as f:
+            dockerfile_content = f.read()
+
+        # Must contain apps/api/requirements.txt reference
+        assert "apps/api/requirements.txt" in dockerfile_content, \
+            "Dockerfile.api must COPY apps/api/requirements.txt (not root requirements.txt)"
+
+        # Must NOT contain root requirements.txt reference
+        assert "COPY requirements.txt" not in dockerfile_content, \
+            "Dockerfile.api must not COPY root requirements.txt"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
