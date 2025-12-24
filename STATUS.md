@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
-**Last Updated:** 2025-12-23
-**Current Phase:** STEP 5-B Complete (γ release)
+**Last Updated:** 2025-12-24
+**Current Phase:** STEP 6-C Complete (Proposal Universe Lock v1)
 
 ---
 
@@ -323,6 +323,117 @@ Remaining Work:
 - ✅ Integration tests (FakeLLMClient)
 - ⏳ PostgreSQL database running
 - ⏳ OpenAI API key
+
+---
+
+### STEP 6-C: Proposal Universe Lock Implementation
+**Status:** COMPLETE (E2E Functional)
+**Branch:** feature/proposal-universe-lock-v1
+**Commits:** edc7289 (DDL), 0e478f7 (Implementation)
+**Date:** 2025-12-24
+
+**Deliverables:**
+1. **Constitution v1.0 + Amendment v1.0.1**
+   - Article VIII: Disease Code Authority & Group Normalization
+   - KCD-7 single source of truth principle
+   - Insurance concepts as groups (3-tier model)
+   - Evidence rule for disease scope
+
+2. **Slot Schema v1.1.1**
+   - canonical_coverage_code nullable (MAPPED only)
+   - mapping_status required (MAPPED|UNMAPPED|AMBIGUOUS)
+   - disease_scope split: raw (proposal) + norm (policy groups)
+   - payout_limit consolidated format
+   - currency/amount_value/payout_amount_unit separation
+
+3. **Database Schema (PostgreSQL)**
+   - `disease_code_master` (KCD-7 codes)
+   - `disease_code_group` + `disease_code_group_member` (insurance concepts)
+   - `coverage_disease_scope` (coverage → group mapping)
+   - `proposal_coverage_universe` (Universe Lock table)
+   - `proposal_coverage_mapped` (canonical mapping results)
+   - `proposal_coverage_slots` (Slot Schema v1.1.1 storage)
+
+4. **Core Modules (Python)**
+   - `parser.py`: ProposalCoverageParser (deterministic PDF parsing)
+   - `mapper.py`: CoverageMapper (Excel-based canonical mapping)
+   - `extractor.py`: SlotExtractor (rule-based slot extraction)
+   - `compare.py`: CompareEngine (5-state comparison with Universe Lock)
+   - `pipeline.py`: ProposalUniversePipeline (E2E orchestration)
+
+5. **Test Suites**
+   - `test_proposal_universe_e2e.py`: Scenarios A/B/C/D validation
+   - `run_proposal_universe_demo.py`: Full demo script
+
+**Constitutional Principles Enforced:**
+- ✅ Coverage Universe Lock = 가입설계서 담보만 비교
+- ✅ No LLM/inference/estimation for coverage mapping
+- ✅ Excel (담보명mapping자료.xlsx) = single source for canonical codes
+- ✅ KCD-7 official distribution = single source for disease codes
+- ✅ Evidence required at every level (document span references)
+- ✅ insurer=NULL groups restricted to medical/KCD classification only
+- ✅ Insurance concepts (유사암, 소액암) must be insurer-specific groups
+
+**Comparison States (5-State System):**
+1. `comparable` - All critical slots match, no gaps
+2. `comparable_with_gaps` - Same canonical code, some slots NULL (policy_required)
+3. `non_comparable` - Different canonical codes or incompatible
+4. `unmapped` - Exists in universe but no Excel mapping
+5. `out_of_universe` - Not in proposal (NEW - Universe Lock enforcement)
+
+**Test Scenarios (from 지시문 4):**
+- Scenario A: 가입설계서에 있는 암진단비 비교 → comparable/comparable_with_gaps ✅
+- Scenario B: 가입설계서에 없는 담보명 질의 → out_of_universe ✅
+- Scenario C: 가입설계서에는 있으나 Excel 매핑 실패 → unmapped ✅
+- Scenario D: 같은 canonical code지만 disease_scope_norm NULL → comparable_with_gaps ✅
+
+**Key Files:**
+- Migration: `migrations/step6c/001_proposal_universe_lock.sql`
+- Modules: `src/proposal_universe/*.py`
+- Tests: `tests/test_proposal_universe_e2e.py`
+- Demo: `scripts/run_proposal_universe_demo.py`
+
+**Sample Disease Code Groups Created:**
+1. CANCER_GENERAL_V1 (일반암: C00-C97)
+2. SIMILAR_CANCER_SAMSUNG_V1 (삼성 유사암 5종: C73, C44, D05-D09, D37-D48)
+3. CARCINOMA_IN_SITU_BORDERLINE_V1 (제자리암·경계성종양: D05-D09, D37-D48)
+
+**Evidence Chain (End-to-End Example):**
+```
+Enrollment Proposal (설계서)
+  ↓ disease_scope_raw: "유사암 제외"
+Policy Document (약관)
+  ↓ disease_code_group: SIMILAR_CANCER_SAMSUNG_V1
+KCD-7 Validation
+  ↓ disease_code_group_member: C73, C44, D05-D09, D37-D48
+coverage_disease_scope
+  ↓ include_group_id, exclude_group_id
+disease_scope_norm (group references)
+  ↓ Comparison (Samsung vs Meritz)
+```
+
+**DoD Achieved:**
+- ✅ 5 proposals parsable (Samsung, Meritz, DB, Lotte, KB)
+- ✅ Universe data stored in DB with evidence
+- ✅ Canonical mapping functional (Excel-based)
+- ✅ Slot extraction (v1.1.1) operational
+- ✅ Compare API returns all 5 states correctly
+- ✅ E2E scenarios A/B/C/D demonstrable
+- ✅ Unit tests + integration tests ready
+
+**Prohibited Operations (All Blocked):**
+- ❌ Compare coverage not in proposal → out_of_universe
+- ❌ LLM-based coverage mapping → Excel-only enforced
+- ❌ Infer disease_scope_norm from proposal → NULL until policy processed
+- ❌ Create canonical codes outside Excel → mapping_status=UNMAPPED
+- ❌ Create KCD codes from insurance docs → disease_code_master=official only
+- ❌ insurer=NULL for insurance concepts → restricted to medical groups
+
+**Next Steps (Future Work):**
+1. Policy document processing pipeline (disease_scope_norm population)
+2. Admin UI for manual mapping disambiguation (AMBIGUOUS cases)
+3. Coverage alias learning system (expand Excel coverage)
+4. Disease code group management interface
 
 ---
 
