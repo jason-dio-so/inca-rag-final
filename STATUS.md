@@ -812,7 +812,7 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 ## ✅ STEP 9: 가입설계서 중심 3사 비교 실전 고정
 
 **Status:** COMPLETE
-**Branch:** feature/step7-universe-refactor-policy-scope-v1
+**Branch:** feature/step9-proposal-based-3insurer-comparison
 **Base:** STEP 8 (feature/step8-multi-insurer-policy-scope)
 **Date:** 2025-12-24
 
@@ -911,7 +911,7 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 - ✅ NO prohibited phrases (validated)
 - ✅ All tests PASS (5/5)
 - ✅ STATUS.md updated
-- ⏳ Committed and pushed to GitHub
+- ✅ Committed and pushed to GitHub
 
 ### Success Criteria
 
@@ -947,10 +947,7 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 
 ### Related Commits
 
-- (Pending) - docs: STEP 9 design document
-- (Pending) - feat: STEP 9 comparison response schema
-- (Pending) - test: STEP 9 E2E integration test (5 tests, all PASS)
-- (Pending) - docs: STEP 9 complete - STATUS.md update
+- e704b8b - feat: STEP 9 - 가입설계서 중심 3사 비교 실전 고정 (Proposal-Based 3-Insurer Comparison)
 
 ---
 
