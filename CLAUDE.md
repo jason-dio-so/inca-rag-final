@@ -44,6 +44,34 @@
 3. `coverage_alias` → `canonical_coverage_code` 해결
 4. UNMAPPED 시 비교 중단 (추정 금지)
 
+※ `coverage_alias`, `canonical_coverage_code`는 시스템 논리 모델의 필드명이며,
+   Excel 파일의 실제 컬럼명과 동일함을 전제하지 않는다.
+
+### Excel 스키마 현실 정합성 (Runtime Verified)
+
+- 실제 매핑 Excel 파일은 `data/담보명mapping자료.xlsx` 이다.
+- 런타임 검증(Commit 71d363e) 결과, 실제 컬럼 구조는 다음과 같다:
+  - 가입설계서 담보명(alias) 컬럼: `담보명(가입설계서)`
+  - canonical coverage code 컬럼: `cre_cvr_cd`
+  - 보조 컬럼: `ins_cd`, `보험사명`, `신정원코드명`
+
+- 본 문서에서 사용하는 `coverage_alias`, `canonical_coverage_code`는 **개념적 명칭**이며,
+  실제 Excel 컬럼명과 1:1로 동일함을 의미하지 않는다.
+
+- 구현 원칙:
+  - Excel 컬럼명은 코드에 하드코딩하지 않는다.
+  - 다음 "컬럼 매핑 구성"을 통해 연결한다:
+    - alias_column = `담보명(가입설계서)`
+    - canonical_code_column = `cre_cvr_cd`
+
+- 단일 출처 원칙 유지:
+  - canonical coverage code는 **오직 Excel에서만** 온다.
+  - LLM/유사도/추론 기반 매핑은 어떤 경우에도 금지한다.
+
+- canonical code 개수 및 alias 개수는 Excel 파일 로드 시점에 산출되며,
+  시스템은 해당 값을 런타임 로그 및 검증 리포트에 기록한다.
+- 헌법은 숫자를 고정하지 않고, "Excel 단일 출처"만을 고정한다.
+
 **Coverage Universe Lock**:
 - 비교 가능 담보 = **가입설계서에 있는 담보만**
 - 가입설계서에 없는 담보 질의 → `out_of_universe` (비교 불가)
