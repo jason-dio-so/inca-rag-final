@@ -3,7 +3,6 @@
 # Compare API E2E / Contract Verification
 # DO NOT reuse for other STEPs
 # =========================================
-version: '3.8'
 
 services:
   postgres:

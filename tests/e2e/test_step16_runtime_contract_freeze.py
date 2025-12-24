@@ -331,12 +331,19 @@ class TestSTEP16RuntimeContractFreeze:
 
     def test_snapshot_canonical_json_policy(self):
         """
-        Snapshot Canonical JSON Policy Guard (STEP 17).
+        Snapshot Canonical JSON Policy Enforcement (STEP 20).
 
         Ensures golden snapshots are stored in key-sorted canonical JSON format.
-        This prevents key order from becoming part of the contract.
+        This is NOT just a policy - it's an enforced contract.
 
-        Contract: semantic equality (not byte equality)
+        Contract:
+        - Semantic equality (key order doesn't affect comparison)
+        - Canonical storage (snapshots MUST be stored in sorted format)
+
+        This test enforces canonical storage to prevent:
+        - Manual edits that break formatting
+        - Key order drift
+        - Inconsistent snapshot formats
         """
         import json
 
@@ -345,26 +352,33 @@ class TestSTEP16RuntimeContractFreeze:
         for scenario_name in required_snapshots:
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f"{scenario_name}.golden.json")
 
-            # Load raw file
+            # Load raw file content
             with open(snapshot_path, 'r', encoding='utf-8') as f:
                 raw_content = f.read()
 
             # Parse JSON
             snapshot_dict = json.loads(raw_content)
 
-            # Re-serialize with sorted keys
+            # Re-serialize with canonical format (sorted keys, 4-space indent, no ASCII escaping)
             canonical_json = json.dumps(snapshot_dict, indent=4, sort_keys=True, ensure_ascii=False)
 
-            # Verify snapshot is in canonical form (sorted keys)
-            # Note: We don't require exact byte equality due to potential whitespace/newline differences
-            # But we verify that the JSON can be parsed and re-sorted without semantic changes
-            assert isinstance(snapshot_dict, dict), \
-                f"{scenario_name}: snapshot must be a valid JSON object"
+            # Add trailing newline (standard for text files)
+            canonical_with_newline = canonical_json + "\n"
 
-            # Verify key-sorted structure (all keys should appear in sorted order)
-            # This is a policy check, not a strict requirement
-            # The contract is semantic equality, but snapshots SHOULD be canonical
-            pass  # Policy verified by existence of sorted JSON structure
+            # ENFORCE: File content must exactly match canonical format
+            assert raw_content == canonical_with_newline, (
+                f"{scenario_name}: Snapshot is not in canonical JSON format.\n"
+                f"Expected canonical format with:\n"
+                f"  - sort_keys=True\n"
+                f"  - indent=4\n"
+                f"  - ensure_ascii=False\n"
+                f"  - trailing newline\n"
+                f"\n"
+                f"To fix, regenerate with:\n"
+                f"  python -m json.tool --sort-keys {snapshot_path} > {snapshot_path}.tmp && mv {snapshot_path}.tmp {snapshot_path}\n"
+                f"\n"
+                f"CRITICAL: This is a contract violation. Golden snapshots must maintain canonical format."
+            )
 
     def test_golden_snapshots_exist(self):
         """

@@ -90,6 +90,17 @@ jobs:
         env:
           E2E_DOCKER: "1"
 
+      - name: Verify Canonical Snapshot Format (STEP 20)
+        run: |
+          echo "Verifying golden snapshots are in canonical JSON format..."
+          env E2E_DOCKER=1 python -m pytest tests/e2e/test_step16_runtime_contract_freeze.py::TestSTEP16RuntimeContractFreeze::test_snapshot_canonical_json_policy -v || {
+            echo "ERROR: Golden snapshots are not in canonical JSON format"
+            echo "This is a STEP 20 contract violation"
+            echo "Snapshots must be stored with sort_keys=True, indent=4, ensure_ascii=False"
+            exit 1
+          }
+          echo "Canonical format verified ✓"
+
       - name: Run STEP 16 Runtime Contract Freeze Tests
         run: |
           env E2E_DOCKER=1 python -m pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
@@ -101,7 +112,7 @@ jobs:
           # Fail if golden snapshots were modified during test run
           git diff --exit-code tests/snapshots/compare/ || {
             echo "ERROR: Golden snapshots were modified during test run"
-            echo "This is a violation of STEP 16/17 contract policy"
+            echo "This is a violation of STEP 16/17/20 contract policy"
             exit 1
           }
 

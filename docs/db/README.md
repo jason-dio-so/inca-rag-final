@@ -208,11 +208,19 @@ pip-compile --output-file=requirements.lock requirements.in
    - raw_name_used
    - universe_lock_enforced
 
-**Golden Snapshot Policy** (STEP 17 clarification):
+**Golden Snapshot Policy** (STEP 17 clarification, STEP 20 enforcement):
 ```
 Golden Snapshot은 key-sorted canonical JSON 기준으로
 Runtime Contract를 고정한다.
-Key order는 계약 대상이 아니다.
+
+Semantic Equality vs Canonical Storage:
+- Semantic equality: 비교 시 key order 무시 (계약 유연성)
+- Canonical storage: 저장 시 format 고정 (일관성 보장)
+
+STEP 20: Canonical format은 테스트로 강제된다.
+- Format: json.dumps(sort_keys=True, indent=4, ensure_ascii=False) + '\n'
+- Violations → CI FAIL
+- Manual edits that break format → rejected by tests
 
 Compare API는 Golden Snapshot 기반으로
 런타임 응답 계약이 고정되어 있으며,

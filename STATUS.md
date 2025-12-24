@@ -1007,6 +1007,82 @@ Stabilize GitHub Actions CI for production reliability and enforce clear boundar
 
 ---
 
+### ✅ STEP 20: Contract Guard Enforcement (Canonical JSON & Compose v2)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Strengthen runtime contract enforcement by making golden snapshot format violations fail in tests/CI, and upgrade Docker Compose to v2 standard.
+
+**Deliverables:**
+- Canonical JSON format enforcement (test-based, not policy-based)
+- Docker Compose v2 upgrade (removed version field)
+- CI snapshot format verification
+- Golden snapshots regenerated to canonical format
+
+**Canonical JSON Enforcement:**
+- Enhanced `test_snapshot_canonical_json_policy` with actual assertions
+- Snapshots MUST match: `json.dumps(..., sort_keys=True, indent=4, ensure_ascii=False) + '\n'`
+- Format violations → test FAIL (not warning)
+- Prevents manual edits that break formatting
+
+**Docker Compose v2:**
+- Removed `version: '3.8'` from docker-compose.step14.yml
+- Compose v2 uses schema inference (no version field needed)
+- STEP 14-only boundary preserved
+
+**CI Enhancements:**
+- Added "Verify Canonical Snapshot Format" step
+- Runs before full STEP 16 test suite
+- Explicit error message for format violations
+- Prevents broken snapshots from entering CI
+
+**Snapshot Regeneration:**
+- All 3 golden snapshots regenerated to canonical format
+- Committed as part of STEP 20 enforcement
+- Future format drift will be caught by tests
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 8/8 PASS ✅ (including canonical JSON enforcement)
+- Canonical format test: ENFORCED ✅
+
+**Constitutional Guarantees:**
+- ✅ Golden Snapshot = canonical JSON (not just policy)
+- ✅ Format violations = CI FAIL
+- ✅ Compose v2 standard enforced
+- ✅ STEP 14 boundary preserved
+
+**Prohibited Operations:**
+- ❌ Golden snapshot auto-regeneration (still prohibited)
+- ❌ Reverting canonical JSON test to "policy only"
+- ❌ docker-compose.step14.yml reuse for other steps
+- ❌ Compose v1/v3 mixed usage
+- ❌ Removing snapshot format verification from CI
+
+**DoD Achieved:**
+- ✅ docker-compose.step14.yml version field removed
+- ✅ Canonical JSON test enforces format (FAIL-capable)
+- ✅ CI verifies snapshot format
+- ✅ All snapshots regenerated to canonical format
+- ✅ STEP 14/16/17 regressions: NONE
+- ✅ Documentation updated
+- ✅ Committed and pushed
+
+**Key Files:**
+- `docker-compose.step14.yml` (Compose v2)
+- `tests/e2e/test_step16_runtime_contract_freeze.py` (canonical enforcement)
+- `.github/workflows/ci-contract-guard.yml` (snapshot format verification)
+- `tests/snapshots/compare/*.golden.json` (regenerated to canonical)
+
+**Semantic Equality vs Canonical Storage:**
+- **Semantic equality**: Contract comparison ignores key order
+- **Canonical storage**: Snapshots MUST be stored in sorted format
+- This is not a contradiction - comparison is flexible, storage is strict
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
