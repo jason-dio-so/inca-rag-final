@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-24
-**Current Phase:** STEP 9 Complete (Proposal-Based 3-Insurer Comparison)
+**Current Phase:** STEP 10 Complete (User Response Contract - API Schema + Evidence Order)
 
 ---
 
@@ -948,6 +948,190 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 ### Related Commits
 
 - e704b8b - feat: STEP 9 - 가입설계서 중심 3사 비교 실전 고정 (Proposal-Based 3-Insurer Comparison)
+
+---
+
+## ✅ STEP 10: User Response Contract (가입설계서 기반 비교 응답 안정화)
+
+**Status:** COMPLETE (Phase A + B + C)
+**Branch:** feature/step9-proposal-based-3insurer-comparison
+**Base:** STEP 9
+**Date:** 2025-12-24
+
+### Purpose
+
+가입설계서 기반 비교 결과를 실제 사용자 응답(API/UI) 수준으로 안정화
+
+**Constitutional Requirement:**
+- 가입설계서 (Proposal) = 비교 대상 SSOT
+- 약관 (Policy) = 조건부 Evidence (interpretation need only)
+- Document priority: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
+- Evidence ordering: deterministic (page, then span_text)
+
+### Deliverables
+
+#### STEP 10-A: Document Priority Constitutional Amendment
+
+**File:** `CLAUDE.md`
+
+**Added:**
+- "문서 우선순위 원칙 (절대)" section (Constitutional level)
+- Document hierarchy codified:
+  1. 가입설계서 (Proposal) = 비교 대상 SSOT
+  2. 상품요약서 (Product Summary) = 일반 설명
+  3. 사업방법서 (Business Rules) = 실무 제약
+  4. 약관 (Policy) = 법적 해석 근거 (NOT comparison source)
+- Explicit prohibitions:
+  - ❌ 약관 기준 비교 대상 생성/확장
+  - ❌ policy-first 표현 사용
+  - ❌ 가입설계서보다 약관 상위 취급
+- Document role analogy: 지도(proposal) vs 나침반(policy)
+
+**Commit:** 5567cc9
+
+#### STEP 10-B: Design Document
+
+**File:** `docs/STEP10_user_response_contract.md`
+
+**Contents:**
+- API response contract specification
+- E2E user flow (happy path + error paths)
+- Document evidence order rules
+- Prohibited operations list
+- Implementation plan (Phase A/B/C)
+- Flow diagram (Mermaid)
+
+**Commit:** 5567cc9
+
+#### STEP 10-C: Implementation (API Schema + Evidence Order + Tests)
+
+**Phase A: API Response Schema**
+
+**File:** `apps/api/app/schemas/compare_response.schema.json`
+
+**Schema Features:**
+- document_priority: fixed array ["PROPOSAL", "PRODUCT_SUMMARY", "BUSINESS_METHOD", "POLICY"]
+- evidence: grouped by doc_type (proposal, product_summary, business_method, policy)
+- EvidenceItem definition: document_id, doc_type, page, span_text, source_confidence required
+- 5-state comparison: comparable, comparable_with_gaps, non_comparable, unmapped, out_of_universe
+- coverage: canonical_coverage_code + mapping_status + coverage_name_raw
+- slots: disease_scope_raw, disease_scope_norm, amount_value, currency, payout_limit
+
+**Phase B: Evidence Order Enforcement**
+
+**File:** `src/policy_scope/comparison/evidence_order.py`
+
+**Functions:**
+- `EvidenceItem` dataclass (required field validation)
+- `GroupedEvidence` dataclass (proposal, product_summary, business_method, policy)
+- `group_and_order_evidence()` - Groups and sorts deterministically
+- `get_document_priority()` - Returns fixed order (Constitutional)
+- `validate_policy_evidence_conditional()` - Enforces policy evidence rules
+
+**Evidence Ordering Rules:**
+1. Group by doc_type
+2. Sort within group: page ASC, then span_text ASC (deterministic)
+3. Policy evidence conditional:
+   - If disease_scope_norm is None → policy evidence MUST be empty
+   - If disease_scope_norm exists → policy evidence MAY be present
+4. Proposal evidence required (Constitutional)
+
+**Phase C: Integration Tests**
+
+**File:** `tests/integration/test_step10_response_contract.py`
+
+**Test Cases (9 tests, all PASS):**
+1. ✅ Document priority fixed order
+2. ✅ Evidence grouping and ordering
+3. ✅ Policy evidence conditional (disease_scope_norm = None)
+4. ✅ Policy evidence allowed when disease_scope_norm exists
+5. ✅ Proposal evidence required (Constitutional)
+6. ✅ Evidence item required fields validation
+7. ✅ Validate policy evidence conditional logic
+8. ✅ Deterministic ordering (same page sorted by span_text)
+9. ✅ GroupedEvidence to_dict() serialization
+
+**Commit:** c2aca87
+
+### Test Results
+
+**STEP 10-C Tests:**
+```
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_document_priority_fixed_order PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_evidence_grouping_and_ordering PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_policy_evidence_conditional_none_disease_scope PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_policy_evidence_exists_when_disease_scope_norm_present PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_proposal_evidence_required PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_evidence_item_required_fields PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_validate_policy_evidence_conditional PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_deterministic_ordering_same_page PASSED
+tests/integration/test_step10_response_contract.py::TestSTEP10ResponseContract::test_grouped_evidence_to_dict PASSED
+
+9 passed in 0.07s
+```
+
+**STEP 9 + STEP 10-C Combined:**
+```
+14 passed in 0.03s (no regressions)
+```
+
+### Constitutional Compliance
+
+**Principles Enforced:**
+- ✅ 가입설계서 = 비교 대상 SSOT (proposal evidence required)
+- ✅ 약관 = 조건부 (policy evidence only when disease_scope_norm exists)
+- ✅ Document priority fixed: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
+- ✅ Deterministic ordering (page, then span_text)
+- ✅ No policy-first language (Constitutional prohibition)
+- ✅ All evidence items have required fields
+
+**Policy Evidence Rules (Constitutional):**
+1. If disease_scope_norm is None → policy evidence MUST be empty
+2. If disease_scope_norm exists → policy evidence MAY be present
+3. Policy evidence is conditional (interpretation need only)
+
+### Definition of Done
+
+**STEP 10-A (Constitutional Amendment):**
+- ✅ Document priority added to CLAUDE.md
+- ✅ No policy-first language remains (verified)
+- ✅ Committed and pushed
+
+**STEP 10-B (Design Document):**
+- ✅ STEP10_user_response_contract.md created
+- ✅ API contract specification
+- ✅ E2E flow documentation
+- ✅ Document evidence order rules
+- ✅ Committed and pushed
+
+**STEP 10-C (Implementation):**
+- ✅ JSON Schema created (compare_response.schema.json)
+- ✅ Evidence order enforcement implemented (evidence_order.py)
+- ✅ Integration tests created (9 tests, all PASS)
+- ✅ All tests PASS (STEP 9 + STEP 10-C: 14/14)
+- ✅ No regressions
+- ✅ Committed and pushed
+- ✅ STATUS.md updated
+
+### Key Files
+
+**Constitutional:**
+- `CLAUDE.md` (Document priority amendment)
+
+**Design:**
+- `docs/STEP10_user_response_contract.md`
+
+**Implementation:**
+- `apps/api/app/schemas/compare_response.schema.json` (JSON Schema)
+- `src/policy_scope/comparison/evidence_order.py` (Evidence ordering logic)
+
+**Tests:**
+- `tests/integration/test_step10_response_contract.py` (9 tests, all PASS)
+
+### Related Commits
+
+- 5567cc9 - docs: STEP 10-A + STEP 10-B - Document Priority Constitution + User Response Contract
+- c2aca87 - feat: STEP 10-C - API Response Schema + Evidence Order Enforcement
 
 ---
 
