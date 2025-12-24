@@ -78,14 +78,11 @@ async def compare_products(
             # Get coverage amount if coverage_code provided
             coverage_amount = None
             if coverage_code:
-                # TODO STEP 7: Update to use Universe Lock (insurer_code, proposal_id)
-                # For now, using product_id as placeholder for proposal_id
-                coverage_amount = get_coverage_amount_for_proposal(
-                    conn=conn,
-                    insurer_code="SAMSUNG",  # TODO: Extract from product_id
-                    proposal_id=product_id,  # TODO: Map product_id to proposal_id
-                    coverage_code=coverage_code
-                )
+                # DEPRECATED: This endpoint uses product-centered comparison (Constitutional violation)
+                # Universe Lock requires proposal-based comparison (STEP 7)
+                # TODO: Replace entire /compare endpoint with proposal-based version
+                # For now, skip coverage_amount to avoid hardcoded violations
+                pass  # coverage_amount remains None
 
             # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
             evidence_list = []
