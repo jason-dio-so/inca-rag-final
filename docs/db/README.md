@@ -500,6 +500,15 @@ This script:
 python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 ```
 
+#### E2E Docker pytest 실행 (zsh / bash 공통)
+
+```bash
+env E2E_DOCKER=1 python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
+```
+
+zsh에서는 `E2E_DOCKER=1 python ...` 형태가 필요하며,
+`env` 사용 시 shell 차이 없이 동작한다.
+
 20 tests covering:
 - Scenario A: Normal comparison (일반암진단비) - 7 tests
 - Scenario B: UNMAPPED coverage (매핑안된담보) - 5 tests
@@ -599,6 +608,12 @@ python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
 - `Dockerfile.api` installs from `apps/api/requirements.txt` only
 - Root `requirements.txt` does NOT exist (removed to prevent duplication)
 - Regression tests enforce this constraint
+
+### Dependency Drift Policy
+
+- STEP 14-α에서는 `>=` 버전 범위를 유지한다.
+- 의존성 버전 lock(pip-tools, requirements.lock 등)은 STEP 15에서 도입한다.
+- 본 STEP에서는 안정성 확인만 수행하며, 버전 고정은 금지한다.
 
 ---
 

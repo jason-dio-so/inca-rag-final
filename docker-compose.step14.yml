@@ -1,3 +1,8 @@
+# ============================================
+# STEP 14-α ONLY
+# Docker Compose for Proposal Universe API E2E
+# DO NOT reuse for other STEPs
+# ============================================
 version: '3.8'
 
 services:
