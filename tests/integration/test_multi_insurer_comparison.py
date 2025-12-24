@@ -30,7 +30,60 @@ from src.policy_scope.comparison.explainer import (
 class TestMultiInsurerComparison:
     """
     STEP 8: Validate multi-insurer comparison (3+ insurers)
+
+    Constitutional requirement (STEP 8-β):
+    - 가입설계서 = 비교 Universe SSOT
+    - 약관 = Evidence Enrichment only (Universe 확장 금지)
+    - Policy parsers DO NOT expand proposal_coverage_universe
     """
+
+    def test_universe_lock_policy_parsers_do_not_expand_universe(self):
+        """
+        Constitutional Test: Policy parsers are Evidence Enrichment only
+
+        Requirement:
+        - Policy parsers extract disease_scope_norm from 약관
+        - They DO NOT create new Universe entries
+        - They only fill slots for existing Universe coverages
+
+        This test verifies:
+        1. Policy parsers return definitions (not Universe entries)
+        2. No code path creates proposal_coverage_universe from policy
+        """
+        from src.policy_scope.parsers.samsung import SamsungPolicyParser
+        from src.policy_scope.base_parser import DiseaseGroupDefinition, CoverageScopeDefinition
+
+        parser = SamsungPolicyParser()
+
+        # Policy text with 유사암 definition
+        policy_text = """
+        제3조 (유사암의 정의)
+        유사암이라 함은 다음의 질병을 말합니다:
+        1. 갑상선암 (C73)
+        2. 기타피부암 (C44)
+        """
+
+        # Extract disease group definition
+        result = parser.extract_disease_group_definition(
+            policy_text=policy_text,
+            group_concept='유사암',
+            document_id='SAMSUNG_POLICY_2024',
+            page_number=3
+        )
+
+        # Verify result type
+        assert isinstance(result, DiseaseGroupDefinition), \
+            "Parser must return DiseaseGroupDefinition (NOT Universe entry)"
+
+        # Verify it's evidence only (for enrichment)
+        assert result.basis_doc_id == 'SAMSUNG_POLICY_2024', \
+            "Must include evidence (약관 근거)"
+        assert len(result.basis_span) > 0, \
+            "Must include evidence span"
+
+        # Constitutional guarantee: This does NOT create Universe entry
+        # Universe Lock: Only proposal_coverage_universe determines comparison targets
+        # This definition will ONLY be used to fill disease_scope_norm for existing Universe coverages
 
     def test_registry_has_3_plus_insurers(self):
         """

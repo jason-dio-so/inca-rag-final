@@ -706,7 +706,8 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 - ✅ 4 reason codes: disease_scope_identical, disease_scope_partial_overlap, disease_scope_multi_insurer_conflict, disease_scope_policy_required
 
 **Testing:**
-- ✅ 10 integration tests (all PASS)
+- ✅ 11 integration tests (all PASS)
+- ✅ Universe Lock validation test (policy parsers = Evidence Enrichment only)
 - ✅ 4 scenarios: FULL_MATCH, PARTIAL_OVERLAP, NO_OVERLAP, UNKNOWN (3+ insurers each)
 - ✅ Registry validation tests
 - ✅ Prohibited phrase validation tests
@@ -737,6 +738,9 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 - ✅ Deterministic extraction only (NO LLM)
 - ✅ Evidence required at every step
 - ✅ Single unified comparison state (not per-insurer states)
+- ✅ **Universe Lock (가입설계서 = 비교 대상 SSOT)**
+- ✅ **약관 = Evidence Enrichment only (Universe 확장 금지)**
+- ✅ Policy parsers DO NOT expand proposal_coverage_universe
 - ✅ NO value judgments (가장 넓은, 가장 유리함, 추천)
 - ✅ NO recommendations
 - ✅ Factual differences only
@@ -781,6 +785,7 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 
 | Test Scenario | Status | Description |
 |--------------|--------|-------------|
+| **Universe Lock validation** | ✅ PASS | **Policy parsers = Evidence Enrichment only** |
 | Registry has 3+ insurers | ✅ PASS | Samsung, Meritz, DB registered |
 | Get parser for registered insurer | ✅ PASS | Can retrieve parser |
 | Unregistered insurer raises error | ✅ PASS | NotImplementedError |
@@ -792,7 +797,7 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 | Pairwise overlap detection | ✅ PASS | Deterministic |
 | Multi-party aggregation | ✅ PASS | Deterministic (5x runs) |
 
-**Total: 10/10 tests PASS**
+**Total: 11/11 tests PASS**
 
 ### Related Commits
 

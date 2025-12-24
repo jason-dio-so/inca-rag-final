@@ -15,6 +15,26 @@
 
 **STEP 8 builds on STEP 7 foundation (additive only, no redesign)**
 
+### ⚠️ Document Hierarchy (Constitutional Requirement)
+
+**가입설계서 중심 비교 Universe (SSOT):**
+
+1. **가입설계서 (Proposal)** → `proposal_coverage_universe` (비교 대상 SSOT)
+   - **비교 가능 담보는 가입설계서에 있는 담보만**
+   - Universe Lock의 절대 기준
+   - 약관/사업방법서는 Universe를 **확장하지 않음**
+
+2. **상품요약서 / 사업방법서 / 약관** → Evidence Enrichment only
+   - `disease_scope_norm` 채우기 (약관 정의 근거)
+   - `coverage_condition` 보강
+   - `exclusion_reason` 명시
+   - **가입설계서 담보를 "해석"할 뿐, "선정"하지 않음**
+
+**STEP 8 Policy Parsers Role:**
+- 약관에서 disease group definition 추출
+- **기존 Universe 담보의 슬롯을 채우는 하위 계층 파이프라인**
+- Universe에 없는 담보는 처리 대상 아님 (out_of_universe)
+
 ---
 
 ## 1. Problem Statement
@@ -369,7 +389,8 @@ FROM coverage_disease_scope;
 - ✅ Evidence required at every step
 - ✅ KCD-7 FK validation against disease_code_master
 - ✅ insurer=NULL restricted to medical/KCD classification
-- ✅ Universe Lock (가입설계서 only for comparison)
+- ✅ **Universe Lock (가입설계서 = 비교 대상 SSOT)**
+- ✅ **약관 = Evidence Enrichment only (Universe 확장 금지)**
 - ✅ Excel mapping single source (coverage codes)
 
 ### 8.2 New Prohibitions
