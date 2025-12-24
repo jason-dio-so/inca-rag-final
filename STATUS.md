@@ -451,8 +451,8 @@ disease_scope_norm (group references)
 ---
 
 ### ✅ STEP 13: Proposal-Based Minimal Seed Data for Docker E2E
-**Status:** COMPLETE
-**Commit:** [current]
+**Status:** COMPLETE (β - Determinism Fix Applied)
+**Commit:** cdd524c (initial), [current] (β)
 **Date:** 2025-12-25
 
 **Purpose:**
@@ -460,7 +460,8 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
 
 **Deliverables:**
 - `docs/db/seed_step13_minimal.sql` - Minimal seed data SQL script
-- `tests/e2e/test_step13_seed_smoke.py` - Smoke test suite (12 tests)
+- `tests/e2e/test_step13_seed_smoke.py` - Smoke test suite (14 tests)
+- `docs/db/README.md` - Seed documentation with determinism policy
 - Docker DB verified with seed data applied
 
 **Seed Data Coverage:**
@@ -485,7 +486,7 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
    - disease_code_group_member: 6 members
    - coverage_disease_scope: 1 scope definition for CA_DIAG_SIMILAR
 
-**Verification Results (12/12 PASS):**
+**Verification Results (14/14 PASS):**
 - ✅ 3 insurers exist (SAMSUNG, MERITZ, KB)
 - ✅ 5 universe records
 - ✅ MAPPED and UNMAPPED states present
@@ -496,6 +497,8 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
 - ✅ Disease code group exists
 - ✅ Disease code group members exist
 - ✅ Coverage disease scope exists
+- ✅ **[β] disease_scope_norm group_id FK valid**
+- ✅ **[β] coverage_disease_scope group_id FK valid**
 
 **Constitutional Compliance:**
 - ✅ Proposal = SSOT (Universe Lock enforced)
@@ -505,18 +508,51 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
 - ✅ disease_scope_norm uses group references (not raw codes)
 - ✅ Policy evidence conditional (only when disease_scope_norm present)
 
+**STEP 13-β: Determinism Fix (2025-12-25)**
+
+**Problem Identified:**
+- Seed SQL had hardcoded `group_id = 1` in 3 locations
+- Assumed disease_code_group auto-increment would start at 1
+- Non-deterministic in Docker fresh DB scenarios
+
+**Solution Applied:**
+1. **Dynamic group_id Resolution**: Replaced all hardcoded IDs with SELECT subqueries:
+   ```sql
+   (SELECT group_id FROM disease_code_group
+    WHERE group_name = '삼성 유사암 (Seed)' AND insurer = 'SAMSUNG'
+    LIMIT 1)
+   ```
+
+2. **Affected Locations Fixed:**
+   - `proposal_coverage_slots.disease_scope_norm->>'include_group_id'`
+   - `disease_code_group_member.group_id`
+   - `coverage_disease_scope.include_group_id`
+
+3. **Regression Guards Added:**
+   - `test_disease_scope_norm_group_id_fk_valid`: FK integrity for slots
+   - `test_coverage_disease_scope_group_id_fk_valid`: FK integrity for scope
+
+**Determinism Policy (Enforced):**
+- ❌ **PROHIBITED**: Hardcoded `group_id` assumptions
+- ✅ **REQUIRED**: Dynamic resolution via unique (group_name, insurer) lookup
+- ✅ **VERIFIED**: Seed can run multiple times without FK violations
+
 **DoD Achieved:**
 - ✅ Seed SQL file created and schema-aligned
 - ✅ Docker DB successfully loaded
-- ✅ Smoke test suite passes (12/12)
+- ✅ Smoke test suite passes (14/14)
 - ✅ Existing tests pass (136/143 non-skipped)
+- ✅ **[β] No hardcoded group_id references**
+- ✅ **[β] Idempotency verified (double seed execution)**
+- ✅ **[β] docs/db/README.md documented**
 - ✅ No regression introduced
 - ✅ STATUS.md updated
 - ✅ Ready for commit + push
 
 **Key Files:**
-- `docs/db/seed_step13_minimal.sql`
-- `tests/e2e/test_step13_seed_smoke.py`
+- `docs/db/seed_step13_minimal.sql` (β: determinism fix applied)
+- `tests/e2e/test_step13_seed_smoke.py` (β: 2 new FK tests added)
+- `docs/db/README.md` (β: determinism policy documented)
 
 **Evidence:**
 - Excel file: `/data/담보명mapping자료.xlsx` (227 KB)

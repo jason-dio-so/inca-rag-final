@@ -204,5 +204,65 @@ def test_coverage_disease_scope_exists(db_conn):
     assert count >= 1, "No coverage_disease_scope found for SAMSUNG CA_DIAG_SIMILAR"
 
 
+def test_disease_scope_norm_group_id_fk_valid(db_conn):
+    """
+    REGRESSION GUARD: Verify disease_scope_norm.include_group_id references valid disease_code_group
+
+    This test prevents hardcoded group_id values (like 1, 2) that may not exist.
+    """
+    cursor = db_conn.cursor()
+    cursor.execute("""
+        SELECT s.id, s.disease_scope_norm
+        FROM proposal_coverage_slots s
+        WHERE s.disease_scope_norm IS NOT NULL
+          AND s.disease_scope_norm ? 'include_group_id'
+          AND s.disease_scope_norm->>'include_group_id' IS NOT NULL
+    """)
+
+    invalid_refs = []
+    for slot_id, disease_scope_norm in cursor.fetchall():
+        include_group_id = disease_scope_norm.get('include_group_id')
+        if include_group_id is not None:
+            cursor.execute("""
+                SELECT COUNT(*) FROM disease_code_group WHERE group_id = %s
+            """, (include_group_id,))
+            exists = cursor.fetchone()[0] > 0
+            if not exists:
+                invalid_refs.append((slot_id, include_group_id))
+
+    cursor.close()
+
+    assert len(invalid_refs) == 0, \
+        f"Found {len(invalid_refs)} slots with invalid include_group_id references: {invalid_refs}"
+
+
+def test_coverage_disease_scope_group_id_fk_valid(db_conn):
+    """
+    REGRESSION GUARD: Verify coverage_disease_scope.include_group_id references valid disease_code_group
+
+    This test prevents hardcoded group_id values in coverage_disease_scope.
+    """
+    cursor = db_conn.cursor()
+    cursor.execute("""
+        SELECT scope_id, coverage_code, insurer, include_group_id
+        FROM coverage_disease_scope
+        WHERE include_group_id IS NOT NULL
+    """)
+
+    invalid_refs = []
+    for scope_id, coverage_code, insurer, include_group_id in cursor.fetchall():
+        cursor.execute("""
+            SELECT COUNT(*) FROM disease_code_group WHERE group_id = %s
+        """, (include_group_id,))
+        exists = cursor.fetchone()[0] > 0
+        if not exists:
+            invalid_refs.append((scope_id, coverage_code, insurer, include_group_id))
+
+    cursor.close()
+
+    assert len(invalid_refs) == 0, \
+        f"Found {len(invalid_refs)} scopes with invalid include_group_id references: {invalid_refs}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

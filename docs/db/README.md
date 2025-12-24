@@ -71,6 +71,48 @@ If there is ANY discrepancy between documents and migration SQL, **migration SQL
 - `set -euo pipefail` enforced
 - All output logged to `artifacts/step11/e2e_run.log`
 
+### seed_step13_minimal.sql (STEP 13)
+
+- **Purpose**: Minimal seed data for Docker E2E testing with Constitutional compliance
+- **Scope**: Proposal-based comparison data for 3 insurers (SAMSUNG, MERITZ, KB)
+- **Data Coverage**:
+  - Core: 3 insurers, 3 products, 3 proposal documents
+  - Coverage Canonical: CA_DIAG_GENERAL, CA_DIAG_SIMILAR, UNMAPPED_TEST
+  - Universe Lock: 5 records (4 MAPPED + 1 UNMAPPED)
+  - Disease Codes: 8 KCD-7 codes + 1 group + 6 members
+- **Usage**:
+  ```bash
+  cat docs/db/seed_step13_minimal.sql | docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final
+  ```
+- **Idempotency**: Uses TRUNCATE CASCADE at the top for clean re-execution
+- **Verification**: `python -m pytest tests/e2e/test_step13_seed_smoke.py` (14 tests)
+
+**Determinism Policy (STEP 13-β)**:
+- ❌ **PROHIBITED**: Hardcoded `group_id` values (e.g., `1`, `2`)
+- ✅ **REQUIRED**: Dynamic `group_id` resolution via SELECT subquery
+- **Pattern**:
+  ```sql
+  -- CORRECT: Dynamic resolution
+  (SELECT group_id FROM disease_code_group
+   WHERE group_name = '삼성 유사암 (Seed)' AND insurer = 'SAMSUNG'
+   LIMIT 1)
+
+  -- INCORRECT: Hardcoded
+  1  -- ❌ FORBIDDEN
+  ```
+- **Applies to**:
+  - `proposal_coverage_slots.disease_scope_norm->>'include_group_id'`
+  - `disease_code_group_member.group_id`
+  - `coverage_disease_scope.include_group_id`
+
+**Regression Guards**:
+- `test_disease_scope_norm_group_id_fk_valid`: Validates FK integrity for slots
+- `test_coverage_disease_scope_group_id_fk_valid`: Validates FK integrity for scope
+
+**Seed Dependencies**:
+- Requires `schema_universe_lock_minimal.sql` to be applied first
+- Compatible with Docker PostgreSQL 17
+
 ### erd_current.mermaid
 
 - **Purpose**: Visual representation of database schema
@@ -377,6 +419,7 @@ A: No. Keep for historical reference. They consume minimal space and provide con
 
 ---
 
-**Last Updated**: 2025-12-24
+**Last Updated**: 2025-12-25
 **Baseline**: STEP 6-C (Proposal Universe Lock v1)
 **Migration Version**: `migrations/step6c/001_proposal_universe_lock.sql`
+**Seed Data**: STEP 13-β (Deterministic seed with dynamic group_id resolution)

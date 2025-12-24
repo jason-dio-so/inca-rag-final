@@ -300,6 +300,7 @@ JOIN proposal_coverage_universe u ON m.universe_id = u.id
 WHERE u.insurer = 'SAMSUNG' AND u.coverage_name_raw = '일반암진단금';
 
 -- SAMSUNG 유사암진단금 (disease_scope_norm = NOT NULL)
+-- NOTE: group_id is resolved dynamically to ensure determinism
 INSERT INTO proposal_coverage_slots (
     mapped_id,
     canonical_coverage_code,
@@ -315,7 +316,14 @@ INSERT INTO proposal_coverage_slots (
     m.id,
     'CA_DIAG_SIMILAR',
     '유사암 (갑상선암, 제자리암, 경계성종양)',
-    '{"include_group_id": 1, "exclude_group_id": null}'::jsonb,
+    jsonb_build_object(
+        'include_group_id',
+        (SELECT group_id FROM disease_code_group
+         WHERE group_name = '삼성 유사암 (Seed)' AND insurer = 'SAMSUNG'
+         LIMIT 1),
+        'exclude_group_id',
+        NULL
+    ),
     '{"type": "once", "count": 1, "period": "lifetime"}'::jsonb,
     'KRW',
     5000000,
@@ -433,9 +441,12 @@ INSERT INTO disease_code_group (
 -- ========================================
 -- 11. Disease Code Group Members
 -- ========================================
+-- NOTE: group_id is resolved dynamically to ensure determinism
 INSERT INTO disease_code_group_member (group_id, code_id, is_include)
 SELECT
-    1,
+    (SELECT group_id FROM disease_code_group
+     WHERE group_name = '삼성 유사암 (Seed)' AND insurer = 'SAMSUNG'
+     LIMIT 1),
     code_id,
     true
 FROM disease_code_master
@@ -444,6 +455,7 @@ WHERE kcd_code IN ('C73', 'C44', 'D05', 'D09', 'D37', 'D48');
 -- ========================================
 -- 12. Coverage Disease Scope (Policy evidence)
 -- ========================================
+-- NOTE: group_id is resolved dynamically to ensure determinism
 INSERT INTO coverage_disease_scope (
     coverage_code,
     insurer,
@@ -451,14 +463,16 @@ INSERT INTO coverage_disease_scope (
     exclude_group_id,
     evidence_page,
     evidence_span_text
-) VALUES (
+)
+SELECT
     'CA_DIAG_SIMILAR',
     'SAMSUNG',
-    1,
+    (SELECT group_id FROM disease_code_group
+     WHERE group_name = '삼성 유사암 (Seed)' AND insurer = 'SAMSUNG'
+     LIMIT 1),
     NULL,
     10,
-    '유사암: 갑상선암(C73), 피부암(C44), 제자리암(D05-D09), 경계성종양(D37-D48)'
-);
+    '유사암: 갑상선암(C73), 피부암(C44), 제자리암(D05-D09), 경계성종양(D37-D48)';
 
 -- ========================================
 -- Verification Queries
