@@ -211,9 +211,15 @@ class TestConfirmFunctionProhibition:
 
     def test_no_confirm_in_pipeline_modules(self):
         """
-        CONSTITUTIONAL TEST: Pipeline modules must NOT reference confirm.
+        CONSTITUTIONAL TEST: Pipeline modules must NOT call confirm function.
 
-        Future pipeline orchestrator (pipeline.py) must NOT call confirm function.
+        This test is more lenient than test_no_python_code_calls_confirm_function:
+        - Allows "confirm" in comments/docstrings/string literals
+        - Only fails on actual function calls or method definitions
+        - Scans ingest_llm modules + future orchestrator.py
+
+        Rationale: Pipeline orchestration code may document the prohibition
+        but must NEVER call confirm_candidate_to_entity().
         """
         # Check existing modules
         ingest_llm_dir = self.PROJECT_ROOT / "apps" / "api" / "app" / "ingest_llm"
@@ -223,13 +229,19 @@ class TestConfirmFunctionProhibition:
 
         python_files = list(ingest_llm_dir.glob("*.py"))
 
-        # Also check if pipeline.py exists (future module)
-        pipeline_file = ingest_llm_dir / "pipeline.py"
-        if pipeline_file.exists():
-            python_files.append(pipeline_file)
+        # Also check orchestrator.py (future module)
+        orchestrator_file = ingest_llm_dir / "orchestrator.py"
+        if orchestrator_file.exists():
+            python_files.append(orchestrator_file)
 
         violations = []
-        confirm_pattern = re.compile(r"confirm", re.IGNORECASE)
+        # More specific pattern: function calls or method definitions only
+        forbidden_patterns = [
+            (r"confirm_candidate_to_entity\s*\(", "function call"),
+            (r"\.confirm_candidate_to_entity", "method call"),
+            (r"def\s+confirm_candidate", "method definition"),
+            (r"def\s+.*_confirm\s*\(", "confirm method definition"),
+        ]
 
         for py_file in python_files:
             # Skip __init__.py
@@ -237,34 +249,36 @@ class TestConfirmFunctionProhibition:
                 continue
 
             content = py_file.read_text(encoding='utf-8')
-
-            # Check for ANY mention of "confirm" (case-insensitive)
-            # Allowed only in comments/docstrings explaining prohibition
             lines = content.split('\n')
-            for i, line in enumerate(lines, 1):
-                # Skip comments and docstrings (allowed for documentation)
-                stripped = line.strip()
-                if stripped.startswith('#') or stripped.startswith('"""') or stripped.startswith("'''"):
-                    continue
 
-                # Check for confirm in actual code
-                if confirm_pattern.search(line):
-                    # Verify it's not in a string literal (allowed for error messages)
-                    if ('"""' not in line and "'''" not in line and
-                        '"confirm' not in line.lower() and "'confirm" not in line.lower()):
+            for pattern_str, pattern_desc in forbidden_patterns:
+                pattern = re.compile(pattern_str, re.IGNORECASE)
+                for i, line in enumerate(lines, 1):
+                    stripped = line.strip()
+
+                    # Skip comments and docstrings
+                    if stripped.startswith('#') or stripped.startswith('"""') or stripped.startswith("'''"):
+                        continue
+
+                    # Skip string literals
+                    if '"""' in line or "'''" in line:
+                        continue
+
+                    if pattern.search(line):
                         violations.append({
                             "file": py_file.name,
                             "line": i,
-                            "content": stripped
+                            "content": stripped,
+                            "pattern": pattern_desc
                         })
 
         if violations:
-            error_msg = "\n\n⚠️  WARNING: Pipeline modules reference 'confirm'\n\n"
-            error_msg += "Pipeline code should NOT reference confirm function.\n"
-            error_msg += "References found:\n"
+            error_msg = "\n\n❌ CONSTITUTIONAL VIOLATION: Pipeline modules call confirm function\n\n"
+            error_msg += "Pipeline code must NOT call confirm_candidate_to_entity().\n"
+            error_msg += "Confirm is MANUAL-ONLY (admin CLI/script).\n\n"
+            error_msg += "Violations found:\n"
             for v in violations:
-                error_msg += f"  - {v['file']}:{v['line']}\n"
+                error_msg += f"  - {v['file']}:{v['line']} ({v['pattern']})\n"
                 error_msg += f"    > {v['content']}\n"
 
-            # This is a warning, not a hard failure (comments/docs might mention it)
-            pytest.skip(error_msg)
+            pytest.fail(error_msg)
