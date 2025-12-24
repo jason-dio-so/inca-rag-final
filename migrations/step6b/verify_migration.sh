@@ -9,6 +9,7 @@ DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5433}
 DB_NAME=${DB_NAME:-inca_rag_final}
 DB_USER=${DB_USER:-postgres}
+export PGPASSWORD=${DB_PASSWORD:-postgres}
 
 echo "==================================================================="
 echo "STEP 6-B Phase 1 Migration Verification"
