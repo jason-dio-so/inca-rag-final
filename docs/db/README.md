@@ -244,6 +244,47 @@ env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
 - ❌ Removing debug fields
 - ❌ Changing evidence order
 
+### STEP 21: Golden Change Approval Protocol (2025-12-25)
+
+- **Purpose**: Enforce governance for all golden snapshot changes
+- **Policy**: Golden snapshots = API runtime contract (not test artifacts)
+- **Document**: `docs/contracts/CHANGELOG.md` (contract change log)
+
+**Approval Protocol**:
+1. Modify golden snapshot(s) as needed
+2. Add entry to `docs/contracts/CHANGELOG.md` (latest on top)
+3. Commit both changes together
+4. CI verifies CHANGELOG was updated
+5. PR reviewer approves contract change
+6. Merge after all CI gates pass
+
+**CI Gate (STEP 21)**:
+```
+Golden changed + CHANGELOG unchanged → CI FAIL
+Golden changed + CHANGELOG changed → CI PASS
+No golden changes → CI PASS (skip)
+```
+
+**CHANGELOG Entry Requirements**:
+- Date (YYYY-MM-DD)
+- STEP number
+- Change type: FORMAT_ONLY / CONTRACT_CHANGE / BUGFIX_CONTRACT_CHANGE
+- Affected scenarios (A/B/C)
+- Reason (2-3 lines minimum)
+- Approver/Author
+
+**Change Type Definitions**:
+- **FORMAT_ONLY**: Formatting only, no semantic change
+- **CONTRACT_CHANGE**: Intentional API contract modification
+- **BUGFIX_CONTRACT_CHANGE**: Contract change due to bug fix
+
+**Prohibited Operations (STEP 21)**:
+- ❌ Golden changes without CHANGELOG update
+- ❌ Auto-regenerating snapshots (scripts/tests)
+- ❌ "Format-only" changes without approval record
+
+**Traceability Goal**: Answer "why did the contract change?" in <1 minute
+
 ### STEP 18: CI Contract Guard (GitHub Actions) (2025-12-25)
 
 - **Purpose**: Enforce Compare API runtime contracts at CI level

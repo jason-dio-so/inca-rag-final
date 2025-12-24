@@ -1083,6 +1083,91 @@ Strengthen runtime contract enforcement by making golden snapshot format violati
 
 ---
 
+### ✅ STEP 21: Golden Change Approval Protocol (Runtime Contract Governance)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Enforce governance for golden snapshot changes to prevent unauthorized runtime contract modifications.
+
+**Deliverables:**
+- `docs/contracts/CHANGELOG.md` - Contract change tracking document
+- CI gate enforcing approval process
+- Golden snapshot change policy documentation
+
+**Core Principle:**
+- Golden snapshots = API runtime contract (not test artifacts)
+- All changes require explicit approval and documentation
+- "Why did this change?" must be answerable in <1 minute
+
+**Approval Protocol:**
+1. Modify golden snapshot(s) as needed
+2. Add entry to `docs/contracts/CHANGELOG.md` (latest on top)
+3. Commit both changes together
+4. CI verifies CHANGELOG was updated
+5. PR reviewer approves contract change
+6. Merge after all CI gates pass
+
+**CI Gate Logic:**
+- Detects changes to `tests/snapshots/compare/*.golden.json`
+- If golden changed + CHANGELOG unchanged → CI FAIL
+- If golden changed + CHANGELOG changed → CI PASS (proceed to other gates)
+- If no golden changes → CI PASS (skip gate)
+
+**CHANGELOG Format Requirements:**
+- Date (YYYY-MM-DD)
+- STEP number
+- Change type: FORMAT_ONLY / CONTRACT_CHANGE / BUGFIX_CONTRACT_CHANGE
+- Affected scenarios (A/B/C)
+- Reason for change (2-3 lines minimum)
+- Approver/Author
+
+**Change Type Definitions:**
+- **FORMAT_ONLY**: Formatting/whitespace only, no semantic change
+- **CONTRACT_CHANGE**: Intentional API contract modification
+- **BUGFIX_CONTRACT_CHANGE**: Contract change due to bug fix
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 8/8 PASS ✅
+- CI gate logic: IMPLEMENTED ✅
+
+**Constitutional Guarantees:**
+- ✅ Golden snapshot = runtime contract (governance required)
+- ✅ Unauthorized changes = CI FAIL
+- ✅ All changes tracked in CHANGELOG
+- ✅ 1-minute traceability for contract changes
+
+**Prohibited Operations:**
+- ❌ Auto-regenerating golden snapshots (scripts/tests)
+- ❌ Modifying golden during test execution
+- ❌ Golden changes without CHANGELOG update
+- ❌ "Format-only" changes without approval record
+
+**Historical Context:**
+- STEP 20: Enforced canonical format (regenerated all snapshots with CHANGELOG entry)
+- STEP 21: Enforced approval process for all future changes
+
+**DoD Achieved:**
+- ✅ docs/contracts/CHANGELOG.md created with template
+- ✅ CI gate enforces golden + CHANGELOG pairing
+- ✅ STEP 20 changes documented in CHANGELOG
+- ✅ STEP 14/16 regressions: NONE
+- ✅ Documentation updated (STATUS.md, docs/db/README.md)
+- ✅ Committed and pushed
+
+**Key Files:**
+- `docs/contracts/CHANGELOG.md` (contract change log)
+- `.github/workflows/ci-contract-guard.yml` (approval gate)
+
+**Enforcement Scenarios:**
+- Scenario A: No golden changes → PASS (skip)
+- Scenario B: Golden changed, CHANGELOG unchanged → FAIL (error message)
+- Scenario C: Golden changed, CHANGELOG changed → PASS (proceed)
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96

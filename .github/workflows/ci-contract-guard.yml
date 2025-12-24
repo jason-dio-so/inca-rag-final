@@ -16,6 +16,54 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for diff comparison
+
+      - name: Verify Golden Snapshot Changes Are Approved (STEP 21)
+        run: |
+          echo "Checking if golden snapshot changes have approval documentation..."
+
+          # Determine base ref for comparison
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            echo "PR mode: comparing against ${BASE_REF}"
+          else
+            BASE_REF="HEAD~1"
+            echo "Push mode: comparing against ${BASE_REF}"
+          fi
+
+          # Check for golden snapshot changes
+          GOLDEN_CHANGES=$(git diff --name-only ${BASE_REF}...HEAD | grep '^tests/snapshots/compare/.*\.golden\.json$' || true)
+
+          if [ -n "$GOLDEN_CHANGES" ]; then
+            echo "Golden snapshot changes detected:"
+            echo "$GOLDEN_CHANGES"
+
+            # Check for CHANGELOG update
+            CHANGELOG_CHANGED=$(git diff --name-only ${BASE_REF}...HEAD | grep '^docs/contracts/CHANGELOG\.md$' || true)
+
+            if [ -z "$CHANGELOG_CHANGED" ]; then
+              echo ""
+              echo "ERROR: Golden snapshot changes detected without CHANGELOG approval"
+              echo ""
+              echo "Changed files:"
+              echo "$GOLDEN_CHANGES"
+              echo ""
+              echo "REQUIRED ACTION:"
+              echo "  1. Add entry to docs/contracts/CHANGELOG.md"
+              echo "  2. Include: date, STEP, change type, affected scenarios, reason, approver"
+              echo "  3. Commit CHANGELOG with golden snapshot changes"
+              echo ""
+              echo "This is a STEP 21 contract governance violation."
+              echo "Golden snapshots are API contracts and require explicit approval."
+              exit 1
+            else
+              echo "CHANGELOG update detected ✓"
+              echo "Golden change approval process satisfied"
+            fi
+          else
+            echo "No golden snapshot changes detected ✓"
+          fi
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
