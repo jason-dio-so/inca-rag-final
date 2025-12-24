@@ -15,7 +15,7 @@ from ..db import get_readonly_conn
 from ..queries.compare import (
     get_products_for_compare,
     get_compare_evidence,
-    get_coverage_amount_for_product
+    get_coverage_amount_for_proposal
 )
 from ..services.conditions_summary_service import generate_conditions_summary
 
@@ -78,9 +78,12 @@ async def compare_products(
             # Get coverage amount if coverage_code provided
             coverage_amount = None
             if coverage_code:
-                coverage_amount = get_coverage_amount_for_product(
+                # TODO STEP 7: Update to use Universe Lock (insurer_code, proposal_id)
+                # For now, using product_id as placeholder for proposal_id
+                coverage_amount = get_coverage_amount_for_proposal(
                     conn=conn,
-                    product_id=product_id,
+                    insurer_code="SAMSUNG",  # TODO: Extract from product_id
+                    proposal_id=product_id,  # TODO: Map product_id to proposal_id
                     coverage_code=coverage_code
                 )
 
