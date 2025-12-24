@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-24
-**Current Phase:** STEP 8 Complete (Multi-Insurer Policy Scope + Explainable Comparison)
+**Current Phase:** STEP 9 Complete (Proposal-Based 3-Insurer Comparison)
 
 ---
 
@@ -806,6 +806,151 @@ Generalize Policy Scope Pipeline from single insurer (Samsung MVP) to **3+ insur
 - (Pending) - feat: STEP 8 multi-party overlap detection + explainable reasons
 - (Pending) - test: STEP 8 multi-insurer comparison tests (10 tests, all PASS)
 - (Pending) - docs: STEP 8 complete - STATUS.md update
+
+---
+
+## ✅ STEP 9: 가입설계서 중심 3사 비교 실전 고정
+
+**Status:** COMPLETE
+**Branch:** feature/step7-universe-refactor-policy-scope-v1
+**Base:** STEP 8 (feature/step8-multi-insurer-policy-scope)
+**Date:** 2025-12-24
+
+### Purpose
+
+가입설계서 기준 3사 비교를 E2E로 고정하여 실전 비교 응답 수준까지 완성.
+
+**Constitutional Requirement:**
+- 가입설계서 (Proposal) = 비교 대상 SSOT
+- 약관 (Policy) = Evidence Enrichment only (Universe 확장 금지)
+- 구조화 응답만 허용 (자연어 요약 금지)
+- 판단/추천 문구 완전 제거
+
+### Deliverables
+
+**Design Document:**
+- ✅ `docs/STEP9_proposal_based_comparison.md`
+- ✅ Document hierarchy clarification (가입설계서 → 약관)
+- ✅ "Why 약관을 보지만 약관 중심이 아닌가" explanation
+- ✅ Prohibited phrases list
+- ✅ Comparison response schema specification
+
+**Test Fixtures:**
+- ✅ `tests/fixtures/step9_common_coverage.py`
+- ✅ Common coverage: 일반암진단비 (CANCER_DIAGNOSIS)
+- ✅ 3 insurers: SAMSUNG, MERITZ, DB
+- ✅ Mock policy definitions for testing
+
+**Comparison Response Schema:**
+- ✅ `src/policy_scope/comparison/response.py`
+- ✅ InsurerDiseaseScopeResponse (insurer + disease_scope_norm + evidence)
+- ✅ ComparisonResponse (structured response, no free-form text)
+- ✅ InsurerEvidence (basis_doc_id, basis_page, basis_span)
+- ✅ generate_comparison_response() with prohibited phrase validation
+- ✅ validate_comparison_response() with constitutional enforcement
+
+**E2E Integration Test:**
+- ✅ `tests/integration/test_step9_proposal_based_comparison.py`
+- ✅ 5 test cases (all PASS)
+- ✅ E2E test: 3-insurer proposal-based comparison
+- ✅ Universe Lock validation (policy does not expand universe)
+- ✅ disease_scope_norm group references validation
+- ✅ Prohibited phrases validation
+- ✅ Evidence requirement validation
+
+### Test Results
+
+**Test Suite:** `tests/integration/test_step9_proposal_based_comparison.py`
+
+| Test Case | Status | Description |
+|-----------|--------|-------------|
+| test_step9_three_insurer_proposal_based_comparison | ✅ PASS | E2E 3-insurer comparison with evidence |
+| test_universe_lock_policy_does_not_expand_universe | ✅ PASS | Policy = Evidence Enrichment only |
+| test_disease_scope_norm_is_group_references_not_raw_codes | ✅ PASS | disease_scope_norm uses group IDs |
+| test_prohibited_phrases_validation | ✅ PASS | Blocks value judgments |
+| test_response_requires_evidence_when_disease_scope_norm_exists | ✅ PASS | Evidence required validation |
+
+**Total: 5/5 tests PASS**
+
+### Constitutional Compliance
+
+**Principles Enforced:**
+- ✅ 가입설계서 = 비교 Universe SSOT (NO expansion from policy)
+- ✅ 약관 = Evidence Enrichment only
+- ✅ disease_scope_norm = group references (not raw code arrays)
+- ✅ Evidence required (basis_doc_id, basis_page, basis_span)
+- ✅ Structured response only (no free-form text)
+- ✅ NO prohibited phrases
+- ✅ Single comparison_state (not per-insurer states)
+
+**Prohibited Phrases Blocked:**
+- ❌ "가장 넓은 보장"
+- ❌ "가장 유리함"
+- ❌ "추천합니다"
+- ❌ "더 나은 상품"
+- ✅ Only factual statements allowed
+
+### Validation Checklist
+
+**E2E Test Validation (8/8):**
+1. ✅ Comparison target from proposal_coverage_universe
+2. ✅ Policy documents did NOT expand Universe
+3. ✅ disease_scope_norm is group references
+4. ✅ Missing evidence causes failure
+5. ✅ 3-insurer comparison returns single comparison_state
+6. ✅ Response schema matches specification
+7. ✅ NO prohibited phrases in response
+8. ✅ Evidence references included
+
+### Definition of Done
+
+- ✅ 1 common coverage selected from 3 proposals
+- ✅ Disease scope enrichment completed for 3 insurers
+- ✅ Comparison response generated E2E
+- ✅ Response schema fixed and validated
+- ✅ NO prohibited phrases (validated)
+- ✅ All tests PASS (5/5)
+- ✅ STATUS.md updated
+- ⏳ Committed and pushed to GitHub
+
+### Success Criteria
+
+**Structural Integrity:**
+- ✅ 가입설계서 = 비교 대상 SSOT (no Universe expansion from policy)
+- ✅ 약관 = Evidence Enrichment only
+- ✅ Comparison response is structured (not free-form text)
+
+**Functional Completeness:**
+- ✅ 3-insurer comparison works E2E
+- ✅ Multi-party overlap detection returns single state
+- ✅ Evidence included in all steps
+
+**Constitutional Compliance:**
+- ✅ NO value judgments or recommendations
+- ✅ Only factual differences stated
+- ✅ Prohibited phrases blocked and validated
+
+### Key Files
+
+**Documentation:**
+- `docs/STEP9_proposal_based_comparison.md`
+
+**Test Fixtures:**
+- `tests/fixtures/step9_common_coverage.py`
+
+**Core Modules:**
+- `src/policy_scope/comparison/response.py` (ComparisonResponse schema)
+- `src/policy_scope/comparison/__init__.py` (STEP 9 exports)
+
+**Tests:**
+- `tests/integration/test_step9_proposal_based_comparison.py` (5 tests, all PASS)
+
+### Related Commits
+
+- (Pending) - docs: STEP 9 design document
+- (Pending) - feat: STEP 9 comparison response schema
+- (Pending) - test: STEP 9 E2E integration test (5 tests, all PASS)
+- (Pending) - docs: STEP 9 complete - STATUS.md update
 
 ---
 
