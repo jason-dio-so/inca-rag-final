@@ -193,18 +193,27 @@ pip-compile --output-file=requirements.lock requirements.in
 ### STEP 16: Runtime Contract Freeze (Golden Snapshots) (2025-12-25)
 
 - **Purpose**: Lock Compare API runtime contract to prevent breaking changes
-- **Strategy**: Golden snapshot comparison (deep-equal)
+- **Strategy**: Golden snapshot comparison (semantic equality, deep-equal)
 - **Snapshots**: `tests/snapshots/compare/*.golden.json` (3 scenarios)
 - **Tests**: `tests/e2e/test_step16_runtime_contract_freeze.py` (7 tests)
 
-**Locked Contracts**:
-1. **API Response Structure**: Keys, nesting, types (no changes allowed)
+**Locked Contracts** (STEP 17 clarification):
+1. **API Response Structure**: Keys, nesting, types (no changes allowed), key order (allowed)
 2. **UX Message Codes**: comparison_result, next_action (codes fixed, text flexible)
-3. **Evidence Order**: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
-4. **Debug Fields**: universe_lock_enforced, canonical_code_resolved, raw_name_used
+3. **Evidence Order**: PROPOSAL → POLICY (conditional)
+   - Current API sources: PROPOSAL (always), POLICY (when disease_scope_norm exists)
+   - PRODUCT_SUMMARY/BUSINESS_METHOD not currently in contract
+4. **Debug Fields** (verified from golden snapshots):
+   - canonical_code_resolved
+   - raw_name_used
+   - universe_lock_enforced
 
-**Golden Snapshot Policy**:
+**Golden Snapshot Policy** (STEP 17 clarification):
 ```
+Golden Snapshot은 key-sorted canonical JSON 기준으로
+Runtime Contract를 고정한다.
+Key order는 계약 대상이 아니다.
+
 Compare API는 Golden Snapshot 기반으로
 런타임 응답 계약이 고정되어 있으며,
 모든 변경은 테스트 실패로 감지된다.
