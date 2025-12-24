@@ -190,6 +190,43 @@ pip-compile --output-file=requirements.lock requirements.in
 - Lock changes must be verified with full E2E suite
 - STEP 14-α scenarios must PASS before commit
 
+### STEP 16: Runtime Contract Freeze (Golden Snapshots) (2025-12-25)
+
+- **Purpose**: Lock Compare API runtime contract to prevent breaking changes
+- **Strategy**: Golden snapshot comparison (deep-equal)
+- **Snapshots**: `tests/snapshots/compare/*.golden.json` (3 scenarios)
+- **Tests**: `tests/e2e/test_step16_runtime_contract_freeze.py` (7 tests)
+
+**Locked Contracts**:
+1. **API Response Structure**: Keys, nesting, types (no changes allowed)
+2. **UX Message Codes**: comparison_result, next_action (codes fixed, text flexible)
+3. **Evidence Order**: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
+4. **Debug Fields**: universe_lock_enforced, canonical_code_resolved, raw_name_used
+
+**Golden Snapshot Policy**:
+```
+Compare API는 Golden Snapshot 기반으로
+런타임 응답 계약이 고정되어 있으며,
+모든 변경은 테스트 실패로 감지된다.
+```
+
+**Breaking Change Detection**:
+- Any deviation from golden snapshots → test FAIL
+- Manual approval required for intentional breaking changes
+- Golden snapshots NEVER auto-regenerated
+
+**Test Execution**:
+```bash
+E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+# Expected: 7/7 PASS
+```
+
+**Prohibited Operations**:
+- ❌ Auto-regenerating golden snapshots
+- ❌ Modifying tests to match code changes
+- ❌ Removing debug fields
+- ❌ Changing evidence order
+
 ### erd_current.mermaid
 
 - **Purpose**: Visual representation of database schema

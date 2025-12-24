@@ -1,0 +1,25 @@
+{
+    "comparison_result": "unmapped",
+    "coverage_a": {
+        "amount_value": 1000000,
+        "canonical_coverage_code": null,
+        "coverage_name_raw": "\ub9e4\ud551\uc548\ub41c\ub2f4\ubcf4",
+        "disease_scope_norm": null,
+        "disease_scope_raw": null,
+        "insurer": "KB",
+        "mapping_status": "UNMAPPED",
+        "proposal_id": "PROP_KB_001",
+        "source_confidence": null
+    },
+    "coverage_b": null,
+    "debug": {
+        "canonical_code_resolved": null,
+        "raw_name_used": "\ub9e4\ud551\uc548\ub41c\ub2f4\ubcf4",
+        "universe_lock_enforced": true
+    },
+    "message": "\ub9e4\ud551\uc548\ub41c\ub2f4\ubcf4 is not mapped to canonical coverage code",
+    "next_action": "REQUEST_MORE_INFO",
+    "policy_evidence_a": null,
+    "policy_evidence_b": null,
+    "query": "\ub9e4\ud551\uc548\ub41c\ub2f4\ubcf4"
+}

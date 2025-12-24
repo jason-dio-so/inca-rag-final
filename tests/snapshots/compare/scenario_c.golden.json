@@ -1,0 +1,32 @@
+{
+    "comparison_result": "policy_required",
+    "coverage_a": {
+        "amount_value": 5000000,
+        "canonical_coverage_code": "CA_DIAG_SIMILAR",
+        "coverage_name_raw": "\uc720\uc0ac\uc554\uc9c4\ub2e8\uae08",
+        "disease_scope_norm": {
+            "exclude_group_id": null,
+            "include_group_id": null
+        },
+        "disease_scope_raw": "\uc720\uc0ac\uc554 (\uac11\uc0c1\uc120\uc554, \uc81c\uc790\ub9ac\uc554, \uacbd\uacc4\uc131\uc885\uc591)",
+        "insurer": "SAMSUNG",
+        "mapping_status": "MAPPED",
+        "proposal_id": "PROP_SAMSUNG_001",
+        "source_confidence": "policy_required"
+    },
+    "coverage_b": null,
+    "debug": {
+        "canonical_code_resolved": "CA_DIAG_SIMILAR",
+        "raw_name_used": null,
+        "universe_lock_enforced": true
+    },
+    "message": "Disease scope verification required for \uc720\uc0ac\uc554\uc9c4\ub2e8\uae08",
+    "next_action": "VERIFY_POLICY",
+    "policy_evidence_a": {
+        "group_name": "\uc0bc\uc131 \uc720\uc0ac\uc554 (Seed)",
+        "insurer": "SAMSUNG",
+        "member_count": 6
+    },
+    "policy_evidence_b": null,
+    "query": "\uc720\uc0ac\uc554\uc9c4\ub2e8\uae08"
+}

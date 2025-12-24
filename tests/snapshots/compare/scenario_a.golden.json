@@ -1,0 +1,35 @@
+{
+    "comparison_result": "comparable",
+    "coverage_a": {
+        "amount_value": 50000000,
+        "canonical_coverage_code": "CA_DIAG_GENERAL",
+        "coverage_name_raw": "\uc77c\ubc18\uc554\uc9c4\ub2e8\uae08",
+        "disease_scope_norm": null,
+        "disease_scope_raw": "\uc77c\ubc18\uc554",
+        "insurer": "SAMSUNG",
+        "mapping_status": "MAPPED",
+        "proposal_id": "PROP_SAMSUNG_001",
+        "source_confidence": "proposal_confirmed"
+    },
+    "coverage_b": {
+        "amount_value": 30000000,
+        "canonical_coverage_code": "CA_DIAG_GENERAL",
+        "coverage_name_raw": "\uc554\uc9c4\ub2e8\uae08(\uc77c\ubc18\uc554)",
+        "disease_scope_norm": null,
+        "disease_scope_raw": "\uc77c\ubc18\uc554",
+        "insurer": "MERITZ",
+        "mapping_status": "MAPPED",
+        "proposal_id": "PROP_MERITZ_001",
+        "source_confidence": "proposal_confirmed"
+    },
+    "debug": {
+        "canonical_code_resolved": "CA_DIAG_GENERAL",
+        "raw_name_used": null,
+        "universe_lock_enforced": true
+    },
+    "message": "Both insurers have CA_DIAG_GENERAL",
+    "next_action": "COMPARE",
+    "policy_evidence_a": null,
+    "policy_evidence_b": null,
+    "query": "\uc77c\ubc18\uc554\uc9c4\ub2e8\ube44"
+}

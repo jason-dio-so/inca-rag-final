@@ -741,6 +741,87 @@ Lock all API dependencies with pip-tools to ensure reproducibility across Docker
 
 ---
 
+### ✅ STEP 16: Runtime Contract Freeze (Golden Snapshots)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Freeze Compare API runtime contract with golden snapshots to prevent breaking changes across refactorings, dependency updates, and developer changes.
+
+**Deliverables:**
+- `tests/snapshots/compare/scenario_a.golden.json` - Normal comparison golden snapshot
+- `tests/snapshots/compare/scenario_b.golden.json` - UNMAPPED coverage golden snapshot
+- `tests/snapshots/compare/scenario_c.golden.json` - Disease scope required golden snapshot
+- `tests/e2e/test_step16_runtime_contract_freeze.py` - Snapshot comparison tests (7 tests)
+
+**Golden Snapshot Strategy:**
+- 3 scenarios from STEP 14 artifacts (A/B/C)
+- Deep-equal comparison against golden snapshots
+- Allowed exceptions: debug.timestamp, debug.execution_time_ms
+- All other changes → FAIL
+
+**Runtime Contract Locks:**
+1. **API Response Structure Lock**
+   - Key additions/deletions → FAIL
+   - Nesting changes → FAIL
+   - Type changes → FAIL
+
+2. **UX Message Code Lock**
+   - Scenario A: comparison_result = "comparable"
+   - Scenario B: comparison_result = "unmapped"
+   - Scenario C: comparison_result = "policy_required"
+   - Text changes allowed, code changes → FAIL
+
+3. **Evidence Source & Order Lock**
+   - Order: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY (conditional)
+   - Order changes → FAIL
+
+4. **Debug Contract Lock**
+   - Required fields: universe_lock_enforced, canonical_code_resolved, raw_name_used
+   - Missing fields → FAIL
+
+**Test Results:**
+- STEP 16 tests: 7/7 PASS ✅
+- STEP 14 regression: 22/22 PASS ✅
+- Total: 29/29 PASS ✅
+
+**Constitutional Principles Enforced:**
+- ✅ API Response = Contract (not documentation)
+- ✅ Proposal = SSOT (all comparisons from proposal universe)
+- ✅ UX Message = code-based contract (not text-based)
+- ✅ Evidence Order = semantic contract
+- ✅ Debug = Developer Contract (no removal/abbreviation)
+
+**Prohibited Operations:**
+- ❌ Golden snapshot auto-regeneration
+- ❌ Modifying tests to match code changes
+- ❌ Skipping snapshot comparison
+- ❌ Debug field removal/abbreviation
+- ❌ Evidence order changes
+
+**DoD Achieved:**
+- ✅ 3 golden snapshots created from STEP 14 artifacts
+- ✅ 7 snapshot comparison tests written
+- ✅ All snapshot tests PASS (7/7)
+- ✅ All regression tests PASS (STEP 14: 22/22)
+- ✅ UX/Evidence/Debug contracts locked
+- ✅ Documentation updated (STATUS.md, docs/db/README.md)
+- ✅ Committed and pushed
+
+**Key Files:**
+- `tests/snapshots/compare/scenario_a.golden.json` (Normal comparison)
+- `tests/snapshots/compare/scenario_b.golden.json` (UNMAPPED)
+- `tests/snapshots/compare/scenario_c.golden.json` (Disease scope required)
+- `tests/e2e/test_step16_runtime_contract_freeze.py` (7 tests)
+
+**Breaking Change Detection:**
+- Any deviation from golden snapshots is detected as test failure
+- Manual approval required for intentional breaking changes
+- Golden snapshots are version-controlled (never auto-regenerated)
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
