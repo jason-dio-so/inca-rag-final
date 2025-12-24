@@ -28,6 +28,8 @@ If there is ANY discrepancy between documents and migration SQL, **migration SQL
 |------|---------|--------|
 | **schema_current.sql** | Full canonical schema (all tables, indexes, constraints) | ✅ CANONICAL |
 | **erd_current.mermaid** | Entity-Relationship Diagram (1:1 with schema_current.sql) | ✅ CANONICAL |
+| **schema_inventory.md** | Table classification by architectural status (ACTIVE/ARCHIVED) | ✅ INVENTORY |
+| **table_usage_report.md** | Code usage analysis for each table | ✅ ANALYSIS |
 | **design_decisions.md** | Why certain design choices were made | ✅ REFERENCE |
 
 ### schema_current.sql
@@ -88,16 +90,53 @@ archive/
 
 ---
 
+## 🏗️ Architecture Principle: Proposal-Centered Comparison
+
+### Design Shift (Historical Context)
+
+**Previous Design (Archived)**:
+- 약관/상품 중심 비교 (Product-centered comparison)
+- `product_coverage` table as primary comparison axis
+- Assumed "모든 상품을 대상으로 담보 비교"
+
+**Current Design (STEP 6-C)**:
+- **가입설계서 담보 중심 비교 (Proposal Universe Lock)**
+- `proposal_coverage_universe` as **comparison SSOT**
+- Universe Lock principle: "Only coverages in enrollment proposals can be compared"
+
+### Role Clarification
+
+| Entity | Previous Role | Current Role |
+|--------|---------------|--------------|
+| **product** | Primary comparison axis | **Context Axis ONLY** |
+| **policy/terms** | Comparison source | **Evidence source for enrichment** |
+| **proposal** | N/A | **Comparison SSOT (Universe Lock)** |
+
+**Key Insight**: Products provide context (insurer, document grouping), but comparisons happen at **proposal coverage** level.
+
+---
+
 ## 🔐 Constitutional Principles (ENFORCED)
 
 These principles from CLAUDE.md are **enforced at the database level**:
 
-### 1. Coverage Universe Lock
+### 1. Coverage Universe Lock ⭐ **CORE PRINCIPLE**
 - **Principle**: Only coverages in enrollment proposals (`proposal_coverage_universe`) can be compared
 - **Enforcement**:
-  - All comparisons MUST check universe existence
+  - All comparisons MUST check universe existence first
   - Out-of-universe queries return `out_of_universe` status
+  - No product-centered comparison allowed
 - **Tables**: `proposal_coverage_universe`, `proposal_coverage_mapped`, `proposal_coverage_slots`
+- **Comparison Flow**:
+  ```
+  1. proposal_coverage_universe (설계서 담보 원본)
+     ↓
+  2. proposal_coverage_mapped (Excel 기반 매핑)
+     ↓
+  3. proposal_coverage_slots (Slot Schema v1.1.1)
+     ↓
+  4. 5-State Comparison System
+  ```
 
 ### 2. Canonical Coverage Code (READ-ONLY)
 - **Principle**: `coverage_standard` is single source of truth, no auto-INSERT allowed
@@ -182,6 +221,23 @@ psql inca_rag_final -c "\d proposal_coverage_mapped"
 ---
 
 ## 📋 Table Summary (STEP 6-C Baseline)
+
+### Comparison Architecture Summary
+
+**Primary Comparison Axis**: `proposal_coverage_universe` → `proposal_coverage_mapped` → `proposal_coverage_slots`
+
+**Context Axis**: `insurer`, `product`, `document` (provide metadata, NOT comparison dimension)
+
+**Evidence Enrichment**: `chunk`, `chunk_entity`, `amount_entity`, policy documents (약관)
+
+**5-State Comparison System**:
+1. `comparable` - All critical slots match
+2. `comparable_with_gaps` - Same canonical code, some slots NULL (policy_required)
+3. `non_comparable` - Different canonical codes or incompatible
+4. `unmapped` - Universe에 있으나 Excel 매핑 실패
+5. `out_of_universe` - 가입설계서에 없음 (Universe Lock violation)
+
+---
 
 ### Canonical Layer (6 tables)
 - `insurer` - 보험사 마스터
