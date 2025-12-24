@@ -454,7 +454,148 @@ A: No. Keep for historical reference. They consume minimal space and provide con
 
 ---
 
+## 🚀 STEP 14-α: Docker API E2E - Proposal Universe Compare Endpoint
+
+### Overview
+
+STEP 14-α restores complete HTTP API E2E verification for the `/compare` endpoint based on the Proposal Universe Lock principle. This replaces the deprecated SQL-only verification with a full Docker container-based API test suite.
+
+### Architecture
+
+```
+Docker fresh DB
+  ↓
+schema_universe_lock_minimal.sql
+  ↓
+seed_step13_minimal.sql (deterministic)
+  ↓
+API Container (FastAPI)
+  ↓
+HTTP POST /compare
+  ↓
+JSON Response (scenarios A/B/C)
+  ↓
+20 pytest tests (all PASS)
+```
+
+### Running E2E Tests
+
+**Full E2E Script** (recommended):
+```bash
+bash scripts/step14_api_e2e_docker.sh
+```
+
+This script:
+1. Cleans up previous Docker containers
+2. Starts PostgreSQL container
+3. Applies schema (`docs/db/schema_universe_lock_minimal.sql`)
+4. Applies seed data (`docs/db/seed_step13_minimal.sql`)
+5. Starts API container
+6. Calls HTTP POST /compare for scenarios A/B/C
+7. Saves JSON responses to `artifacts/step14/`
+8. Verifies all scenarios PASS
+
+**pytest E2E Tests**:
+```bash
+python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
+```
+
+20 tests covering:
+- Scenario A: Normal comparison (일반암진단비) - 7 tests
+- Scenario B: UNMAPPED coverage (매핑안된담보) - 5 tests
+- Scenario C: Disease scope required (유사암진단금) - 6 tests
+- Universe Lock principle - 2 tests
+
+### Scenarios
+
+#### Scenario A: Normal Comparison
+
+**Query**: `"일반암진단비"` → `CA_DIAG_GENERAL`
+
+**Expected Response**:
+```json
+{
+  "comparison_result": "comparable",
+  "next_action": "COMPARE",
+  "coverage_a": {
+    "insurer": "SAMSUNG",
+    "canonical_coverage_code": "CA_DIAG_GENERAL",
+    "mapping_status": "MAPPED",
+    "amount_value": 50000000
+  },
+  "coverage_b": {
+    "insurer": "MERITZ",
+    "canonical_coverage_code": "CA_DIAG_GENERAL",
+    "amount_value": 30000000
+  },
+  "policy_evidence_a": null,
+  "policy_evidence_b": null
+}
+```
+
+#### Scenario B: UNMAPPED Coverage
+
+**Query**: `"매핑안된담보"` → raw name lookup
+
+**Expected Response**:
+```json
+{
+  "comparison_result": "unmapped",
+  "next_action": "REQUEST_MORE_INFO",
+  "coverage_a": {
+    "insurer": "KB",
+    "canonical_coverage_code": null,
+    "mapping_status": "UNMAPPED"
+  },
+  "policy_evidence_a": null
+}
+```
+
+#### Scenario C: Disease Scope Required
+
+**Query**: `"유사암진단금"` → `CA_DIAG_SIMILAR`
+
+**Expected Response**:
+```json
+{
+  "comparison_result": "policy_required",
+  "next_action": "VERIFY_POLICY",
+  "coverage_a": {
+    "insurer": "SAMSUNG",
+    "canonical_coverage_code": "CA_DIAG_SIMILAR",
+    "disease_scope_norm": {"include_group_id": null, "exclude_group_id": null},
+    "source_confidence": "policy_required"
+  },
+  "policy_evidence_a": {
+    "group_name": "삼성 유사암 (Seed)",
+    "member_count": 6
+  }
+}
+```
+
+### Constitutional Compliance
+
+- ✅ **Universe Lock**: Only `proposal_coverage_universe` queried
+- ✅ **Deterministic query resolution**: NO LLM (exact keyword match only)
+- ✅ **Excel-based mapping**: NO inference
+- ✅ **Evidence order**: PROPOSAL → POLICY (when disease_scope_norm present)
+- ✅ **UX Message Contract**: comparison_result + next_action
+
+### Key Files
+
+- `docker-compose.step14.yml` - Docker services (postgres + api)
+- `Dockerfile.api` - API container definition
+- `apps/api/app/routers/compare.py` - Refactored /compare endpoint
+- `apps/api/app/queries/compare.py` - Proposal coverage queries
+- `apps/api/app/schemas/compare.py` - Request/response schemas
+- `scripts/step14_api_e2e_docker.sh` - E2E verification script
+- `tests/e2e/test_step14_api_compare_e2e.py` - 20 HTTP API tests
+- `artifacts/step14/*.json` - Scenario response files
+
+---
+
 **Last Updated**: 2025-12-25
 **Baseline**: STEP 6-C (Proposal Universe Lock v1)
 **Migration Version**: `migrations/step6c/001_proposal_universe_lock.sql`
 **Seed Data**: STEP 13-β (Deterministic seed with dynamic group_id resolution)
+**API E2E**: STEP 14-α (Docker HTTP /compare endpoint verification)

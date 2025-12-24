@@ -158,3 +158,102 @@ def get_coverage_amount_for_proposal(
     if rows:
         return rows[0].get("amount_value")
     return None
+
+
+# STEP 14-α: Proposal Universe-based comparison queries
+
+PROPOSAL_COVERAGE_LOOKUP_SQL = """
+SELECT
+    u.id AS universe_id,
+    u.insurer,
+    u.proposal_id,
+    u.coverage_name_raw,
+    u.amount_value,
+    m.id AS mapped_id,
+    m.canonical_coverage_code,
+    m.mapping_status,
+    s.disease_scope_raw,
+    s.disease_scope_norm,
+    s.source_confidence
+FROM proposal_coverage_universe u
+LEFT JOIN proposal_coverage_mapped m ON m.universe_id = u.id
+LEFT JOIN proposal_coverage_slots s ON s.mapped_id = m.id
+WHERE u.insurer = %(insurer)s
+  AND (
+    m.canonical_coverage_code = %(canonical_code)s
+    OR u.coverage_name_raw = %(raw_name)s
+  )
+LIMIT 1;
+"""
+
+
+def get_proposal_coverage(
+    conn: PGConnection,
+    insurer: str,
+    canonical_code: Optional[str] = None,
+    raw_name: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Get coverage from proposal universe by canonical code or raw name.
+
+    Args:
+        conn: Database connection
+        insurer: Insurer name (e.g., 'SAMSUNG', 'MERITZ', 'KB')
+        canonical_code: Canonical coverage code (e.g., 'CA_DIAG_GENERAL')
+        raw_name: Raw coverage name from proposal (e.g., '매핑안된담보')
+
+    Returns:
+        Coverage dict or None if not in universe
+    """
+    params = {
+        "insurer": insurer,
+        "canonical_code": canonical_code,
+        "raw_name": raw_name
+    }
+
+    rows = execute_readonly_query(conn, PROPOSAL_COVERAGE_LOOKUP_SQL, params)
+    if rows:
+        return rows[0]
+    return None
+
+
+DISEASE_CODE_GROUP_SQL = """
+SELECT
+    g.group_id,
+    g.group_name,
+    g.insurer,
+    COUNT(m.code_id) AS member_count
+FROM disease_code_group g
+LEFT JOIN disease_code_group_member m ON m.group_id = g.group_id
+WHERE g.insurer = %(insurer)s
+  AND g.group_name LIKE %(group_name_pattern)s
+GROUP BY g.group_id, g.group_name, g.insurer
+LIMIT 1;
+"""
+
+
+def get_disease_code_group(
+    conn: PGConnection,
+    insurer: str,
+    group_name_pattern: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get disease code group for policy evidence.
+
+    Args:
+        conn: Database connection
+        insurer: Insurer name
+        group_name_pattern: SQL LIKE pattern (e.g., '%유사암%')
+
+    Returns:
+        Group dict or None
+    """
+    params = {
+        "insurer": insurer,
+        "group_name_pattern": group_name_pattern
+    }
+
+    rows = execute_readonly_query(conn, DISEASE_CODE_GROUP_SQL, params)
+    if rows:
+        return rows[0]
+    return None

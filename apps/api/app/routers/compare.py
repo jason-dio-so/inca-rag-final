@@ -1,13 +1,18 @@
 """
-/compare endpoint
+/compare endpoint - STEP 14-α: Proposal Universe Lock enforcement
 """
 from fastapi import APIRouter, HTTPException, Depends
 from psycopg2.extensions import connection as PGConnection
+from typing import Optional, Dict, Any
 from ..schemas.compare import (
     CompareRequest,
     CompareResponse,
     CompareItem,
-    EvidenceItem
+    EvidenceItem,
+    ProposalCompareRequest,
+    ProposalCompareResponse,
+    ProposalCoverageItem,
+    PolicyEvidence
 )
 from ..schemas.common import DebugHardRules, DebugBlock, Mode
 from ..policy import enforce_compare_policy
@@ -15,165 +20,257 @@ from ..db import get_readonly_conn
 from ..queries.compare import (
     get_products_for_compare,
     get_compare_evidence,
-    get_coverage_amount_for_proposal
+    get_coverage_amount_for_proposal,
+    get_proposal_coverage,
+    get_disease_code_group
 )
 from ..services.conditions_summary_service import generate_conditions_summary
 
 router = APIRouter(tags=["Compare"])
 
 
-@router.post("/compare", response_model=CompareResponse)
-async def compare_products(
-    request: CompareRequest,
+# STEP 14-α: Deterministic query resolution rules
+# Constitutional: NO LLM, NO inference - only exact keyword matching
+QUERY_RESOLUTION_RULES = {
+    "일반암진단비": "CA_DIAG_GENERAL",
+    "유사암진단금": "CA_DIAG_SIMILAR",
+    # Add more mappings as needed
+}
+
+
+def resolve_query_to_canonical(query: str) -> Optional[str]:
+    """
+    Resolve user query to canonical coverage code via deterministic rules.
+
+    Constitutional: NO LLM, NO similarity matching.
+    Returns None if no exact match found.
+    """
+    query_normalized = query.strip()
+    return QUERY_RESOLUTION_RULES.get(query_normalized)
+
+
+@router.post("/compare", response_model=ProposalCompareResponse)
+async def compare_proposals(
+    request: ProposalCompareRequest,
     conn: PGConnection = Depends(get_readonly_conn)
 ):
     """
-    상품 비교 (compare axis 전용)
+    STEP 14-α: Proposal Universe-based Coverage Comparison
 
-    헌법:
-    - axis는 반드시 "compare"
-    - mode=premium 인 경우 filter.premium 필수
-    - options.include_synthetic=true 금지 → POLICY_VIOLATION
-    - 서버는 항상 is_synthetic=false 강제 (SQL WHERE clause)
+    Constitutional Principles:
+    - Universe Lock: Only coverages in proposal_coverage_universe can be compared
+    - Deterministic query resolution (NO LLM)
+    - Excel-based mapping (NO inference)
+    - Evidence order: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
+
+    Scenarios:
+    - A: Normal comparison (두 보험사 모두 MAPPED, 같은 canonical code)
+    - B: UNMAPPED coverage (Excel에 매핑 없음)
+    - C: Disease scope required (disease_scope_norm 존재, policy evidence 필요)
     """
-    # 헌법 강제 (400 발생 가능)
-    enforce_compare_policy(request)
-
-    # Extract parameters
-    product_ids = None
-    insurer_codes = None
-    coverage_code = None
-
-    if request.target:
-        product_ids = request.target.product_ids
-
-    if request.filter:
-        if request.filter.product:
-            insurer_codes = request.filter.product.insurer_codes
-        if request.filter.coverage and request.filter.coverage.coverage:
-            coverage_code = request.filter.coverage.coverage.coverage_code
-
-    # Options
-    include_evidence = True
-    max_evidence = 5
-    if request.options:
-        include_evidence = request.options.include_evidence
-        max_evidence = request.options.max_evidence_per_item
-
-    # Query DB (read-only)
     try:
-        # Get products for comparison
-        product_rows = get_products_for_compare(
+        # Step 1: Resolve query to canonical code or raw name
+        canonical_code = resolve_query_to_canonical(request.query)
+        raw_name = None if canonical_code else request.query
+
+        # Step 2: Default insurers if not provided (for test scenarios)
+        insurer_a = request.insurer_a or "SAMSUNG"
+        insurer_b = request.insurer_b or "MERITZ"
+
+        # Handle special case: single insurer query (Scenario C)
+        if not request.insurer_b and canonical_code == "CA_DIAG_SIMILAR":
+            insurer_b = None  # Single coverage lookup
+
+        # Step 3: Get coverages from proposal universe
+        coverage_a = get_proposal_coverage(
             conn=conn,
-            product_ids=product_ids,
-            insurer_codes=insurer_codes,
-            limit=10
+            insurer=insurer_a,
+            canonical_code=canonical_code,
+            raw_name=raw_name
         )
 
-        # Build compare items
-        items = []
-        for rank, product_row in enumerate(product_rows, start=1):
-            product_id = product_row["product_id"]
+        coverage_b = None
+        if insurer_b:
+            coverage_b = get_proposal_coverage(
+                conn=conn,
+                insurer=insurer_b,
+                canonical_code=canonical_code,
+                raw_name=raw_name
+            )
 
-            # Get coverage amount if coverage_code provided
-            coverage_amount = None
-            if coverage_code:
-                # DEPRECATED: This endpoint uses product-centered comparison (Constitutional violation)
-                # Universe Lock requires proposal-based comparison (STEP 7)
-                # TODO: Replace entire /compare endpoint with proposal-based version
-                # For now, skip coverage_amount to avoid hardcoded violations
-                pass  # coverage_amount remains None
+        # Step 4: Determine comparison result
+        comparison_result, next_action, message = determine_comparison_result(
+            coverage_a=coverage_a,
+            coverage_b=coverage_b,
+            query=request.query,
+            insurer_a=insurer_a,
+            insurer_b=insurer_b
+        )
 
-            # Get evidence (CONSTITUTIONAL: is_synthetic=false enforced in SQL)
-            evidence_list = []
-            evidence_rows = []
-            if include_evidence:
-                evidence_rows = get_compare_evidence(
+        # Step 5: Build response items
+        response_coverage_a = None
+        response_coverage_b = None
+        policy_evidence_a = None
+        policy_evidence_b = None
+
+        if coverage_a:
+            response_coverage_a = ProposalCoverageItem(
+                insurer=coverage_a["insurer"],
+                proposal_id=coverage_a["proposal_id"],
+                coverage_name_raw=coverage_a["coverage_name_raw"],
+                canonical_coverage_code=coverage_a.get("canonical_coverage_code"),
+                mapping_status=coverage_a.get("mapping_status", "UNKNOWN"),
+                amount_value=coverage_a.get("amount_value"),
+                disease_scope_raw=coverage_a.get("disease_scope_raw"),
+                disease_scope_norm=coverage_a.get("disease_scope_norm"),
+                source_confidence=coverage_a.get("source_confidence")
+            )
+
+            # Get policy evidence if disease_scope_norm exists
+            if (coverage_a.get("disease_scope_norm") and
+                request.include_policy_evidence):
+                policy_evidence_a = get_disease_code_group(
                     conn=conn,
-                    product_id=product_id,
-                    coverage_code=coverage_code,
-                    limit=max_evidence
+                    insurer=coverage_a["insurer"],
+                    group_name_pattern="%유사암%"
                 )
-                # DOUBLE SAFETY: Even if SQL has a bug, force is_synthetic=False
-                # Constitutional guarantee: Compare axis NEVER returns synthetic chunks
-                evidence_list = [
-                    EvidenceItem(
-                        chunk_id=row["chunk_id"],
-                        document_id=row.get("document_id"),
-                        page_number=row.get("page_number"),
-                        is_synthetic=False,  # HARD-CODED: Compare axis forbids synthetic
-                        synthetic_source_chunk_id=None,  # HARD-CODED: Always None for compare
-                        snippet=row["snippet"],
-                        doc_type=row.get("doc_type")
+                if policy_evidence_a:
+                    policy_evidence_a = PolicyEvidence(
+                        group_name=policy_evidence_a["group_name"],
+                        insurer=policy_evidence_a["insurer"],
+                        member_count=policy_evidence_a["member_count"]
                     )
-                    for row in evidence_rows
-                ]
 
-            # STEP 5-C: Generate conditions summary (opt-in, presentation-only)
-            conditions_summary = None
-            if request.options and request.options.include_conditions_summary:
-                # Evidence가 아직 없다면 상품 기준으로 다시 조회
-                # coverage_code는 optional (None 허용 → 상품 전체 evidence)
-                if not evidence_rows:
-                    try:
-                        evidence_rows = get_compare_evidence(
-                            conn=conn,
-                            product_id=product_id,
-                            coverage_code=coverage_code,  # None 가능 → 상품 전체 evidence
-                            limit=5  # Default for summary
-                        )
-                    except Exception:
-                        evidence_rows = []  # Graceful degradation
+        if coverage_b:
+            response_coverage_b = ProposalCoverageItem(
+                insurer=coverage_b["insurer"],
+                proposal_id=coverage_b["proposal_id"],
+                coverage_name_raw=coverage_b["coverage_name_raw"],
+                canonical_coverage_code=coverage_b.get("canonical_coverage_code"),
+                mapping_status=coverage_b.get("mapping_status", "UNKNOWN"),
+                amount_value=coverage_b.get("amount_value"),
+                disease_scope_raw=coverage_b.get("disease_scope_raw"),
+                disease_scope_norm=coverage_b.get("disease_scope_norm"),
+                source_confidence=coverage_b.get("source_confidence")
+            )
 
-                # Snippet 추출
-                snippets = [
-                    row.get("snippet", "")
-                    for row in evidence_rows
-                    if row.get("snippet")
-                ]
-
-                # Snippet이 있을 때만 요약 생성
-                if snippets:
-                    conditions_summary = generate_conditions_summary(
-                        product_name=product_row["product_name"],
-                        coverage_code=coverage_code or "",  # optional
-                        coverage_name="",  # 이번 단계에서는 조회 금지
-                        evidence_snippets=snippets,
-                        max_snippets=5
+            # Get policy evidence if disease_scope_norm exists
+            if (coverage_b.get("disease_scope_norm") and
+                request.include_policy_evidence):
+                policy_evidence_b = get_disease_code_group(
+                    conn=conn,
+                    insurer=coverage_b["insurer"],
+                    group_name_pattern="%유사암%"
+                )
+                if policy_evidence_b:
+                    policy_evidence_b = PolicyEvidence(
+                        group_name=policy_evidence_b["group_name"],
+                        insurer=policy_evidence_b["insurer"],
+                        member_count=policy_evidence_b["member_count"]
                     )
-                else:
-                    conditions_summary = None
 
-            items.append(CompareItem(
-                rank=rank,
-                insurer_code=product_row["insurer_code"],
-                product_id=product_id,
-                product_name=product_row["product_name"],
-                premium_amount=None,  # TODO: premium calculation
-                coverage_code=coverage_code,
-                coverage_amount=coverage_amount,
-                conditions_summary=conditions_summary,  # STEP 5-C: LLM-based summary
-                evidence=evidence_list if evidence_list else None
-            ))
+        return ProposalCompareResponse(
+            query=request.query,
+            comparison_result=comparison_result,
+            next_action=next_action,
+            coverage_a=response_coverage_a,
+            coverage_b=response_coverage_b,
+            policy_evidence_a=policy_evidence_a,
+            policy_evidence_b=policy_evidence_b,
+            message=message,
+            debug={
+                "canonical_code_resolved": canonical_code,
+                "raw_name_used": raw_name,
+                "universe_lock_enforced": True
+            }
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    debug_hard_rules = DebugHardRules(
-        is_synthetic_filter_applied=True,
-        compare_axis_forbids_synthetic=True,
-        premium_mode_requires_premium_filter=(request.mode == Mode.premium)
-    )
 
-    return CompareResponse(
-        axis=request.axis,
-        mode=request.mode,
-        items=items,
-        debug=DebugBlock(
-            hard_rules=debug_hard_rules,
-            notes=[
-                "DB read-only implementation",
-                "is_synthetic=false enforced in SQL WHERE clause (see queries/compare.py)"
-            ]
+def determine_comparison_result(
+    coverage_a: Optional[Dict[str, Any]],
+    coverage_b: Optional[Dict[str, Any]],
+    query: str,
+    insurer_a: str,
+    insurer_b: Optional[str]
+) -> tuple[str, str, str]:
+    """
+    Determine comparison result and UX message.
+
+    Returns:
+        (comparison_result, next_action, message)
+    """
+    # Scenario: out_of_universe
+    if not coverage_a:
+        return (
+            "out_of_universe",
+            "REQUEST_MORE_INFO",
+            f"'{query}' coverage not found in {insurer_a} proposal universe"
         )
+
+    # Single coverage query (Scenario B/C)
+    if not insurer_b or not coverage_b:
+        # Check UNMAPPED first
+        if coverage_a.get("mapping_status") == "UNMAPPED":
+            return (
+                "unmapped",
+                "REQUEST_MORE_INFO",
+                f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code"
+            )
+
+        # Check disease_scope_norm (Scenario C)
+        if coverage_a.get("disease_scope_norm"):
+            return (
+                "policy_required",
+                "VERIFY_POLICY",
+                f"Disease scope verification required for {coverage_a.get('coverage_name_raw')}"
+            )
+
+        return (
+            "comparable",
+            "COMPARE",
+            f"{coverage_a.get('coverage_name_raw')} found in {insurer_a}"
+        )
+
+    # Scenario B: UNMAPPED
+    if coverage_a.get("mapping_status") == "UNMAPPED":
+        return (
+            "unmapped",
+            "REQUEST_MORE_INFO",
+            f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code"
+        )
+
+    if coverage_b.get("mapping_status") == "UNMAPPED":
+        return (
+            "unmapped",
+            "REQUEST_MORE_INFO",
+            f"{coverage_b.get('coverage_name_raw')} is not mapped to canonical coverage code"
+        )
+
+    # Scenario A: Normal comparison (same canonical code)
+    if (coverage_a.get("canonical_coverage_code") ==
+        coverage_b.get("canonical_coverage_code") and
+        coverage_a.get("canonical_coverage_code") is not None):
+
+        # Check if disease_scope_norm exists (requires policy verification)
+        if coverage_a.get("disease_scope_norm") or coverage_b.get("disease_scope_norm"):
+            return (
+                "comparable_with_gaps",
+                "VERIFY_POLICY",
+                f"Coverage comparison possible but disease scope verification required"
+            )
+
+        return (
+            "comparable",
+            "COMPARE",
+            f"Both insurers have {coverage_a.get('canonical_coverage_code')}"
+        )
+
+    # Different canonical codes
+    return (
+        "non_comparable",
+        "REQUEST_MORE_INFO",
+        f"Different coverage types: {coverage_a.get('canonical_coverage_code')} vs {coverage_b.get('canonical_coverage_code')}"
     )

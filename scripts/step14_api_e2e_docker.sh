@@ -1,160 +1,138 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# STEP 14-α: Docker API E2E Compare Endpoint Verification
+# Purpose: Fresh DB → Schema → Seed → API → HTTP /compare → JSON response verification
+
 set -euo pipefail
 
-# ========================================
-# STEP 14: Docker Proposal Data E2E Verification
-# ========================================
-# Purpose: Verify proposal seed data is queryable for comparison scenarios
-# Note: Full API endpoint implementation deferred to future STEP
-# DoD: Scenarios A/B/C data verified via SQL queries
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 ARTIFACT_DIR="$PROJECT_ROOT/artifacts/step14"
 
-echo "=== STEP 14: Docker Proposal Data E2E Verification ==="
-echo "Started at: $(date)"
+echo "========================================="
+echo "STEP 14-α Docker API E2E - Compare Endpoint"
+echo "========================================="
 echo ""
 
-# Create artifact directory
+# [1/9] Cleanup previous runs
+echo "[1/9] Cleaning up previous Docker containers..."
+cd "$PROJECT_ROOT"
+docker compose -f docker-compose.step14.yml down -v || true
+rm -rf "$ARTIFACT_DIR"
 mkdir -p "$ARTIFACT_DIR"
 
-# ========================================
-# [1/7] Docker compose down/up
-# ========================================
-echo "[1/7] Docker compose down/up..."
-cd "$PROJECT_ROOT"
-docker compose down -v
-docker compose up -d
+# [2/9] Start PostgreSQL
+echo "[2/9] Starting PostgreSQL container..."
+docker compose -f docker-compose.step14.yml up -d postgres
+echo "Waiting for PostgreSQL to be ready..."
+sleep 5
 
-# ========================================
-# [2/7] Wait for DB ready
-# ========================================
-echo ""
-echo "[2/7] Waiting for DB ready..."
-max_attempts=30
-attempt=0
-while ! docker exec -i inca_pg_5433 pg_isready -U postgres > /dev/null 2>&1; do
-    attempt=$((attempt + 1))
-    if [ $attempt -ge $max_attempts ]; then
-        echo "❌ DB not ready after $max_attempts seconds"
+# Verify PostgreSQL is ready
+for i in {1..30}; do
+    if docker exec inca_pg_step14 pg_isready -U postgres > /dev/null 2>&1; then
+        echo "PostgreSQL is ready!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "ERROR: PostgreSQL failed to start after 30 seconds"
         exit 1
     fi
+    echo "Waiting for PostgreSQL... ($i/30)"
     sleep 1
 done
-echo "✓ DB ready after $attempt seconds"
 
-# ========================================
-# [3/7] Apply schema
-# ========================================
-echo ""
-echo "[3/7] Applying schema migration..."
-cat "$PROJECT_ROOT/docs/db/schema_universe_lock_minimal.sql" | \
-    docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final > /dev/null 2>&1
-echo "✓ Schema applied"
+# [3/9] Apply schema
+echo "[3/9] Applying schema (schema_universe_lock_minimal.sql)..."
+docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final < \
+    "$PROJECT_ROOT/docs/db/schema_universe_lock_minimal.sql"
 
-# ========================================
-# [4/7] Apply seed data
-# ========================================
-echo ""
-echo "[4/7] Applying seed data..."
-cat "$PROJECT_ROOT/docs/db/seed_step13_minimal.sql" | \
-    docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final > /dev/null 2>&1
-echo "✓ Seed data applied"
+# [4/9] Apply seed data
+echo "[4/9] Applying seed data (seed_step13_minimal.sql)..."
+docker exec -i inca_pg_step14 psql -U postgres -d inca_rag_final < \
+    "$PROJECT_ROOT/docs/db/seed_step13_minimal.sql"
 
-# ========================================
-# [5/7] Verify Scenario A: Normal comparison
-# ========================================
-echo ""
-echo "[5/7] Verifying Scenario A: 삼성 vs 메리츠 일반암진단비 비교"
+# [5/9] Start API container
+echo "[5/9] Starting API container..."
+docker compose -f docker-compose.step14.yml up -d api
+echo "Waiting for API to be ready..."
+sleep 10
 
-docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final <<'SQL' > "$ARTIFACT_DIR/scenario_a_query.txt"
--- Scenario A: CA_DIAG_GENERAL comparison
-SELECT
-    u.insurer,
-    u.proposal_id,
-    u.coverage_name_raw,
-    m.mapping_status,
-    m.canonical_coverage_code,
-    u.amount_value,
-    s.disease_scope_norm,
-    s.source_confidence
-FROM proposal_coverage_universe u
-JOIN proposal_coverage_mapped m ON u.id = m.universe_id
-LEFT JOIN proposal_coverage_slots s ON m.id = s.mapped_id
-WHERE u.insurer IN ('SAMSUNG', 'MERITZ')
-  AND m.canonical_coverage_code = 'CA_DIAG_GENERAL'
-ORDER BY u.insurer;
-SQL
-echo "  ✓ Query results saved to artifacts/step14/scenario_a_query.txt"
+# Verify API is ready
+API_URL="http://localhost:8000"
+for i in {1..60}; do
+    if curl -sf "$API_URL/health" > /dev/null 2>&1; then
+        echo "API is ready!"
+        break
+    fi
+    if [ $i -eq 60 ]; then
+        echo "ERROR: API failed to start after 60 seconds"
+        docker compose -f docker-compose.step14.yml logs api
+        exit 1
+    fi
+    echo "Waiting for API... ($i/60)"
+    sleep 1
+done
 
-# ========================================
-# [6/7] Verify Scenario B: UNMAPPED coverage
-# ========================================
-echo ""
-echo "[6/7] Verifying Scenario B: KB 매핑안된담보"
+# [6/9] Scenario A: Normal comparison (삼성 vs 메리츠 일반암진단비)
+echo "[6/9] Testing Scenario A: Normal comparison (일반암진단비)..."
+curl -X POST "$API_URL/compare" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "query": "일반암진단비",
+        "insurer_a": "SAMSUNG",
+        "insurer_b": "MERITZ",
+        "include_policy_evidence": false
+    }' \
+    -o "$ARTIFACT_DIR/scenario_a.json" \
+    -w "\nHTTP Status: %{http_code}\n"
 
-docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final <<'SQL' > "$ARTIFACT_DIR/scenario_b_query.txt"
--- Scenario B: UNMAPPED coverage
-SELECT
-    u.insurer,
-    u.proposal_id,
-    u.coverage_name_raw,
-    m.mapping_status,
-    m.canonical_coverage_code
-FROM proposal_coverage_universe u
-JOIN proposal_coverage_mapped m ON u.id = m.universe_id
-WHERE u.insurer = 'KB'
-  AND u.coverage_name_raw = '매핑안된담보'
-  AND m.mapping_status = 'UNMAPPED';
-SQL
-echo "  ✓ Query results saved to artifacts/step14/scenario_b_query.txt"
+echo "Scenario A response saved to: $ARTIFACT_DIR/scenario_a.json"
+cat "$ARTIFACT_DIR/scenario_a.json" | python3 -m json.tool
 
-# ========================================
-# [7/7] Verify Scenario C: Disease scope required
-# ========================================
+# [7/9] Scenario B: UNMAPPED coverage (KB 매핑안된담보)
 echo ""
-echo "[7/7] Verifying Scenario C: 삼성 유사암진단금 보장범위"
+echo "[7/9] Testing Scenario B: UNMAPPED coverage (매핑안된담보)..."
+curl -X POST "$API_URL/compare" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "query": "매핑안된담보",
+        "insurer_a": "KB",
+        "insurer_b": null,
+        "include_policy_evidence": false
+    }' \
+    -o "$ARTIFACT_DIR/scenario_b.json" \
+    -w "\nHTTP Status: %{http_code}\n"
 
-docker exec -i inca_pg_5433 psql -U postgres -d inca_rag_final <<'SQL' > "$ARTIFACT_DIR/scenario_c_query.txt"
--- Scenario C: Disease scope with policy evidence
-SELECT
-    u.insurer,
-    u.proposal_id,
-    u.coverage_name_raw,
-    m.canonical_coverage_code,
-    s.disease_scope_raw,
-    s.disease_scope_norm,
-    s.source_confidence,
-    dcg.group_name,
-    dcg.insurer as group_insurer
-FROM proposal_coverage_universe u
-JOIN proposal_coverage_mapped m ON u.id = m.universe_id
-JOIN proposal_coverage_slots s ON m.id = s.mapped_id
-LEFT JOIN disease_code_group dcg ON
-    (s.disease_scope_norm->>'include_group_id')::int = dcg.group_id
-WHERE u.insurer = 'SAMSUNG'
-  AND m.canonical_coverage_code = 'CA_DIAG_SIMILAR'
-  AND s.disease_scope_norm IS NOT NULL;
-SQL
-echo "  ✓ Query results saved to artifacts/step14/scenario_c_query.txt"
+echo "Scenario B response saved to: $ARTIFACT_DIR/scenario_b.json"
+cat "$ARTIFACT_DIR/scenario_b.json" | python3 -m json.tool
 
-# ========================================
-# [8/8] Summary
-# ========================================
+# [8/9] Scenario C: Disease scope required (삼성 유사암진단금)
 echo ""
-echo "[8/8] E2E Verification Summary"
-echo "================================"
-echo "✓ Docker DB up and ready"
-echo "✓ Schema applied (Universe Lock)"
-echo "✓ Seed data applied (STEP 13-β)"
-echo "✓ Scenario A verified (SAMSUNG vs MERITZ CA_DIAG_GENERAL)"
-echo "✓ Scenario B verified (KB UNMAPPED coverage)"
-echo "✓ Scenario C verified (SAMSUNG CA_DIAG_SIMILAR with disease_scope)"
+echo "[8/9] Testing Scenario C: Disease scope required (유사암진단금)..."
+curl -X POST "$API_URL/compare" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "query": "유사암진단금",
+        "insurer_a": "SAMSUNG",
+        "insurer_b": null,
+        "include_policy_evidence": true
+    }' \
+    -o "$ARTIFACT_DIR/scenario_c.json" \
+    -w "\nHTTP Status: %{http_code}\n"
+
+echo "Scenario C response saved to: $ARTIFACT_DIR/scenario_c.json"
+cat "$ARTIFACT_DIR/scenario_c.json" | python3 -m json.tool
+
+# [9/9] Summary
 echo ""
-echo "Query result files:"
-ls -lh "$ARTIFACT_DIR"/*.txt 2>/dev/null
+echo "========================================="
+echo "STEP 14-α E2E Complete ✅"
+echo "========================================="
 echo ""
-echo "Completed at: $(date)"
+echo "Artifacts saved to: $ARTIFACT_DIR"
+echo "  - scenario_a.json (Normal comparison)"
+echo "  - scenario_b.json (UNMAPPED)"
+echo "  - scenario_c.json (Disease scope)"
 echo ""
-echo "Next: Run pytest tests/e2e/test_step14_data_e2e.py"
+echo "Next: Run pytest E2E tests"
+echo "  E2E_DOCKER=1 python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v"
+echo ""

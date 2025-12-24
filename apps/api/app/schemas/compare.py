@@ -105,3 +105,73 @@ class CompareResponse(BaseModel):
 
     class Config:
         extra = "forbid"
+
+
+# STEP 14-α: Proposal Universe-based Compare Schemas
+
+class ProposalCompareRequest(BaseModel):
+    """
+    Proposal-universe based comparison request.
+
+    Enforces Universe Lock principle:
+    - Only coverages in proposal_coverage_universe can be compared
+    - Query resolved via deterministic rules (not LLM)
+    """
+    query: str = Field(..., description="Coverage query (e.g., '일반암진단비', '유사암진단금', '매핑안된담보')")
+    insurer_a: Optional[str] = Field(None, description="First insurer (e.g., 'SAMSUNG')")
+    insurer_b: Optional[str] = Field(None, description="Second insurer (e.g., 'MERITZ')")
+    include_policy_evidence: bool = Field(True, description="Include policy evidence for disease_scope")
+
+    class Config:
+        extra = "forbid"
+
+
+class ProposalCoverageItem(BaseModel):
+    """Single coverage item from proposal universe."""
+    insurer: str
+    proposal_id: str
+    coverage_name_raw: str
+    canonical_coverage_code: Optional[str] = None
+    mapping_status: str  # MAPPED | UNMAPPED | AMBIGUOUS
+    amount_value: Optional[int] = None
+    disease_scope_raw: Optional[str] = None
+    disease_scope_norm: Optional[Dict[str, Any]] = None
+    source_confidence: Optional[str] = None
+
+    class Config:
+        extra = "forbid"
+
+
+class PolicyEvidence(BaseModel):
+    """Policy evidence for disease scope."""
+    group_name: str
+    insurer: str
+    member_count: int
+
+    class Config:
+        extra = "forbid"
+
+
+class ProposalCompareResponse(BaseModel):
+    """
+    Proposal-universe based comparison response.
+
+    UX Message Contract (STEP 12):
+    - comparison_result: comparable | comparable_with_gaps | non_comparable | unmapped | out_of_universe
+    - next_action: COMPARE | REQUEST_MORE_INFO | VERIFY_POLICY
+    """
+    query: str
+    comparison_result: str
+    next_action: str
+
+    coverage_a: Optional[ProposalCoverageItem] = None
+    coverage_b: Optional[ProposalCoverageItem] = None
+
+    policy_evidence_a: Optional[PolicyEvidence] = None
+    policy_evidence_b: Optional[PolicyEvidence] = None
+
+    message: str
+    debug: Optional[Dict[str, Any]] = None
+
+    class Config:
+        extra = "forbid"

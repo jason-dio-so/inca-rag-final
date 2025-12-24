@@ -560,76 +560,111 @@ Enable Docker environment E2E testing with proposal-based comparison that compli
 
 ---
 
-### ✅ STEP 14: Proposal Data E2E Verification
+### ✅ STEP 14-α: Docker API E2E - Proposal Universe Compare Endpoint
 **Status:** COMPLETE
 **Commit:** [current]
 **Date:** 2025-12-25
 
 **Purpose:**
-Verify proposal seed data supports comparison scenarios (A/B/C) with Universe Lock compliance.
+Restore Docker API E2E verification for /compare endpoint based on Proposal Universe Lock principle.
+Replace deprecated SQL-only verification with complete HTTP API verification.
 
 **Deliverables:**
-- `scripts/step14_api_e2e_docker.sh` - Docker E2E verification script
-- `tests/e2e/test_step14_data_e2e.py` - Data verification tests (13/13 PASS)
-- SQL-based scenario verification (A/B/C)
+- `docker-compose.step14.yml` - Docker Compose with PostgreSQL + API services
+- `Dockerfile.api` - API container definition
+- `apps/api/app/routers/compare.py` - Completely refactored proposal-universe based /compare endpoint
+- `apps/api/app/queries/compare.py` - New proposal coverage queries
+- `apps/api/app/schemas/compare.py` - Proposal compare request/response schemas
+- `scripts/step14_api_e2e_docker.sh` - E2E verification script with HTTP calls
+- `tests/e2e/test_step14_api_compare_e2e.py` - HTTP API verification tests (20/20 PASS)
 
-**Scenarios Verified:**
+**API Endpoint Changes:**
+1. **OLD /compare (DEPRECATED)**: Product-centered comparison (Constitutional violation)
+2. **NEW /compare**: Proposal-universe based comparison (Constitutional compliance)
 
-1. **Scenario A: Normal Comparison (삼성 vs 메리츠 일반암진단비)**
-   - Both insurers: CA_DIAG_GENERAL
-   - mapping_status: MAPPED
-   - Amount values: 50M (SAMSUNG), 30M (MERITZ)
-   - disease_scope_norm: NULL (no policy enrichment needed)
-   - ✅ Comparable
+**New Endpoint Specification:**
+- Request: `ProposalCompareRequest` with query, insurer_a, insurer_b, include_policy_evidence
+- Response: `ProposalCompareResponse` with comparison_result, next_action, coverage details, policy evidence
+- Query resolution: Deterministic rules only (NO LLM)
+- Data source: proposal_coverage_universe ONLY (Universe Lock enforced)
 
-2. **Scenario B: UNMAPPED Coverage (KB 매핑안된담보)**
-   - mapping_status: UNMAPPED
-   - canonical_coverage_code: NULL
-   - Exists in universe but not mapped
-   - ✅ Non-comparable (unmapped)
+**Scenarios Verified (HTTP /compare):**
 
-3. **Scenario C: Disease Scope Required (삼성 유사암진단금)**
-   - CA_DIAG_SIMILAR
-   - disease_scope_norm: NOT NULL
-   - disease_code_group: SAMSUNG 유사암 (Seed)
-   - source_confidence: policy_required
-   - ✅ Policy evidence required
+1. **Scenario A: Normal Comparison (일반암진단비)**
+   - Query: "일반암진단비" → CA_DIAG_GENERAL
+   - Both insurers: SAMSUNG (50M), MERITZ (30M)
+   - Response: comparison_result="comparable", next_action="COMPARE"
+   - ✅ HTTP 200, JSON schema valid, amounts correct
+   - ✅ policy_evidence=null (no disease_scope enrichment)
+
+2. **Scenario B: UNMAPPED Coverage (매핑안된담보)**
+   - Query: "매핑안된담보" → raw name lookup
+   - KB: mapping_status="UNMAPPED"
+   - Response: comparison_result="unmapped", next_action="REQUEST_MORE_INFO"
+   - ✅ HTTP 200, canonical_code=null
+   - ✅ policy_evidence forbidden (UNMAPPED state)
+
+3. **Scenario C: Disease Scope Required (유사암진단금)**
+   - Query: "유사암진단금" → CA_DIAG_SIMILAR
+   - SAMSUNG: disease_scope_norm present
+   - Response: comparison_result="policy_required", next_action="VERIFY_POLICY"
+   - ✅ HTTP 200, disease_scope_norm exists
+   - ✅ policy_evidence included (삼성 유사암 (Seed), 6 members)
 
 **Constitutional Compliance:**
-- ✅ Universe Lock: All comparisons from proposal_coverage_universe
-- ✅ No product_coverage table (product-based comparison prohibited)
-- ✅ Excel-based mapping only (MAPPED/UNMAPPED states)
-- ✅ disease_scope_norm uses group references
+- ✅ Universe Lock: Only proposal_coverage_universe queried
+- ✅ Deterministic query resolution (NO LLM, exact keyword match)
+- ✅ Excel-based mapping (NO inference)
+- ✅ Evidence order: PROPOSAL → POLICY (when disease_scope_norm present)
+- ✅ UX Message Contract (STEP 12): comparison_result + next_action
 
-**Test Results (13/13 PASS):**
-- ✅ Scenario A: 4 tests (insurers exist, MAPPED status, amounts, NULL disease_scope)
-- ✅ Scenario B: 3 tests (universe exists, UNMAPPED status, no slots)
-- ✅ Scenario C: 4 tests (CA_DIAG_SIMILAR, disease_scope_norm, group exists, policy_required)
-- ✅ Universe Lock: 2 tests (all from universe, no product_coverage)
+**Test Results (20/20 PASS):**
+- ✅ Scenario A: 7 tests (HTTP 200, JSON schema, comparable, MAPPED, amounts, no policy evidence)
+- ✅ Scenario B: 5 tests (HTTP 200, unmapped, UNMAPPED status, REQUEST_MORE_INFO, no policy evidence)
+- ✅ Scenario C: 6 tests (HTTP 200, CA_DIAG_SIMILAR, disease_scope_norm, policy evidence, VERIFY_POLICY, policy_required)
+- ✅ Universe Lock: 2 tests (out_of_universe handling, universe_lock_enforced flag)
 
 **Script Execution:**
 ```bash
 bash scripts/step14_api_e2e_docker.sh
-# Output: 3 scenario query result files in artifacts/step14/
+# Output:
+#   - Docker containers: postgres + api
+#   - Schema + Seed applied
+#   - 3 HTTP /compare calls
+#   - 3 JSON response files in artifacts/step14/
+#   - All scenarios PASS
+```
+
+**pytest E2E:**
+```bash
+python -m pytest tests/e2e/test_step14_api_compare_e2e.py -v
+# Output: 20/20 tests PASSED
 ```
 
 **DoD Achieved:**
-- ✅ Docker fresh DB + schema + seed
-- ✅ 3 scenarios verified via SQL queries
-- ✅ All tests PASS (13/13)
-- ✅ Query artifacts generated
+- ✅ Docker Compose with db + api services
+- ✅ /compare endpoint completely refactored to proposal-universe
+- ✅ HTTP /compare calls for scenarios A/B/C
+- ✅ All 20 pytest tests PASS
+- ✅ JSON responses saved and validated
+- ✅ UX Message Contract enforced
+- ✅ Evidence order deterministic
 - ✅ Constitutional principles verified
 - ✅ STATUS.md updated
 - ✅ Ready for commit + push
 
 **Key Files:**
-- `scripts/step14_api_e2e_docker.sh` (E2E verification)
-- `tests/e2e/test_step14_data_e2e.py` (13 tests)
-- `artifacts/step14/scenario_*.txt` (SQL query results)
+- `docker-compose.step14.yml` (db + api services)
+- `Dockerfile.api` (API container)
+- `apps/api/app/routers/compare.py` (refactored endpoint)
+- `apps/api/app/queries/compare.py` (proposal queries)
+- `scripts/step14_api_e2e_docker.sh` (HTTP E2E script)
+- `tests/e2e/test_step14_api_compare_e2e.py` (20 HTTP tests)
+- `artifacts/step14/scenario_*.json` (HTTP responses)
 
-**Note:**
-Full proposal-based API endpoint implementation deferred to future STEP.
-Current verification establishes data foundation for API layer.
+**Previous STEP 14 (SQL-only):**
+Deprecated. Replaced by HTTP API verification.
+Previous SQL-based data verification remains in `tests/e2e/test_step14_data_e2e.py` for reference.
 
 ---
 

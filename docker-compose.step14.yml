@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: inca_pg_step14
+    environment:
+      POSTGRES_DB: inca_rag_final
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_step14_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - inca_network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: inca_api_step14
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: inca_rag_final
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - inca_network
+
+volumes:
+  postgres_step14_data:
+    driver: local
+
+networks:
+  inca_network:
+    driver: bridge
