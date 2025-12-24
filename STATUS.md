@@ -179,56 +179,92 @@ pytest -q                    # 23 passed
 
 ## Next Steps
 
-### STEP 6-A: LLM-Assisted Ingestion/Extraction (Design Only)
-**Status:** IN PROGRESS (DESIGN PHASE)
-**Estimated Completion:** 2025-12-23
+### ✅ STEP 6-A: LLM-Assisted Ingestion/Extraction (Design)
+**Status:** COMPLETE
+**Commit:** 000c309
+**Date:** 2025-12-23
 
-**Scope:**
-- Design document for LLM-assisted ingestion/extraction
-- LLM as candidate generator only (not decision-maker)
-- Candidate→Resolver→Confirmation pipeline
-- Database schema for candidate storage
-- Validation/verification strategy
+**Deliverables:**
+- Design document (`docs/step6/STEP6A_LLM_INGESTION_DESIGN.md`)
+- Flow diagram (`docs/step6/diagrams/step6a_flow.mmd`)
+- Constitutional principles defined
 - Test plan (5+ scenarios)
-- Cost/performance estimation
+- Cost estimation ($50/month operational budget)
+- Interface contracts for implementation
 
-**Constitutional Principles:**
-- ✅ LLM proposes candidates only
+**Constitutional Principles (Enforced):**
+- ✅ LLM proposes candidates only (not decision-maker)
 - ✅ Code-based resolver validates and confirms
 - ✅ coverage_standard auto-INSERT forbidden
 - ✅ All entities use canonical coverage_code
 - ✅ Compare-axis constitution unchanged (STEP 5 preserved)
 
-**Deliverables:**
-- `docs/step6/STEP6A_LLM_INGESTION_DESIGN.md`
-- `docs/step6/diagrams/step6a_flow.mmd`
-- STATUS.md update
-
-**Prerequisites (All Met):**
-- ✅ STEP 5 constitutional enforcement sealed
-- ✅ Entity-based filtering operational (chunk_entity/amount_entity)
-- ✅ Canonical coverage_code enforcement proven
-- ✅ Read-only transactions validated
-
 ---
 
 ### STEP 6-B: LLM-Assisted Ingestion/Extraction (Implementation)
-**Status:** NOT STARTED
-**Estimated Start:** After STEP 6-A design approval
+**Status:** IN PROGRESS - Phase 1 COMPLETE
+**Commits:** c1810d3 (Phase 1)
+**Date:** 2025-12-23
 
-**Planned Features:**
-1. LLM candidate generator (coverage entity extraction)
-2. Coverage name→code resolver (rule-based)
-3. Entity validator (FK/type/duplicate checks)
-4. Candidate storage tables
-5. Metrics/audit logging
-6. Feature flag + configuration
+**Phase 1: Foundation (COMPLETE) ✅**
 
-**Prerequisites:**
-- ✅ STEP 6-A design document approved
-- ⏳ Database candidate tables created
-- ⏳ LLM integration module implemented
-- ⏳ Resolver logic validated
+Delivered Components:
+1. **Database Migration** (`migrations/step6b/001_create_candidate_tables.sql`)
+   - `chunk_entity_candidate` table (LLM proposals)
+   - `amount_entity_candidate` table (amount context hints)
+   - `candidate_metrics` view (monitoring)
+   - `confirm_candidate_to_entity()` function (atomic confirm with FK verification)
+   - Indexes for performance
+   - Constitutional constraints (FK, status checks, uniqueness)
+
+2. **Pydantic Models** (`apps/api/app/ingest_llm/models.py`)
+   - `EntityCandidate` - LLM proposal representation
+   - `LLMCandidateResponse` - API response wrapper
+   - `ResolverResult` - Resolution outcome
+   - `CandidateMetrics` - Performance tracking
+   - Constitutional validation (coverage_code FK, confidence bounds)
+
+3. **Prefilter Module** (`apps/api/app/ingest_llm/prefilter.py`)
+   - Cost optimization (60-70% reduction)
+   - Synthetic chunk rejection (constitutional)
+   - Keyword/pattern-based filtering
+   - Doc type prioritization
+
+4. **Resolver Module** (`apps/api/app/ingest_llm/resolver.py`)
+   - Coverage name → canonical code mapping
+   - Resolution strategy: alias → standard → fuzzy
+   - FK verification (no auto-INSERT into coverage_standard)
+   - Batch processing support
+
+**Test Results:**
+- Contract tests: 8/8 PASS ✅
+- Integration tests: 22/22 PASS ✅
+- Total: 30/30 PASS ✅
+- **No STEP 5 regressions**
+
+**Progress Report:** `docs/validation/STEP6B_PROGRESS_REPORT.md`
+
+---
+
+**Phase 2: Core Pipeline (PENDING) ⏳**
+
+Remaining Components:
+1. Validator module (FK/type/duplicate checks)
+2. Repository layer (candidate storage + confirm transaction)
+3. LLM client wrapper (OpenAI API with batch/retry/rate-limit)
+4. Candidate generator (prompt engineering + JSON parsing)
+5. Metrics module (cost tracking, resolution rate)
+6. Unit tests (resolver/validator/prefilter)
+7. Integration tests (E2E pipeline with LLM ON/OFF)
+8. Configuration (feature flags, model selection)
+
+**Prerequisites for Phase 2:**
+- ✅ STEP 6-A design approved
+- ✅ Database candidate tables created
+- ✅ Resolver logic implemented
+- ✅ STEP 5 regression verified
+- ⏳ LLM API key configuration
+- ⏳ Test data preparation
 
 ---
 
