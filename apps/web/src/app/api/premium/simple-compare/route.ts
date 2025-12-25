@@ -58,19 +58,22 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(10000), // 10s timeout
     });
 
+    // STEP 33-β-1e: Log upstream response meta (success or failure)
+    const responseMeta = {
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
+      url: upstreamResponse.url,
+      contentType: upstreamResponse.headers.get('content-type'),
+      contentLength: upstreamResponse.headers.get('content-length'),
+      server: upstreamResponse.headers.get('server'),
+      date: upstreamResponse.headers.get('date'),
+    };
+
     if (!upstreamResponse.ok) {
-      // STEP 33-β-1c: Capture full upstream error metadata
       const errorBody = await upstreamResponse.text();
 
       console.error('[Premium Simple] Upstream Error Meta:', {
-        status: upstreamResponse.status,
-        statusText: upstreamResponse.statusText,
-        url: upstreamResponse.url,
-        contentType: upstreamResponse.headers.get('content-type'),
-        contentLength: upstreamResponse.headers.get('content-length'),
-        contentEncoding: upstreamResponse.headers.get('content-encoding'),
-        server: upstreamResponse.headers.get('server'),
-        date: upstreamResponse.headers.get('date'),
+        ...responseMeta,
         bodyLen: errorBody.length,
       });
       console.error('[Premium Simple] Upstream Error Body (first 800):', errorBody.slice(0, 800));
@@ -87,6 +90,9 @@ export async function POST(request: NextRequest) {
         { status: upstreamResponse.status }
       );
     }
+
+    // Success case: log meta
+    console.log('[Premium Simple] Upstream OK Meta:', responseMeta);
 
     const upstreamData: UpstreamPremiumResponse = await upstreamResponse.json();
 
