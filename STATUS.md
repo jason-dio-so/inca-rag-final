@@ -1689,6 +1689,150 @@ Introduce `ux_message_code` field in Compare API responses, governed by SSOT reg
 
 ---
 
+### ✅ STEP 27: Frontend/UX Contract Preparation
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Establish Frontend UI Contract layer based on Backend Contract (STEP 14-26). Define deterministic UI states and behaviors to enable frontend development without breaking Backend Contract.
+
+**Problem Statement:**
+- Backend Contract frozen (STEP 14-26) but no frontend UI states defined
+- Customer requirements ambiguous and incomplete
+- Data limitations (inca-RAG-final has minimal seed, not full pipeline)
+- Risk of UI/Backend contract drift
+
+**Solution:**
+Create UI State SSOT that maps Backend Contract states to UI behaviors, with fallback handling and clear separation of contract vs non-contract fields.
+
+**Deliverables:**
+
+**1. UI Contract SSOT Documentation**
+- File: `docs/ui/UI_CONTRACT.md`
+- Defines 4 required UI states + 3 extended states
+- Maps Backend Contract (comparison_result, next_action, ux_message_code) to UI behaviors
+- Documents data incompleteness handling (not errors, but states)
+- Clear separation: Contract fields vs i18n-free text
+
+**Required UI States (DoD)**:
+- `comparable:COMPARE:COVERAGE_MATCH_COMPARABLE` (Scenarios A, D)
+- `unmapped:REQUEST_MORE_INFO:COVERAGE_UNMAPPED` (Scenario B)
+- `policy_required:VERIFY_POLICY:DISEASE_SCOPE_VERIFICATION_REQUIRED` (Scenario C)
+- `out_of_universe:REQUEST_MORE_INFO:COVERAGE_NOT_IN_UNIVERSE` (Scenario E)
+
+**Extended UI States (Future)**:
+- `comparable_with_gaps:VERIFY_POLICY:COVERAGE_COMPARABLE_WITH_GAPS`
+- `non_comparable:REQUEST_MORE_INFO:COVERAGE_TYPE_MISMATCH`
+- `comparable:COMPARE:COVERAGE_FOUND_SINGLE_INSURER`
+
+**2. Frontend UI State Map (TypeScript)**
+- File: `apps/web/src/contracts/uiStateMap.ts`
+- Exports: `UI_STATE_MAP`, `FALLBACK_STATE`, helper functions
+- Total states: 7 (4 required + 3 extended)
+- State key format: `{comparison_result}:{next_action}:{ux_message_code}`
+- Fallback handling: Unknown states → `UnknownState` view (no errors)
+
+**UI State Config Fields**:
+- **Contract** (immutable): `view`, `primaryCta`, `severity`, `requiresInput`, `displayConfig`
+- **Non-Contract** (i18n free): `title`, `description`
+
+**3. UI Contract Drift Prevention Tests**
+- File: `tests/ui/test_step27_ui_contract_drift.py`
+- Total tests: 11/11 PASS ✅
+- Coverage:
+  1. UI State Map file exists
+  2. Required states present (4/4)
+  3. All golden snapshot states covered
+  4. Fallback state defined
+  5. State key format enforcement
+  6. Resolution never throws errors
+  7. Contract vs non-contract field separation
+  8. Minimum state count (≥4)
+  9. No duplicate state keys
+  10. TypeScript exports present
+  11. UI Contract documentation exists
+
+**4. Customer Requirements Mapping**
+- File: `docs/ui/REQUIREMENTS_MAPPING.md`
+- Analysis of customer requirements in context of inca-RAG-final scope
+- Classification:
+  - ✅ Fulfilled: 5 requirements (45%)
+  - 🟡 Partially Fulfilled: 3 requirements (27%)
+  - 🔴 Out of Scope: 3 requirements (27% - data/pipeline dependencies)
+  - 🟢 Decision Required: 3 requirements (ambiguous/conflicting)
+
+**Fulfilled Requirements**:
+1. 담보 비교 (Coverage Comparison)
+2. 매핑 실패 안내 (Unmapped Coverage)
+3. 약관 확인 필요 안내 (Policy Verification)
+4. Universe 외부 처리 (Out of Universe)
+5. 금액 비교 (Amount Comparison)
+
+**Partially Fulfilled**:
+1. 질병 범위 상세 비교 (Disease Scope Detail) - Frontend component needed
+2. 다중 보험사 비교 (Multi-insurer) - Backend supports 2 only
+3. 약관 원문 보기 (Policy Document Viewer) - Document storage not in repo
+
+**Out of Scope (inca-rag dependency)**:
+1. 모든 보험사 커버 (All Insurers) - Full data in inca-rag
+2. 전체 담보 목록 (Full Coverage List) - Proposal extraction pipeline
+3. 약관 자동 분석 (Auto Policy Analysis) - LLM extraction pipeline
+
+**Test Results:**
+- STEP 27: 11/11 PASS ✅
+- All previous tests: UNCHANGED ✅
+- Total test count: 52 tests (STEP 14-27)
+
+**Constitutional Guarantees:**
+- ✅ Backend Contract immutable (STEP 14-26 frozen)
+- ✅ UI adapts to Backend Contract (not vice versa)
+- ✅ State keys deterministic (3-tuple from Backend)
+- ✅ Fallback handling (unknown states → graceful degradation)
+- ✅ Contract vs non-contract separation (i18n free text)
+- ✅ Drift prevention (tests enforce coverage)
+
+**Prohibited Operations:**
+- ❌ Changing Backend Contract for UI convenience
+- ❌ Treating UI text as contract
+- ❌ Throwing errors for unknown states
+- ❌ Assuming inca-rag data exists
+
+**Data Handling Principles:**
+- Missing insurer data → `out_of_universe` state (NOT error)
+- Missing policy document → "데이터 준비 중" label (NOT error)
+- Non-comparable coverage → UI state with clear message (NOT error)
+
+**DoD Achieved:**
+- ✅ UI Contract SSOT documentation created
+- ✅ Frontend UI State Map implemented (TypeScript)
+- ✅ UI Contract Drift Prevention Tests (11/11 PASS)
+- ✅ Customer requirements mapped and classified
+- ✅ All required UI states defined (4/4)
+- ✅ Fallback state implemented
+- ✅ STATUS.md updated
+- ✅ No Backend Contract changes
+
+**Key Files:**
+- `docs/ui/UI_CONTRACT.md` (SSOT documentation)
+- `docs/ui/REQUIREMENTS_MAPPING.md` (customer requirements analysis)
+- `apps/web/src/contracts/uiStateMap.ts` (TypeScript state map)
+- `tests/ui/test_step27_ui_contract_drift.py` (11 tests)
+
+**Next Phase (Not in STEP 27 scope):**
+1. Build React components for each view type
+2. Implement API integration layer
+3. Add policy evidence viewer component
+4. Integrate with inca-rag data pipeline (future)
+
+**Design Principle:**
+- Backend defines contract, Frontend adapts
+- States = contract, Text = UX freedom
+- Unknown states = graceful degradation
+- Data absence ≠ system error
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
