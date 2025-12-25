@@ -25,8 +25,77 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP 3.10-β: UNMAPPED Cause-Effect Analysis
+### ✅ STEP 3.10-γ: Excel Backlog Generator
 **Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- Excel 보강 작업 목록 생성 (UNMAPPED → Backlog)
+- 보험사별 backlog CSV (8개 파일)
+- 수학적 우선순위 (occurrence_count DESC)
+- 규칙 기반 recommended_action 분류
+
+**Purpose:**
+- Generate actionable Excel backlog for UNMAPPED coverages
+- Per-insurer work lists (NO mapping changes)
+- Prepare for STEP 3.10-δ (Excel enhancement)
+
+**Processing Logic:**
+1. Aggregate UNMAPPED by insurer + coverage_name_raw
+2. Count occurrences
+3. Classify recommended_action (rule-based)
+4. Sort by priority (occurrence_count DESC)
+
+**Recommended Action Classification (Rule-Based):**
+- **ADD_EXCEL_ROW**: C1, C2, C6 포함 (단순 추가 가능)
+- **STRUCTURAL_REVIEW**: C3, C4, C7 포함 (구조적 검토 필요)
+- **ADD_EXCEL_ROW_WITH_NOTE**: 혼합 (추가 가능하나 주의 필요)
+
+**Results:**
+- Total backlog items: 157 (from 191 UNMAPPED rows)
+- Per-insurer breakdown:
+  - DB: 29 items (110 occurrences)
+  - SAMSUNG: 37 items (37 occurrences)
+  - LOTTE: 7 items (28 occurrences)
+  - HYUNDAI: 27 items (27 occurrences)
+  - HEUNGKUK: 23 items (23 occurrences)
+  - MERITZ: 13 items (13 occurrences)
+  - KB: 12 items (12 occurrences)
+  - HANWHA: 9 items (9 occurrences)
+
+**Generated Files:**
+1. Per-insurer backlog CSVs: `data/step310_mapping/excel_backlog/backlog_{ins_cd}_{INSURER}.csv`
+   - Schema: ins_cd, insurer_name, coverage_name_raw, occurrence_count, cause_codes, effect_codes, recommended_action, notes
+2. Summary report: `data/step310_mapping/STEP310_GAMMA_EXCEL_BACKLOG_SUMMARY.md`
+   - Per-insurer totals
+   - Top 10 backlog per insurer
+   - Expansion candidates vs structural review split
+   - Expected impact (quantitative)
+
+**Expected Impact:**
+- ADD_EXCEL_ROW/WITH_NOTE: 157 items → Excel 보강으로 해소 가능
+- STRUCTURAL_REVIEW: 9 items (별도 전략 필요)
+- Excel 보강만으로 해소 가능: ~94.3%
+
+**Constitution Compliance:**
+- ✅ UNMAPPED → Backlog (no state change)
+- ✅ Rule-based recommended_action (deterministic)
+- ✅ Mathematical priority (occurrence count)
+- ✅ NO UNMAPPED → MAPPED conversion
+- ❌ No inference/semantic judgment
+- ❌ No Excel modification
+
+**DoD:**
+- ✅ All UNMAPPED (191) → backlog items (157 unique)
+- ✅ Per-insurer backlog CSVs (8 files)
+- ✅ recommended_action 100% assigned
+- ✅ No judgment/inference sentences
+- ✅ Reproducible (same input → same backlog)
+- ✅ Ready for STEP 3.10-δ
+
+---
+
+### ✅ STEP 3.10-β: UNMAPPED Cause-Effect Analysis
+**Commit:** d42289f | **Date:** 2025-12-25
 
 **Summary:**
 - UNMAPPED 원인 구조화 (7개 고정 Enum: C1-C7)
