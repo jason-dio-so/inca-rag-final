@@ -3105,343 +3105,90 @@ Implement premium comparison UX calculation logic on top of STEP 28 (Frontend MV
 
 ---
 
-## ✅ STEP 31-α: General Premium Multiplier Table Integration (Frontend-only)
-**Status:** COMPLETE
-**Commit:** [current]
-**Date:** 2025-12-25
-
-**Purpose:**
-Integrate Excel multiplier table (일반보험요율예시.xlsx) as embedded Frontend SSOT and enhance premium calculation logic with coverageName/insurer lookup.
-
-**Constitutional Principles:**
-- ✅ Proposal-centered system maintained
-- ✅ Backend Contract (STEP 14-26) immutable
-- ✅ No runtime Excel parsing (embedded data)
-- ✅ Data absence ≠ error (graceful PARTIAL fallback)
-
-**Core Definitions:**
-- Multiplier source: `GENERAL_MULTIPLIERS_BY_COVERAGE` (28 coverages × 8 insurers)
-- Excel interpretation: 117 → 1.17 (percent/100)
-- Calculation: generalPremium = Math.round(basePremium × multiplier)
-
-**Deliverables:**
-
-1. **Multiplier Table SSOT**
-   - `apps/web/src/lib/premium/multipliers.ts`
-   - `GENERAL_MULTIPLIERS_BY_COVERAGE` as const object
-   - `getGeneralMultiplier(coverageName, insurer)` lookup function
-   - 28 coverage names, 8 insurer codes (InsurerCode type)
-   - No runtime parsing (deployment-independent)
-
-2. **Enhanced Calculation Logic**
-   - `apps/web/src/lib/premium/calc.ts` updated
-   - `PremiumInputExtended` interface (adds coverageName, insurer)
-   - `computePremiums()` enhanced with multiplier priority:
-     1. Explicit multiplier param (backward compatible)
-     2. Lookup via getGeneralMultiplier(coverageName, insurer)
-     3. undefined → general becomes PARTIAL
-   - Existing API preserved (no breaking changes)
-
-3. **DEV_MOCK_MODE with Real Multipliers**
-   - `apps/web/src/lib/api/mocks/priceScenarios.ts` updated
-   - `createReadyPremiumResult()` now uses computePremiums()
-   - Coverage: "암진단비" (real multipliers from table)
-   - Example verification:
-     - SAMSUNG: basePremium 100,000 → general 117,000 (1.17 ✅)
-     - KB: basePremium 100,000 → general 132,000 (1.32 ✅)
-     - MERITZ: basePremium 100,000 → general 155,000 (1.55 ✅)
-
-4. **Test Coverage Extension**
-   - `tests/ui/test_step31_premium_calc.py` updated
-   - New test cases (4 additional):
-     - Case 5: Lookup success → general READY with correct value
-     - Case 6: Coverage not in table → general PARTIAL
-     - Case 7: Insurer not in table → general PARTIAL
-     - Case 8: Backward compatibility (explicit multiplier precedence)
-   - DoD verification tests (3 additional)
-
-**Multiplier Lookup Priority:**
-1. **Explicit multiplier param** (backward compatibility)
-   - Uses provided multiplier value, ignores table lookup
-2. **Table lookup** (STEP 31-α)
-   - getGeneralMultiplier(coverageName, insurer) from embedded table
-3. **Fallback to PARTIAL** (graceful degradation)
-   - Lookup fails → general=PARTIAL, nonCancellation=READY
-
-**Test Results:**
-- Unit tests: 26/26 PASS ✅ (19 STEP 31 + 4 lookup + 3 DoD 31-α)
-- Backward compatibility: Verified
-- Constitutional compliance: All principles maintained
-
-**DoD Achieved:**
-- ✅ Multiplier table embedded as SSOT (multipliers.ts)
-- ✅ computePremiums() supports coverageName/insurer lookup
-- ✅ Backward compatible (explicit multiplier param takes precedence)
-- ✅ DEV_MOCK_MODE uses real multipliers (verified with 암진단비)
-- ✅ Tests extended (4 lookup cases + 3 DoD)
-- ✅ Backend Contract/Golden snapshots unchanged (0 modifications)
-- ✅ STATUS.md updated
-
-**Key Files:**
-- `apps/web/src/lib/premium/multipliers.ts` (NEW)
-- `apps/web/src/lib/premium/calc.ts` (MODIFIED)
-- `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED)
-- `tests/ui/test_step31_premium_calc.py` (MODIFIED)
-
-**Next Steps (Future):**
-1. ~~Real proposal data integration (8 insurers)~~ → Premium API integration (STEP 32) ✅
-2. Policy evidence extraction for multiplier validation
-3. UI enhancement (show multiplier source in tooltip)
 
 ---
 
-## ✅ STEP 32: Premium API Integration (Real basePremium, Proposal-Centered)
-**Status:** COMPLETE
-**Commit:** [current]
-**Date:** 2025-12-25
+## Latest Completed Milestones (Summary)
 
-**Purpose:**
-Integrate real basePremium data from Premium API while maintaining proposal-centered architecture and /compare contract immutability.
+Recent steps are documented in detail under `docs/status/`. Below are links to detailed logs:
 
-**Constitutional Principles:**
-- ✅ System SSOT = Proposal (premium is proposal field, not policy-derived)
-- ✅ Premium comparison is ADDITIONAL feature (does NOT affect /compare)
-- ✅ /compare contract/schema/golden snapshots IMMUTABLE
-- ✅ Premium failure = premium-only PARTIAL/MISSING (NOT system error)
+### ✅ STEP 32-δ: Premium UI Wiring Hardening + Mocks Separation
+**Status:** COMPLETE  
+**Commit:** d1f1877  
+**Date:** 2025-12-25  
+**Details:** [docs/status/2025-12-25_step-32-delta.md](docs/status/2025-12-25_step-32-delta.md)
 
-**Core Definitions:**
-- **basePremium source**: `monthlyPremSum` from Premium API (ONLY)
-- **Calculation rules** (STEP 31/31-α SSOT unchanged):
-  - ③무해지 = ①전체 (basePremium)
-  - ②일반 = ①전체 × multiplier
-  - multiplier priority: explicit param → table lookup → PARTIAL
-
-**Deliverables:**
-
-1. **Premium API Types & Contract**
-   - `apps/web/src/lib/api/premium/types.ts` (NEW)
-   - `UpstreamPremiumResponse`: Upstream API response schema
-   - `PremiumProxyResponse`: Standardized proxy contract
-   - `PremiumItem`: `{ insurer, coverageName, basePremium, multiplier? }`
-   - `PremiumFailureReason`: UPSTREAM_ERROR, TIMEOUT, UNAUTHORIZED, etc.
-   - `INSURER_CODE_MAP`: Upstream code → InsurerCode mapping
-
-2. **Premium Adapter (SSOT for Mapping)**
-   - `apps/web/src/lib/api/premium/adapter.ts` (NEW)
-   - `adaptPremiumResponse()`: Upstream → PremiumProxyResponse
-   - **Mapping Rule**: `basePremium = monthlyPremSum` (ONLY)
-   - **Prohibited**: ❌ cvrAmtArrLst calculation, ❌ policy inference
-   - `adaptMultiplePremiumResponses()`: Multi-insurer support
-   - `isValidBasePremium()`: Validation (≥0 or null)
-
-3. **Premium API Client**
-   - `apps/web/src/lib/api/premium/client.ts` (NEW)
-   - `PremiumClient` class with timeout/error handling
-   - `simpleCompare()`: Calls `/api/premium/simple-compare`
-   - `onepageCompare()`: Calls `/api/premium/onepage-compare`
-   - Timeout: 10s, graceful degradation on failure
-
-4. **Server-Side Proxy Routes**
-   - `apps/web/src/app/api/premium/simple-compare/route.ts` (NEW)
-   - `apps/web/src/app/api/premium/onepage-compare/route.ts` (NEW)
-   - Server-side proxy (NO client API key exposure)
-   - Auth via `process.env.PREMIUM_API_KEY`
-   - Timeout: 10s, adapter integration
-   - Returns `PremiumProxyResponse` (standardized)
-
-5. **UI Integration**
-   - `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED)
-   - `convertProxyResponseToCards()`: Proxy response → UI cards
-   - Uses `computePremiums()` SSOT (STEP 31/31-α)
-   - DEV_MOCK_MODE preserved for local testing
-   - Real data mode calls proxy routes
-
-**basePremium Mapping Rule (Fixed SSOT):**
-
-```
-basePremium = monthlyPremSum
-```
-
-**Prohibited Sources**:
-- ❌ cvrAmtArrLst (coverage array) calculation
-- ❌ Policy document extraction
-- ❌ Any inference/estimation logic
-
-**Premium Proxy Contract (Standardized)**:
-
-**Success**:
-```json
-{
-  "ok": true,
-  "items": [
-    {
-      "insurer": "SAMSUNG",
-      "coverageName": "암진단비",
-      "basePremium": 123620,
-      "multiplier": null
-    }
-  ]
-}
-```
-
-**Failure**:
-```json
-{
-  "ok": false,
-  "reason": "UPSTREAM_ERROR",
-  "message": "premium api failed",
-  "items": []
-}
-```
-
-**UI Flow (STEP 32)**:
-
-1. User enters premium comparison view
-2. Mode selection:
-   - DEV_MOCK_MODE → Mock scenarios (STEP 31-α data)
-   - Real mode → Call `/api/premium/simple-compare` or `/onepage-compare`
-3. Proxy returns `PremiumProxyResponse`
-4. UI converts to cards via `convertProxyResponseToCards()`
-5. Each card calls `computePremiums({ basePremium, multiplier?, coverageName, insurer })`
-6. Render based on status: READY / PARTIAL / MISSING
-
-**Coverage Name Handling (Graceful Degradation)**:
-
-1. Premium API coverage names may NOT match canonical coverage
-2. Coverage name used for:
-   - UI label display
-   - STEP 31-α multiplier lookup (best-effort)
-3. Mapping failure → PARTIAL (NOT error)
-4. basePremium displayed regardless of coverage name mapping
-
-**Error Handling (Premium-Only Isolation)**:
-
-- Upstream error → premium area shows PARTIAL/MISSING
-- /compare continues to work normally
-- NO system-wide errors for premium failures
-
-**Regression Lock Verification:**
-- ✅ `apps/api/` unchanged (0 files modified)
-- ✅ `tests/snapshots/compare/` unchanged (0 golden snapshots modified)
-- ✅ /compare contract immutable
-
-**Test Results:**
-- Regression lock: PASS ✅ (git diff = 0 for /compare)
-- Constitutional compliance: All principles maintained
-
-**DoD Achieved:**
-- ✅ basePremium (①전체) filled from real data (monthlyPremSum)
-- ✅ ③무해지 = ①전체 fixed
-- ✅ ②일반 = ①전체 × multiplier (explicit → lookup → PARTIAL)
-- ✅ Coverage name unmapped → graceful PARTIAL (system stable)
-- ✅ /compare contract/snapshots unchanged (0 modifications)
-- ✅ DEV_MOCK_MODE preserved
-- ✅ STATUS.md updated
-
-**Key Files:**
-- `apps/web/src/lib/api/premium/types.ts` (NEW)
-- `apps/web/src/lib/api/premium/adapter.ts` (NEW)
-- `apps/web/src/lib/api/premium/client.ts` (NEW)
-- `apps/web/src/app/api/premium/simple-compare/route.ts` (NEW)
-- `apps/web/src/app/api/premium/onepage-compare/route.ts` (NEW)
-- `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED)
-
-**Environment Variables Required:**
-- `PREMIUM_API_BASE_URL`: Premium API base URL
-- `PREMIUM_API_KEY`: API key for authentication (optional)
-
-**Next Steps (Future):**
-1. Coverage name normalization pipeline (후속 단계)
-2. Multi-insurer ranking optimization
-3. Premium history/trend analysis
+**Summary:**
+- Moved `convertProxyResponseToCards()` from mocks to production bridge
+- Eliminated fake proposalId generation
+- Hardened failure rendering (explicit MISSING cards, never blank screens)
+- /compare regression lock maintained ✅
 
 ---
 
-**Project Status:** ✅ HEALTHY
-**Next Milestone:** Coverage Name Normalization (후속 단계)
+### ✅ STEP 32: Premium API Integration (Real basePremium)
+**Status:** COMPLETE  
+**Commit:** 678eb8d  
+**Date:** 2025-12-25  
+**Details:** [docs/status/2025-12-25_step-32.md](docs/status/2025-12-25_step-32.md)
+
+**Summary:**
+- Real basePremium from Premium API (monthlyPremSum ONLY)
+- Proxy routes: `/api/premium/simple-compare`, `/onepage-compare`
+- Coverage name unmapped → graceful PARTIAL (not error)
+- /compare contract/snapshots UNTOUCHED ✅
+
+---
+
+### ✅ STEP 31-α: General Premium Multiplier Table Integration
+**Status:** COMPLETE  
+**Commit:** 59f562b  
+**Date:** 2025-12-25  
+**Details:** [docs/status/2025-12-25_step-31-alpha.md](docs/status/2025-12-25_step-31-alpha.md)
+
+**Summary:**
+- Embedded Excel multiplier table as SSOT
+- Real multipliers applied to ②일반 premium calculation
+- Coverage name → multiplier lookup (graceful degradation)
+- Frontend-only (no backend changes)
+
+---
+
+## Project Status
+
+**Overall Health:** ✅ HEALTHY  
+**Current Branch:** main  
+**Latest Commit:** d1f1877  
+
+**Active Work:**
+- Premium UI/UX refinement
+- Coverage name normalization (planned)
+
 **Blockers:** None
 
 ---
 
-### ✅ STEP 32-δ: Premium UI Wiring Hardening + Mocks Separation
-**Status:** COMPLETE
-**Commit:** [pending]
-**Date:** 2025-12-25
+## Quick Reference
 
-**Objective:**
-- Separate real data bridge logic from mocks (production vs test clarity)
-- Eliminate fake proposalId generation (no synthetic identifiers)
-- Harden failure rendering (explicit PARTIAL/MISSING, never blank screens)
-- Maintain /compare immutability (absolute regression lock)
+**Constitutional Documents:**
+- [CLAUDE.md](CLAUDE.md) - Project constitution (highest priority)
+- [docs/status/](docs/status/) - Detailed milestone logs
 
-**Key Changes:**
-
-1. **Bridge Logic Separation** (`apps/web/src/lib/api/premium/bridge.ts`):
-   - `convertProxyResponseToCards()` moved from `mocks/priceScenarios.ts`
-   - Real data transformation logic now in production path
-   - Mocks remain pure test data (no business logic)
-
-2. **Explicit Failure Handling**:
-   - `!response.ok` → return MISSING cards (not empty array)
-   - `basePremium === null` → rank 0 MISSING card (unranked, bottom)
-   - No items → single "데이터 없음" card
-   - **Guarantee:** UI NEVER shows blank screen for premium failures
-
-3. **No Fake proposalId Generation**:
-   - proposalId field made optional (`proposalId?: string`)
-   - Bridge uses `undefined` instead of generating `${insurer}_proposal_${index}`
-   - UI keys use fallback: `key={card.proposalId || \`card-${insurer}-${index}\`}`
-
-4. **Type System Updates**:
-   - `PremiumCardData.proposalId` → optional
-   - `PriceRankingView.onCompare` → accepts `string | undefined`
-   - UI components handle optional proposalId gracefully
-
-**Constitutional Guarantees Maintained:**
-
-- ✅ basePremium = monthlyPremSum ONLY (no cvrAmtArrLst calculation)
-- ✅ Coverage name mapping NOT enforced (PARTIAL is normal)
-- ✅ Premium = additional feature (failures don't break core /compare)
-- ✅ /compare contract/snapshots/golden data UNTOUCHED
-
-**Verification Results:**
-
+**Key Commands:**
 ```bash
-git diff apps/api/ tests/snapshots/
-# Output: (empty) ✅
+# Backend tests
+pytest tests/contract -q      # Contract tests
+pytest tests/integration -q   # Integration tests
+pytest tests/e2e -q          # E2E tests
+
+# Frontend
+cd apps/web
+pnpm dev                     # Development server
+pnpm build                   # Production build
 ```
 
-- `/compare` regression lock: PASS ✅
-- Apps/API unchanged: ✅
-- Golden snapshots unchanged: ✅
-
-**Files Modified:**
-- `apps/web/src/lib/api/premium/bridge.ts` (NEW)
-- `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED - removed convertProxyResponseToCards)
-- `apps/web/src/lib/premium/types.ts` (MODIFIED - proposalId optional)
-- `apps/web/src/components/views/price/PriceRankingView.tsx` (MODIFIED - handle optional proposalId)
-
-**Usage Example (Real Mode):**
-```tsx
-import { PremiumClient } from '@/lib/api/premium/client';
-import { convertProxyResponseToCards } from '@/lib/api/premium/bridge';
-
-const client = new PremiumClient();
-const response = await client.simpleCompare(request);
-const cards = convertProxyResponseToCards(response);
-
-// cards ALWAYS populated (success → ranked, failure → MISSING)
-```
-
-**DoD Achieved:**
-- ✅ convertProxyResponseToCards moved from mocks to bridge.ts
-- ✅ Failure cases render explicit MISSING cards (no empty arrays)
-- ✅ proposalId fake generation removed
-- ✅ /compare diff = 0 files
-- ✅ STATUS.md updated
-
-**Next Steps (Future):**
+**Next Steps:**
 1. Coverage name normalization pipeline
-2. Upstream proposalId field integration (when available)
-3. Admin UI for AMBIGUOUS coverage mapping resolution
+2. Admin UI for AMBIGUOUS coverage mapping
+3. Disease code group management interface
 
