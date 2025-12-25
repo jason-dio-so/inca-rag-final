@@ -230,4 +230,74 @@ PREMIUM_API_BASE_URL=https://new-prod.greenlight.direct
 
 ---
 
+## Verification Status (STEP 32-λ)
+
+**Test Date:** 2025-12-25
+**Method:** Fixture-based regression tests (network-independent)
+
+### Verified Structures (Based on SSOT Documentation)
+
+**prInfo (Simple Compare):**
+- ✅ Top-level response (no wrapper)
+- ✅ `outPrList[]` array structure
+- ✅ `insCd` field for insurer mapping (N01-N13 format)
+- ✅ `monthlyPrem` field as basePremium source
+- ✅ Adapter extracts and sorts by premium correctly
+
+**prDetail (Onepage Compare):**
+- ✅ Top-level response (no wrapper)
+- ✅ `prProdLineCondOutSearchDiv[].prProdLineCondOutIns[]` nested structure
+- ✅ `monthlyPremSum` field as basePremium source
+- ✅ `cvrAmtArrLst[]` present but NOT used for basePremium calculation
+- ✅ Adapter extracts from correct field path
+
+### Defensive Handling (Not Documented in SSOT)
+
+**Wrapped Response:** `{ returnCode, returnMsg, data }`
+- Status: **DEFENSIVE** (not observed via spec, handled for safety)
+- Adapter behavior: Unwraps `data` field if present, uses top-level otherwise
+- Test coverage: Included in regression fixtures
+
+**Error Response:** `{ returnCode: "XXXX", returnMsg: "..." }`
+- Status: **DEFENSIVE** (error format not in SSOT)
+- Adapter behavior: Returns `ok: false` with `reason: UPSTREAM_ERROR`
+- Test coverage: Included in smoke tests
+
+### Regression Test Coverage
+
+**Fixtures Created:** 3
+- `upstream_prInfo_sample.json` - SSOT § API 1 structure
+- `upstream_prDetail_sample.json` - SSOT § API 2 structure
+- `upstream_wrapped_sample.json` - Defensive wrapper case
+
+**Test Scenarios:** 5
+1. prInfo extraction (basePremium from monthlyPrem)
+2. prDetail extraction (basePremium from monthlyPremSum)
+3. Wrapped response handling (defensive)
+4. Null/undefined input (edge case)
+5. Error response (returnCode !== "0000")
+
+**Test Execution:**
+```bash
+# Run smoke test (no framework dependency)
+node apps/web/scripts/premium_adapter_smoke.mjs
+```
+
+**Test Location:**
+- Vitest tests: `apps/web/src/lib/api/premium/adapter.test.ts` (if vitest configured)
+- Smoke script: `apps/web/scripts/premium_adapter_smoke.mjs` (standalone)
+
+### Verification Limitations
+
+**Not Verified (Requires Live API):**
+- Actual upstream API response in production environment
+- Real insurer data values
+- Network error scenarios
+- Rate limiting behavior
+
+**Verification Principle:**
+All tests use SSOT-documented structures as fixtures. Adapter behavior is verified against spec, not against live API calls.
+
+---
+
 **Specification Lock:** This document is now the SSOT for Premium API integration.
