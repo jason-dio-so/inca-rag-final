@@ -1,0 +1,35 @@
+{
+    "comparison_result": "comparable",
+    "coverage_a": {
+        "amount_value": 40000000,
+        "canonical_coverage_code": "CA_DIAG_GENERAL",
+        "coverage_name_raw": "일반암 진단비",
+        "disease_scope_norm": null,
+        "disease_scope_raw": "일반암",
+        "insurer": "KB",
+        "mapping_status": "MAPPED",
+        "proposal_id": "PROP_KB_001",
+        "source_confidence": "proposal_confirmed"
+    },
+    "coverage_b": {
+        "amount_value": 30000000,
+        "canonical_coverage_code": "CA_DIAG_GENERAL",
+        "coverage_name_raw": "암진단금(일반암)",
+        "disease_scope_norm": null,
+        "disease_scope_raw": "일반암",
+        "insurer": "MERITZ",
+        "mapping_status": "MAPPED",
+        "proposal_id": "PROP_MERITZ_001",
+        "source_confidence": "proposal_confirmed"
+    },
+    "debug": {
+        "canonical_code_resolved": "CA_DIAG_GENERAL",
+        "raw_name_used": null,
+        "universe_lock_enforced": true
+    },
+    "message": "Both insurers have CA_DIAG_GENERAL",
+    "next_action": "COMPARE",
+    "policy_evidence_a": null,
+    "policy_evidence_b": null,
+    "query": "일반암진단비"
+}

@@ -229,6 +229,43 @@ class TestSTEP16RuntimeContractFreeze:
 
         deep_equal_assert(actual_normalized, golden_normalized)
 
+    def test_scenario_d_kb_meritz_comparison_golden_snapshot(self):
+        """
+        Scenario D: KB vs MERITZ Comparison (일반암진단비) - STEP 22
+
+        Expected:
+        - comparison_result: "comparable"
+        - next_action: "COMPARE"
+        - Both coverages MAPPED
+        - Insurer pair: KB vs MERITZ
+        - Different amounts (KB: 4000만원, MERITZ: 3000만원)
+        - No policy evidence (disease_scope_norm is null)
+
+        Contract Extension: Demonstrates new insurer pair pattern
+        """
+        import requests
+
+        response = requests.post(
+            f"{self.API_BASE}/compare",
+            json={
+                "query": "일반암진단비",
+                "insurer_a": "KB",
+                "insurer_b": None,
+                "include_policy_evidence": False
+            },
+            timeout=10
+        )
+
+        assert response.status_code == 200, f"HTTP {response.status_code}: {response.text}"
+
+        actual = response.json()
+        golden = load_golden_snapshot("scenario_d")
+
+        actual_normalized = normalize_response(actual)
+        golden_normalized = normalize_response(golden)
+
+        deep_equal_assert(actual_normalized, golden_normalized)
+
     def test_ux_message_code_contract(self):
         """
         UX Message Code Contract Validation.
@@ -347,7 +384,7 @@ class TestSTEP16RuntimeContractFreeze:
         """
         import json
 
-        required_snapshots = ["scenario_a", "scenario_b", "scenario_c"]
+        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d"]
 
         for scenario_name in required_snapshots:
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f"{scenario_name}.golden.json")
@@ -386,7 +423,7 @@ class TestSTEP16RuntimeContractFreeze:
 
         Ensures all required golden snapshots exist and are valid JSON.
         """
-        required_snapshots = ["scenario_a", "scenario_b", "scenario_c"]
+        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d"]
 
         for scenario_name in required_snapshots:
             snapshot = load_golden_snapshot(scenario_name)

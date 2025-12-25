@@ -14,6 +14,42 @@
 
 ---
 
+## 2025-12-25 (STEP 22) - CONTRACT_CHANGE
+
+**Change Type**: CONTRACT_CHANGE
+
+**Affected Files**:
+- `tests/snapshots/compare/scenario_d.golden.json` (NEW)
+
+**Changes**:
+- Added Scenario D: KB vs MERITZ general cancer comparison
+- Query: "일반암진단비"
+- Insurer pair: KB (primary) vs MERITZ (auto-matched)
+- Contract pattern: `comparable` with different amounts
+
+**Details**:
+- coverage_a: KB 일반암 진단비 (4000만원)
+- coverage_b: MERITZ 암진단금(일반암) (3000만원)
+- canonical_coverage_code: CA_DIAG_GENERAL
+- comparison_result: comparable
+- next_action: COMPARE
+
+**Reason**:
+- Demonstrate contract extension via new golden scenario (STEP 22)
+- Validate governance protocol: new scenarios require CHANGELOG approval
+- Expand test coverage to KB insurer (previously untested in runtime contracts)
+- Prove existing golden scenarios (A/B/C) remain unchanged
+
+**Impact**:
+- Non-breaking addition (extends contract, does not modify existing)
+- Existing scenarios A/B/C unchanged
+- New test: `test_scenario_d_kb_meritz_comparison_golden_snapshot`
+- Total golden scenarios: 4 (A/B/C/D)
+
+**Approver**: STEP 22 Implementation (Contract Extension Validation)
+
+---
+
 ## 2025-12-25 (STEP 21) - GOVERNANCE_SETUP
 
 **Change Type**: GOVERNANCE_SETUP

@@ -235,7 +235,7 @@ Compare API는 Golden Snapshot 기반으로
 **Test Execution**:
 ```bash
 env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
-# Expected: 8/8 PASS
+# Expected: 9/9 PASS (A/B/C/D scenarios + 5 contract tests)
 ```
 
 **Prohibited Operations**:
@@ -284,6 +284,33 @@ No golden changes → CI PASS (skip)
 - ❌ "Format-only" changes without approval record
 
 **Traceability Goal**: Answer "why did the contract change?" in <1 minute
+
+### STEP 22: Contract Extension via New Golden Scenario (2025-12-25)
+
+- **Purpose**: Validate contract extension by adding Scenario D (KB vs MERITZ)
+- **New Scenario**: `scenario_d.golden.json` (일반암진단비 comparison)
+- **Insurer pair**: KB (4000만원) vs MERITZ (3000만원)
+- **Pattern**: `comparable` with different amounts
+
+**Contract Extension Principle**:
+- New functionality → New golden snapshot (never modify existing)
+- Existing scenarios A/B/C → UNCHANGED (runtime contract preserved)
+- All additions → CHANGELOG approval required (STEP 21 governance)
+
+**Test Coverage**:
+- Scenario A: SAMSUNG vs MERITZ (comparable)
+- Scenario B: KB UNMAPPED (mapping failure)
+- Scenario C: SAMSUNG policy_required (disease scope)
+- Scenario D: KB vs MERITZ (comparable, new insurer pair) **[NEW]**
+
+**Total Golden Scenarios**: 4 (A/B/C/D)
+
+**STEP 22 Validation**:
+- ✅ Scenario D added with CHANGELOG approval
+- ✅ STEP 16 tests: 9/9 PASS (was 8/8)
+- ✅ Existing golden A/B/C unchanged
+- ✅ Governance protocol enforced (STEP 21)
+- ✅ Canonical format enforced (STEP 20)
 
 ### STEP 18: CI Contract Guard (GitHub Actions) (2025-12-25)
 

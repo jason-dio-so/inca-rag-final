@@ -1168,6 +1168,78 @@ Enforce governance for golden snapshot changes to prevent unauthorized runtime c
 
 ---
 
+### ✅ STEP 22: Contract Extension via New Golden Scenario (KB vs MERITZ)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Validate contract extension process by adding Scenario D while preserving existing golden snapshots A/B/C.
+
+**Deliverables:**
+- New golden snapshot: `scenario_d.golden.json` (KB vs MERITZ comparison)
+- Extended STEP 16 runtime contract tests (9 tests total, +1)
+- CHANGELOG entry for Scenario D approval
+- Proof of governance protocol working
+
+**Scenario D Details:**
+- Query: "일반암진단비"
+- Insurer pair: KB (primary) vs MERITZ (auto-matched)
+- Pattern: `comparable` with different amounts
+- Coverage A: KB 일반암 진단비 (4000만원)
+- Coverage B: MERITZ 암진단금(일반암) (3000만원)
+- Canonical code: CA_DIAG_GENERAL
+- Result: `comparable`, next_action: `COMPARE`
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 9/9 PASS ✅ (was 8/8, now 9/9 with Scenario D)
+- Existing golden A/B/C: UNCHANGED ✅
+- New golden D: ADDED ✅
+- CHANGELOG: UPDATED ✅
+
+**Constitutional Guarantees:**
+- ✅ Existing runtime contract preserved (A/B/C unchanged)
+- ✅ Contract extension via new golden only (no modification)
+- ✅ STEP 21 governance protocol enforced (CHANGELOG required)
+- ✅ STEP 20 canonical format enforced (sort_keys, indent=4)
+- ✅ CI contract guard all gates PASS
+
+**Prohibited Operations:**
+- ❌ Modifying existing golden snapshots (A/B/C)
+- ❌ Auto-regenerating snapshots
+- ❌ CHANGELOG omission
+- ❌ Test condition relaxation
+- ❌ CI bypass
+
+**Governance Validation:**
+- Golden change detected: scenario_d.golden.json (NEW)
+- CHANGELOG entry: docs/contracts/CHANGELOG.md (UPDATED)
+- Approval type: CONTRACT_CHANGE
+- Impact: Non-breaking addition
+
+**DoD Achieved:**
+- ✅ New golden scenario_d created in canonical format
+- ✅ Existing golden A/B/C verified unchanged
+- ✅ STEP 16 tests extended and passing (9/9)
+- ✅ STEP 14 regression tests passing (22/22)
+- ✅ CHANGELOG updated with STEP 22 entry
+- ✅ STATUS.md and docs/db/README.md updated
+- ✅ Committed and pushed
+
+**Key Files:**
+- `tests/snapshots/compare/scenario_d.golden.json` (NEW)
+- `tests/e2e/test_step16_runtime_contract_freeze.py` (extended with Scenario D test)
+- `docs/contracts/CHANGELOG.md` (STEP 22 entry added)
+
+**Contract Extension Principle:**
+- New functionality = New golden snapshot
+- Never modify existing golden to add features
+- All changes go through governance (CHANGELOG approval)
+- CI enforces the protocol automatically
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
