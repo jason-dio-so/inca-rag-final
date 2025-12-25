@@ -1833,6 +1833,117 @@ Create UI State SSOT that maps Backend Contract states to UI behaviors, with fal
 
 ---
 
+### ✅ STEP 28: Frontend MVP Implementation (Contract-driven)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Implement working Frontend MVP based on UI Contract (STEP 27) with ChatGPT-style layout, contract-driven rendering, and DEV_MOCK_MODE for testing.
+
+**Implementation:**
+
+**1. Next.js/React Project Structure**
+- Framework: Next.js 14 + TypeScript
+- Styling: Tailwind CSS
+- Contract SSOT: `apps/web/src/contracts/uiStateMap.ts` (from STEP 27)
+
+**2. API Client with Mock Mode**
+- File: `src/lib/api/compareClient.ts`
+- Real API: POST `/compare` (Backend STEP 14-26)
+- Mock Mode: Golden snapshots (A/B/C/D/E/UNKNOWN) for DEV testing
+- Error handling: Network errors vs Contract states (200 = always valid)
+
+**3. Contract-driven View Resolver**
+- File: `src/lib/viewResolver.ts`
+- Flow: API Response → State Key → UI State Config → View Component
+- Automatic view selection based on Backend Contract state
+
+**4. 5 View Components (All required states)**
+- `ComparableView.tsx`: Scenario A/D - Side-by-side comparison with amounts
+- `UnmappedView.tsx`: Scenario B - Excel mapping failure UX
+- `PolicyRequiredView.tsx`: Scenario C - Policy evidence display
+- `OutOfUniverseView.tsx`: Scenario E - Universe Lock principle UX
+- `UnknownStateView.tsx`: FALLBACK - Contract drift graceful degradation
+
+**5. ChatGPT-style Layout**
+- Left Panel: Search input (담보명, 보험사 A/B)
+- Right Panel: Contract-driven result view
+- Responsive design (grid layout)
+
+**6. DEV_MOCK_MODE (Scenario Switcher)**
+- Toggle: `DEV_MOCK_MODE=1`
+- 6 scenarios: A, B, C, D, E, UNKNOWN
+- Instant switching without API calls
+- Test all contract states visually
+
+**7. Evidence/Policy Viewer**
+- Placeholder: "데이터 준비 중 - inca-rag dependency"
+- Policy evidence display: group_name, member_count
+- Document viewer: Not implemented (no document storage in repo)
+
+**Test Coverage (Manual DEV_MOCK_MODE):**
+- ✅ Scenario A: ComparableView renders with amount comparison
+- ✅ Scenario B: UnmappedView renders with retry CTA
+- ✅ Scenario C: PolicyRequiredView renders with policy evidence
+- ✅ Scenario E: OutOfUniverseView renders with Universe Lock message
+- ✅ Unknown State: UnknownStateView renders with debug info
+- ✅ All CTAs trigger appropriate actions
+
+**Key Files Created:**
+- `apps/web/package.json` (Next.js config)
+- `apps/web/src/lib/api/compareClient.ts` (API + Mock)
+- `apps/web/src/lib/viewResolver.ts` (View resolution)
+- `apps/web/src/components/views/*View.tsx` (5 views)
+- `apps/web/src/components/ViewRenderer.tsx` (Contract renderer)
+- `apps/web/src/components/ScenarioSwitcher.tsx` (DEV tool)
+- `apps/web/src/pages/index.tsx` (Main page)
+- `apps/web/README.md` (Usage documentation)
+
+**Limitations (inca-rag Dependency):**
+1. **Policy Document Viewer**: Placeholder only (no document storage)
+2. **Full Insurer Coverage**: Only 3 insurers (seed data)
+3. **Full Coverage Universe**: Limited proposal data
+
+**Workarounds:**
+- Policy viewer: Alert message "데이터 준비 중"
+- Missing data: Graceful state messages (not errors)
+- DEV_MOCK_MODE: Test all scenarios without backend/data
+
+**Constitutional Guarantees:**
+- ✅ Backend Contract immutable (STEP 14-26)
+- ✅ UI Contract SSOT used (STEP 27 `uiStateMap.ts`)
+- ✅ Unknown states → UnknownStateView (graceful)
+- ✅ All 200 responses rendered (never throw)
+- ✅ Data absence handled as state (not error)
+
+**DoD Achieved:**
+- ✅ 5 View components implemented
+- ✅ Contract-driven rendering works
+- ✅ ChatGPT-style layout functional
+- ✅ DEV_MOCK_MODE scenario switching
+- ✅ All 5 scenarios tested visually
+- ✅ No Backend Contract changes
+- ✅ No Golden Snapshot changes
+- ✅ README documentation created
+
+**Running the Frontend:**
+```bash
+cd apps/web
+export DEV_MOCK_MODE=1  # Use mock data
+npm install
+npm run dev
+# Visit: http://localhost:3000
+```
+
+**Design Principles:**
+- Contract-driven: Backend state → View automatic
+- Graceful degradation: Unknown → Fallback
+- Mock-first development: Test without API
+- Data absence ≠ system error
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96
