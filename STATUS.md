@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Proposal Coverage Mapping (STEP 3.10 Complete)
+**Current Phase:** Proposal-based Comparison Engine (STEP 3.11′ HOTFIX Complete)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -24,6 +24,35 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.11′ HOTFIX: PRIME-aligned Comparison Engine
+**Commit:** 6dbb6ae | **Date:** 2025-12-25
+
+**Summary:**
+- Replaced similarity-based matching with deterministic substring search
+- Implemented PRIME 4-State classification (in_universe_comparable/unmapped/with_gaps, out_of_universe)
+- Fact-based comparison table only (no inference)
+- Verified no AMBIGUOUS/similarity/score in output
+
+**PRIME 4-State Rules:**
+- `in_universe_comparable`: MAPPED + all core axes present
+- `in_universe_unmapped`: Found but UNMAPPED
+- `in_universe_with_gaps`: MAPPED but missing axes OR multiple candidates
+- `out_of_universe`: Not found in proposal
+
+**Constitution Compliance:**
+- ✅ Proposal = SSOT (Fact Table only)
+- ✅ Substring search only (no inference)
+- ✅ Multiple candidates → WITH_GAPS + MULTIPLE_CANDIDATES_NO_INFERENCE
+- ✅ Shinjeongwon code = reference key (NOT filter/primary)
+- ✅ UNMAPPED ≠ "similar coverage"
+
+**Sample Results Verified:**
+- 암진단비: OUT_OF_UNIVERSE(SAMSUNG), WITH_GAPS(HANWHA 5건, MERITZ 4건)
+- 뇌졸중진단비: OUT_OF_UNIVERSE(SAMSUNG), COMPARABLE(KB), WITH_GAPS(LOTTE 2건)
+- 다빈치수술비: OUT_OF_UNIVERSE(전체) → 비교 불가
+
+---
 
 ### ✅ STEP 3.10: Proposal Coverage → Shinjeongwon Reference Mapping
 **Commit:** 4d89681 | **Date:** 2025-12-25
