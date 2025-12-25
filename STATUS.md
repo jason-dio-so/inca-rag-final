@@ -25,6 +25,18 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 32-κ-FIX: Adapter Response Structure Support
+**Commit:** 3469262 | **Date:** 2025-12-25
+
+**Summary:**
+- Fixed adapter to support both prInfo (simple) and prDetail (onepage) response shapes
+- prInfo: basePremium from `outPrList[].monthlyPrem`
+- prDetail: basePremium from `prProdLineCondOutIns[].monthlyPremSum`
+- Spec-driven field extraction (no assumptions)
+- /compare regression lock maintained ✅
+
+---
+
 ### ✅ STEP 32-δ: Premium UI Wiring Hardening + Mocks Separation
 **Commit:** d1f1877 | **Date:** 2025-12-25
 **Details:** [docs/status/2025-12-25_step-32-delta.md](docs/status/2025-12-25_step-32-delta.md)
