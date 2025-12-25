@@ -25,8 +25,72 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP 3.13-α: Deterministic Query Variant Compiler
+### ✅ STEP 3.10-β: UNMAPPED Cause-Effect Analysis
 **Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- UNMAPPED 원인 구조화 (7개 고정 Enum: C1-C7)
+- 시스템 영향 분류 (5개 고정 Enum: E1-E5)
+- 사실 기반 리포트 생성 (해석/추론/추천 금지)
+- 매핑 보강/UX 설명을 위한 근거 확보
+
+**Purpose:**
+- Analyze WHY coverage is UNMAPPED (cause)
+- Document system impact (effect)
+- Provide evidence for future mapping enhancement decisions
+- NO mapping rule changes, NO UNMAPPED → MAPPED conversion
+
+**Cause Classification (C1-C7):**
+- C1_NO_EXCEL_ENTRY: Excel에 해당 보험사 매핑 행 없음
+- C2_NAME_VARIANT_ONLY: 타 보험사에는 존재하나 현재 ins_cd 매핑 없음
+- C3_SUBCATEGORY_SPLIT: 가입설계서는 하위 담보, Excel은 상위 개념만
+- C4_COMPOSITE_COVERAGE: 가입설계서는 단일 담보, Excel은 복합 담보만
+- C5_NEW_OR_SPECIAL_COVERAGE: Excel에 정의되지 않은 신규/특수 담보
+- C6_TERMINOLOGY_MISMATCH: 공백/접두어 차이로 결정론적 매칭 불가
+- C7_POLICY_LEVEL_ONLY: 가입설계서에는 있으나 Excel은 약관 단위만
+
+**Effect Classification (E1-E5):**
+- E1_COMPARISON_POSSIBLE: PRIME 비교 가능 (in_universe_unmapped)
+- E2_LIMITED_COMPARISON: 다건 후보/축 누락으로 제한적 비교
+- E3_EXPLANATION_REQUIRED: 고객 응답 시 설명 레이어 필수
+- E4_MAPPING_EXPANSION_CANDIDATE: Excel 보강 시 MAPPED 가능성 높음
+- E5_STRUCTURAL_DIFFERENCE: 구조적 차이로 매핑 자체 부적합
+
+**Analysis Results:**
+- Total UNMAPPED analyzed: 191 cases
+- Top cause: C1_NO_EXCEL_ENTRY (100% - all cases have this as primary/secondary cause)
+- Expansion candidates (E4): 191 cases
+- Structural differences (E5): 20 cases
+
+**Generated Reports:**
+1. CSV: `data/step310_mapping/unmapped_cause_effect_report.csv`
+   - Schema: insurer, coverage_name_raw, cause_codes, effect_codes, evidence_note
+2. MD: `data/step310_mapping/UNMAPPED_CAUSE_EFFECT_SUMMARY.md`
+   - Overall statistics (cause distribution)
+   - Per-insurer top causes
+   - Frequent coverage names (Top 10)
+   - Mapping expansion candidates
+   - Structural difference cases
+
+**Constitution Compliance:**
+- ✅ Fact-based cause/effect classification only
+- ✅ Evidence-based notes (no interpretation)
+- ✅ NO mapping rule changes
+- ✅ NO UNMAPPED → MAPPED conversion
+- ❌ No coverage unification/inference
+- ❌ No recommendations/prioritization
+
+**DoD:**
+- ✅ 191 UNMAPPED cases fully analyzed
+- ✅ All rows have cause_code (≥1 per row)
+- ✅ Effect codes assigned
+- ✅ CSV + MD reports generated
+- ✅ Reproducible (same input → same output)
+
+---
+
+### ✅ STEP 3.13-α: Deterministic Query Variant Compiler
+**Commit:** ec646cf | **Date:** 2025-12-25
 
 **Summary:**
 - Query-level whitespace variant handling (NO coverage normalization)
