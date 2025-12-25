@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Premium API Integration (STEP 32)
+**Current Phase:** Premium API Integration (STEP 33-β)
 **Project Health:** ✅ HEALTHY
 
 ---
@@ -24,6 +24,26 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 33-β-1: DEV Premium Triggers (Live Capture UI)
+**Commit:** 1864f5c | **Date:** 2025-12-25
+
+**Summary:**
+- Added 2 DEV buttons to `apps/web/src/pages/index.tsx` for Premium API testing
+- Buttons: `[DEV] Premium Simple Compare`, `[DEV] Premium Onepage Compare`
+- Purpose: Generate live Network requests for Request/Response payload capture
+- Request payloads based on SSOT (`docs/api/premium_api_spec.md`)
+- Fixed test values: baseDt=20251225, birthday=19760101, age=50, sex=1, customerNm=홍길동
+- /compare contract unchanged ✅ (zero diff in apps/api, tests/snapshots)
+- Next: User captures live upstream responses for STEP 33-β-2 analysis
+
+**DoD:**
+- ✅ UI triggers visible at http://localhost:3000 (orange DEV section)
+- ✅ Network tab captures POST /api/premium/simple-compare & onepage-compare
+- ✅ Request/Response JSON available for manual copy
+- ✅ Zero impact on /compare
+
+---
 
 ### ✅ STEP 33-α: CORS Preflight Fix
 **Commit:** 59af9e9 | **Date:** 2025-12-25
