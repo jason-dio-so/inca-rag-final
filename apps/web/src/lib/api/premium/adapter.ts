@@ -50,17 +50,17 @@ export function adaptPremiumResponse(
     };
   }
 
-  // Detect response shape and delegate to specific adapter
-  const rawData = upstream as any;
+  // Handle potential data wrapper (some responses wrap in { data: {...} }, others don't)
+  const payload = (upstream as any)?.data ?? (upstream as any);
 
   // A) prInfo (simple) shape: has outPrList[]
-  if (rawData.outPrList && Array.isArray(rawData.outPrList)) {
-    return adaptSimpleCompareResponse(rawData);
+  if (payload.outPrList && Array.isArray(payload.outPrList)) {
+    return adaptSimpleCompareResponse(payload);
   }
 
   // B) prDetail (onepage) shape: has prProdLineCondOutSearchDiv[]
-  if (rawData.prProdLineCondOutSearchDiv && Array.isArray(rawData.prProdLineCondOutSearchDiv)) {
-    return adaptOnepageCompareResponse(rawData);
+  if (payload.prProdLineCondOutSearchDiv && Array.isArray(payload.prProdLineCondOutSearchDiv)) {
+    return adaptOnepageCompareResponse(payload);
   }
 
   // C) Unknown shape
