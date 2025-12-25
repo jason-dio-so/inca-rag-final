@@ -25,6 +25,23 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ⚠️ STEP 32-λ-2: Truth Lock Hotfix
+**Commit:** [pending] | **Date:** 2025-12-25
+
+**Summary:**
+- Corrected misleading "Verified" claims in Premium API spec
+- Reclassified verification status to 3-tier structure:
+  - **A. Spec-confirmed** (documented in SSOT)
+  - **B. Fixture-tested** (offline, does NOT confirm live behavior)
+  - **C. Live-observed** (PENDING - not executed)
+- Defensive handling explicitly marked as unobserved
+- Removed inactive `adapter.test.ts` (no test framework configured)
+- Authoritative test: `apps/web/scripts/premium_adapter_smoke.mjs`
+- No behavior change ✅
+- /compare regression lock: 0 diff ✅
+
+---
+
 ### ✅ STEP 32-λ: Fixture-Based Regression Tests
 **Commit:** 427da8c, 0274c91 | **Date:** 2025-12-25
 
@@ -32,7 +49,7 @@ Detailed implementation logs available in [`docs/status/`](docs/status/).
 - Created 3 SSOT-based test fixtures (prInfo, prDetail, wrapped)
 - Added adapter regression tests (5 scenarios, network-independent)
 - Smoke test script: `node apps/web/scripts/premium_adapter_smoke.mjs`
-- Locked SSOT doc with Verified/Defensive distinction
+- Initial attempt at verification documentation (corrected in λ-2)
 - /compare regression lock: 0 diff ✅
 
 ---

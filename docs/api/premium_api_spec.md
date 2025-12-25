@@ -230,73 +230,99 @@ PREMIUM_API_BASE_URL=https://new-prod.greenlight.direct
 
 ---
 
-## Verification Status (STEP 32-λ)
+## Implementation Status (STEP 32-λ-2 - Truth Lock)
 
-**Test Date:** 2025-12-25
-**Method:** Fixture-based regression tests (network-independent)
+**Last Updated:** 2025-12-25
+**Status:** Spec-confirmed, Fixture-tested (offline), Live verification PENDING
 
-### Verified Structures (Based on SSOT Documentation)
+### A. Spec-Confirmed (SSOT)
 
-**prInfo (Simple Compare):**
-- ✅ Top-level response (no wrapper)
-- ✅ `outPrList[]` array structure
-- ✅ `insCd` field for insurer mapping (N01-N13 format)
-- ✅ `monthlyPrem` field as basePremium source
-- ✅ Adapter extracts and sorts by premium correctly
+Structures documented in official specification files.
 
-**prDetail (Onepage Compare):**
-- ✅ Top-level response (no wrapper)
-- ✅ `prProdLineCondOutSearchDiv[].prProdLineCondOutIns[]` nested structure
-- ✅ `monthlyPremSum` field as basePremium source
-- ✅ `cvrAmtArrLst[]` present but NOT used for basePremium calculation
-- ✅ Adapter extracts from correct field path
+**Source:** `docs/api/upstream/premium_*_spec.txt` + this document (SSOT)
 
-### Defensive Handling (Not Documented in SSOT)
+**prInfo (Simple Compare) - SSOT § API 1:**
+- Response structure: Top-level `{ customerSeq, outPrList: [...], compPlanId }`
+- basePremium field path: `outPrList[].monthlyPrem`
+- Insurer code field: `insCd` (format: N01-N13)
+- Method: GET with query parameters
 
-**Wrapped Response:** `{ returnCode, returnMsg, data }`
-- Status: **DEFENSIVE** (not observed via spec, handled for safety)
-- Adapter behavior: Unwraps `data` field if present, uses top-level otherwise
-- Test coverage: Included in regression fixtures
+**prDetail (Onepage Compare) - SSOT § API 2:**
+- Response structure: Top-level `{ prProdLineCondOutSearchDiv: [...] }`
+- basePremium field path: `prProdLineCondOutSearchDiv[].prProdLineCondOutIns[].monthlyPremSum`
+- Coverage array: `cvrAmtArrLst[]` (present but NOT used for basePremium)
+- Method: GET with query parameters
 
-**Error Response:** `{ returnCode: "XXXX", returnMsg: "..." }`
-- Status: **DEFENSIVE** (error format not in SSOT)
-- Adapter behavior: Returns `ok: false` with `reason: UPSTREAM_ERROR`
-- Test coverage: Included in smoke tests
+**Constitutional Rule:**
+- ❌ NO calculation from `cvrAmtArrLst`
+- ✅ ONLY use documented premium field
 
-### Regression Test Coverage
+### B. Fixture-Tested (Offline)
+
+Adapter behavior tested against SSOT-based fixtures without network dependency.
+
+**Test Method:** Network-independent smoke test
+**Execution:** `node apps/web/scripts/premium_adapter_smoke.mjs`
+**Status:** Does NOT confirm live API behavior
 
 **Fixtures Created:** 3
-- `upstream_prInfo_sample.json` - SSOT § API 1 structure
-- `upstream_prDetail_sample.json` - SSOT § API 2 structure
+- `upstream_prInfo_sample.json` - Based on SSOT § API 1
+- `upstream_prDetail_sample.json` - Based on SSOT § API 2
 - `upstream_wrapped_sample.json` - Defensive wrapper case
 
 **Test Scenarios:** 5
-1. prInfo extraction (basePremium from monthlyPrem)
-2. prDetail extraction (basePremium from monthlyPremSum)
-3. Wrapped response handling (defensive)
-4. Null/undefined input (edge case)
-5. Error response (returnCode !== "0000")
+1. prInfo: basePremium extraction from `monthlyPrem`
+2. prDetail: basePremium extraction from `monthlyPremSum`
+3. Wrapped response: `{ returnCode, data }` handling
+4. Null/undefined: Edge case handling
+5. Error response: `returnCode !== "0000"` handling
 
-**Test Execution:**
-```bash
-# Run smoke test (no framework dependency)
-node apps/web/scripts/premium_adapter_smoke.mjs
-```
+**Test Assertions:**
+- Adapter extracts from correct field paths per SSOT
+- Unknown insurer codes handled gracefully
+- `cvrAmtArrLst` NOT used for basePremium
+- Wrapped/unwrapped responses both handled
 
-**Test Location:**
-- Vitest tests: `apps/web/src/lib/api/premium/adapter.test.ts` (if vitest configured)
-- Smoke script: `apps/web/scripts/premium_adapter_smoke.mjs` (standalone)
+**Limitation:** Fixtures are synthetic based on spec documentation, not captured from live API.
 
-### Verification Limitations
+### C. Live-Observed (PENDING)
 
-**Not Verified (Requires Live API):**
-- Actual upstream API response in production environment
+**Status:** ❌ NOT EXECUTED
+
+**Reason:** Dev server not running during STEP 32-λ
+
+**Requirements for Live Verification:**
+1. Start dev server: `pnpm dev` in `apps/web/`
+2. Execute curl requests to proxy endpoints
+3. Capture actual upstream responses
+4. Compare response structure to SSOT documentation
+5. Verify field paths match spec
+
+**Pending Observations:**
+- Actual upstream response structure (wrapper presence/absence)
 - Real insurer data values
-- Network error scenarios
+- Error response format from upstream
+- Network timeout behavior
 - Rate limiting behavior
 
-**Verification Principle:**
-All tests use SSOT-documented structures as fixtures. Adapter behavior is verified against spec, not against live API calls.
+**Note:** Until live verification is performed, all implementation is based on SSOT documentation only.
+
+### D. Defensive Handling (Not in SSOT)
+
+Adapter handles structures NOT documented in SSOT for safety.
+
+**Wrapped Response:** `{ returnCode, returnMsg, data }`
+- SSOT status: NOT documented (spec shows top-level response)
+- Adapter behavior: Unwraps `data` field if present, else uses top-level
+- Live observation: PENDING (not confirmed via actual API call)
+- Justification: Defensive programming for potential API changes
+
+**Error Response:** `{ returnCode: "XXXX", returnMsg: "..." }`
+- SSOT status: NOT documented (error format unspecified)
+- Adapter behavior: Returns `ok: false, reason: UPSTREAM_ERROR`
+- Live observation: PENDING
+
+**Principle:** Adapter handles both documented and potential undocumented structures defensively.
 
 ---
 
