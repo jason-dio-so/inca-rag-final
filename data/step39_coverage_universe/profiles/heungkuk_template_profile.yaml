@@ -1,0 +1,130 @@
+insurer: HEUNGKUK
+proposal_files:
+  - 흥국_가입설계서_2511.pdf
+
+variant_handling:
+  exists: false
+  variants: []
+  structure_diff_between_variants: false
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 7-8
+    table_name: "가입담보 리스트"
+    columns:
+      - coverage_type: "구분"
+      - coverage_name: "담보명"
+      - term_period: "납입 및 만기"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+    characteristics:
+      - category_grouping: true
+      - categories: ["기본", "선택"]
+      - no_sequential_numbering: false
+      - one_row_per_coverage: true
+      - total_premium_shown: true
+      - total_label: "보장보험료 합계"
+      - renewal_coverage_indicated: true
+      - renewal_format: "[갱신형]" prefix in coverage name
+      - renewal_term: "10년갱신 100세만기"
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 9-14
+    table_name: "보장사항"
+    columns:
+      - insured_info: "피보험자(1/1)"
+      - coverage_type: "구분"
+      - coverage_name: "담보명"
+      - coverage_description: "보장내용 (긴 서술형 문장)"
+      - term_period: "납입 및 만기"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_inline: true
+      - conditions_example: "※ 최초 1회, 계약일로부터 1년미만 발생시 가입금액의 50%지급"
+      - reduction_clauses_shown: true
+      - waiting_period_shown: true
+      - waiting_period_example: "※ [보장개시일] 가입연령이 15세 이상인 피보험자 : 보험계약일로부터 그날을 포함하여 90일이 지난 날의 다음날"
+      - exclusions_shown: true
+      - exclusions_label: "[ 보험금을 지급하지 않는 사항 ]"
+      - coverage_type_grouping: true
+      - coverage_types: ["기본", "선택"]
+      - insured_header_shown: true
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: false
+    description: |
+      - 순수 텍스트 블록은 상세표 이후에만 존재
+      - 계약사항 안내 (page 6-7)
+      - 보험료 납입면제 안내 (page 15)
+      - 보험가격지수 안내 (page 16)
+      - 계약자 확인사항 길라잡이 (page 17)
+      - 경과기간별 예상 해약환급금예시표 (page 18)
+
+extraction_implications:
+  summary_table_only_sufficient: true
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **HEUNGKUK 가입설계서 구조적 특징**:
+
+    1. **요약표의 충분성**:
+       - 요약표("가입담보 리스트")는 구분, 담보명, 납입 및 만기, 가입금액, 보험료를 모두 포함
+       - LOTTE와 유사하게 모든 담보가 독립된 row로 구분됨 (병합 없음)
+       - 카테고리 구분 존재: "기본" / "선택"
+       - **Universe 추출에 요약표만으로 충분**
+
+    2. **상세표의 역할**:
+       - 상세표("보장사항")는 피보험자 정보 헤더로 시작
+       - 구분(기본/선택) 카테고리로 그룹핑됨
+       - 각 담보의 보장내용이 긴 서술형 문장으로 기재됨
+       - 조건(감액, 보장개시일, 제외사항)이 주석(※)으로 포함됨
+       - 제외사항은 "[ 보험금을 지급하지 않는 사항 ]" 형식으로 명시
+       - **고객 질의 응답에 필수**
+
+    3. **요약표와 상세표의 관계**:
+       - 1:1 대응 (요약표의 모든 담보가 상세표에도 존재)
+       - 담보명 정확히 일치하여 1:1 매핑 가능
+       - 구분(기본/선택) 카테고리 동일
+
+    4. **STEP 3.9-1 추출 대상**:
+       - **Universe 추출 대상 표**: 요약표 "가입담보 리스트" (pages 7-8)
+       - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+       - **상세표는 보강(Augmentation) 용도로만 사용**
+
+    5. **성별/연령 변형 처리**:
+       - 단일 파일만 존재 (흥국_가입설계서_2511.pdf)
+       - 성별/연령 변형 없음
+       - **Universe 정의에 영향 없음**
+
+    6. **HEUNGKUK 고유 특징**:
+       - 상세표에 피보험자 정보 헤더 명시: "피보험자(1/1) 고객님(나이:30세, 성별:남자, ...)"
+       - 보험금 제외사항이 매우 상세하게 기재됨 (보통약관 제1항, 제2항 참조 형식)
+       - 갱신형 담보는 담보명에 "[갱신형]" 접두어 명시
+       - 갱신 형식: "10년갱신 100세만기"
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 담보명이 정확히 일치하여 매핑 가능
+    - 구분(기본/선택) 카테고리 동일
+
+structural_notes:
+  - 요약표는 "구분" 컬럼으로 카테고리 구분 (기본/선택)
+  - 상세표는 "구분" 컬럼으로 동일하게 카테고리 구분
+  - 갱신형 담보는 담보명에 "[갱신형]" 접두어 + 납입 및 만기에 "10년갱신 100세만기" 기재
+  - 보험료 합계는 단일 합계 ("보장보험료 합계")만 표시
+  - 상세표에 피보험자 정보 헤더 명시 (다른 보험사와 차별화)
+  - 제외사항 표기 형식: "[ 보험금을 지급하지 않는 사항 ]" + "→ 제1항:", "→ 제2항:" 구조

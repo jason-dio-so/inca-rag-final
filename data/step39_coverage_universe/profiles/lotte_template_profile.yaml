@@ -1,0 +1,121 @@
+insurer: LOTTE
+proposal_files:
+  - 롯데_가입설계서(남)_2511.pdf
+  - 롯데_가입설계서(여)_2511.pdf
+
+variant_handling:
+  exists: true
+  variants:
+    - "남"
+    - "여"
+  structure_diff_between_variants: false
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 2-3
+    table_name: "피보험자 / 소유자별 가입담보"
+    columns:
+      - coverage_sequence: "순번"
+      - coverage_name: "담보명"
+      - amount: "가입금액"
+      - term_period: "납기/만기"
+      - premium: "보험료(원)"
+    characteristics:
+      - no_category_grouping: true
+      - no_multi_row_merged_cells: true
+      - one_row_per_coverage: true
+      - sequential_numbering: true
+      - total_premium_shown: true
+      - total_label: "보장보험료 합계"
+      - renewal_coverage_indicated: true
+      - renewal_format: "10년/10년 갱신"
+      - no_coverage_code_column: false
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 4-9
+    table_name: "보장 사항"
+    columns:
+      - coverage_type: "담보유형"
+      - coverage_name: "담보명"
+      - coverage_description: "보장내용 (긴 서술형 문장)"
+      - amount: "가입금액"
+      - term_period: "납기/만기"
+      - premium: "보험료(원)"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_inline: true
+      - conditions_example: "※ 가입 후 경과기간 1년 미만 내 진단확정시 보험가입금액의 50% 지급"
+      - reduction_clauses_shown: true
+      - waiting_period_shown: true
+      - waiting_period_example: "※ 보장개시일 : 보험계약일을 포함하여 90일이 지난날의 다음날"
+      - exclusions_shown: true
+      - coverage_type_grouping: true
+      - coverage_types: ["기본계약", "상해", "질병", "암관련", "뇌질환", "심장질환", "수술비", "입원일당", "골절/화상"]
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: false
+    description: |
+      - 순수 텍스트 블록은 상세표 이후에만 존재
+      - 계약사항 안내 (page 4)
+      - 해약환급금 예시표 (page 10)
+      - 보험계약 관련 유의사항 (pages 10-11)
+      - 적용 가능 할인 안내 (page 11)
+
+extraction_implications:
+  summary_table_only_sufficient: true
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **LOTTE 가입설계서 구조적 특징**:
+
+    1. **요약표의 충분성**:
+       - 요약표("피보험자 / 소유자별 가입담보")는 순번, 담보명, 가입금액, 납기/만기, 보험료를 모두 포함
+       - SAMSUNG과 달리 병합된 셀이 없고, 모든 담보가 독립된 row로 구분됨
+       - 순번(1, 2, 21, 30, ...)으로 명확히 식별 가능
+       - **Universe 추출에 요약표만으로 충분**
+
+    2. **상세표의 역할**:
+       - 상세표("보장 사항")는 담보유형 카테고리로 그룹핑됨
+       - 각 담보의 보장내용이 긴 서술형 문장으로 기재됨
+       - 조건(감액, 보장개시일, 제외사항)이 주석(※)으로 포함됨
+       - **고객 질의 응답에 필수**
+
+    3. **요약표와 상세표의 관계**:
+       - 1:1 대응 (요약표의 모든 담보가 상세표에도 존재)
+       - 순번을 통한 매핑 가능 (단, 상세표에는 순번 컬럼 없음)
+       - 담보명 정확히 일치하여 1:1 매핑 가능
+
+    4. **STEP 3.9-1 추출 대상**:
+       - **Universe 추출 대상 표**: 요약표 "피보험자 / 소유자별 가입담보" (pages 2-3)
+       - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+       - **상세표는 보강(Augmentation) 용도로만 사용**
+
+    5. **성별 변형 처리**:
+       - 남/여 파일 구조 완전히 동일
+       - 피보험자 정보, 가입금액, 납기/만기는 동일
+       - 보험료만 연령/성별에 따라 차이 있음
+       - **Universe 정의에는 영향 없음** (담보 존재 여부는 동일)
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 담보명이 정확히 일치하여 매핑 가능
+    - 순번(순번)은 요약표에만 존재, 상세표에는 담보유형 카테고리만 존재
+
+structural_notes:
+  - 요약표는 카테고리 구분 없이 순번으로만 나열
+  - 상세표는 "담보유형" 컬럼으로 카테고리 구분 (기본계약/상해/질병/암관련/뇌질환/심장질환/수술비/입원일당/골절화상)
+  - 갱신형 담보는 납기/만기 컬럼에 "10년/10년 갱신" 형식으로 표시
+  - 보험료 합계는 단일 합계 ("보장보험료 합계")만 표시, 갱신/비갱신 분리 없음
+  - 담보명에 갱신형 표시: "다빈치로봇암수술비(갑상선암및전립선암제외)(최초1회한)(갱신형)"

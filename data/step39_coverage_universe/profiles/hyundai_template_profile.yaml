@@ -1,0 +1,126 @@
+insurer: HYUNDAI
+proposal_files:
+  - 현대_가입설계서_2511.pdf
+
+variant_handling:
+  exists: false
+  variants: []
+  structure_diff_between_variants: false
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 2-3
+    table_name: "가입담보 요약표"
+    columns:
+      - coverage_name: "가입담보"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납기/만기"
+    characteristics:
+      - sequential_numbering: true
+      - numbering_format: "1.", "2.", "3.", ...
+      - no_category_column: true
+      - one_row_per_coverage: true
+      - total_premium_shown: true
+      - total_label: "보장보험료 합계"
+      - renewal_coverage_indicated: true
+      - renewal_format: "(갱신형)" suffix in coverage name
+      - renewal_term_format: "전기납10년만기갱신(최대100세)"
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 4-7
+    table_name: "위험보장 및 보험금 지급내용"
+    columns:
+      - coverage_name: "담보명 및 보장내용"
+      - term_period: "납기/만기"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_inline: true
+      - conditions_example: "보장개시일 이후..., (최초1회한)(단, 최초계약일부터 1년미만 상기금액의 50%)"
+      - reduction_clauses_shown: true
+      - waiting_period_shown: true
+      - no_exclusion_section: true
+      - no_category_grouping: true
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: false
+    description: |
+      - 순수 텍스트 블록은 상세표 이후에만 존재
+      - 계약정보 (page 4)
+      - 상품별 보험료 할인 안내 (page 8)
+      - 보험료 납입면제 안내 (page 8)
+      - 계약정보 (page 9)
+      - 경과기간별 해약환급금 예시표 (page 9)
+      - 갱신담보 보험료 예시표 (page 10)
+      - 보험가격지수 안내 (page 10)
+      - 기타안내사항 (page 11)
+
+extraction_implications:
+  summary_table_only_sufficient: true
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **HYUNDAI 가입설계서 구조적 특징**:
+
+    1. **요약표의 충분성**:
+       - 요약표("가입담보 요약표")는 가입담보, 가입금액, 보험료(원), 납기/만기를 모두 포함
+       - **모든 담보가 독립된 row로 구분됨 (병합 없음)**
+       - 순차 번호로 구분 (1., 2., 3., ...)
+       - **Universe 추출에 요약표만으로 충분**
+
+    2. **상세표의 역할**:
+       - 상세표("위험보장 및 보험금 지급내용")는 동일 담보에 대한 보장내용 서술 포함
+       - 각 담보의 보장내용이 긴 서술형 문장으로 기재됨
+       - 조건(감액, 보장개시일, 최초1회한 등)이 본문 내 포함됨
+       - 제외사항은 별도 섹션 없음 (본문에 통합)
+       - **고객 질의 응답에 필수**
+
+    3. **요약표와 상세표의 관계**:
+       - 1:1 대응 (요약표의 모든 담보가 상세표에도 존재)
+       - 담보명 정확히 일치하여 1:1 매핑 가능
+       - 번호 순서 동일 (1→1, 2→2, ...)
+
+    4. **STEP 3.9-1 추출 대상**:
+       - **Universe 추출 대상 표**: 요약표 "가입담보 요약표" (pages 2-3)
+       - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+       - **상세표는 보강(Augmentation) 용도로만 사용**
+
+    5. **성별/연령 변형 처리**:
+       - 단일 파일만 존재 (현대_가입설계서_2511.pdf)
+       - 성별/연령 변형 없음
+       - **Universe 정의에 영향 없음**
+
+    6. **HYUNDAI 고유 특징**:
+       - 요약표에 카테고리 컬럼 없음 (기본/선택 구분 없음)
+       - 순차 번호로만 담보 구분 (1., 2., 3., ...)
+       - 갱신형 담보는 담보명 끝에 "(갱신형)" 표시
+       - 갱신 형식: "전기납10년만기갱신(최대100세)"
+       - 상세표에 제외사항 별도 섹션 없음 (본문에 통합)
+       - 보험료 합계는 단일 합계 ("보장보험료 합계")만 표시
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 담보명이 정확히 일치하여 매핑 가능
+    - 순차 번호 동일
+
+structural_notes:
+  - 요약표는 순차 번호로만 담보 구분 (1., 2., 3., ...)
+  - 카테고리 컬럼 없음 (기본/선택 구분 없음)
+  - 갱신형 담보는 담보명 끝에 "(갱신형)" 표시 + 납기/만기에 "전기납10년만기갱신(최대100세)" 기재
+  - 보험료 합계는 단일 합계 ("보장보험료 합계")만 표시
+  - 상세표에 제외사항 별도 섹션 없음 (본문 내 통합)
+  - 상세표는 카테고리 그룹핑 없음 (순차 나열)

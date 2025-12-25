@@ -1,0 +1,50 @@
+# STEP 3.9-0 Template Profile: KB
+
+insurer: KB
+proposal_files:
+  - KB_가입설계서.pdf
+
+structure_profile:
+  summary_table:
+    exists: true
+    location_hint: "페이지 2-3"
+    header_keywords:
+      - "보장명"
+      - "가입금액"
+      - "보험료(원)"
+      - "납입|보험기간"
+    columns:
+      - row_id  # 보장 번호 (1, 2, 3...)
+      - coverage_name_raw
+      - amount_raw
+      - premium_raw
+      - pay_term_raw
+    description: "담보 요약표 - Universe 기준"
+    detection_method: "header_keywords"
+
+  detail_table:
+    exists: true
+    location_hint: "페이지 4 이후"
+    header_keywords:
+      - "보장명 및 보장내용"
+      - "가입금액"
+      - "보험료(원)"
+    description: "담보 상세 설명표 - STEP 3.10 대상"
+
+  text_blocks:
+    exists: true
+    start_keywords:
+      - "주의사항"
+      - "기타 유의사항"
+      - "공통사항"
+    description: "표 사이 안내문/주의사항"
+
+extraction_policy:
+  page_number_fixed: false
+  detection_method: "header keyword based"
+  summary_table_end_marker: "detail_table 시작 또는 주의사항 블록"
+  notes: |
+    - 요약표는 row_id (보장 번호) 컬럼 포함
+    - 갱신형 담보는 "10년/10년갱신(갱신종료:100세)" 형식
+    - 담보 번호가 불연속일 수 있음 (1, 2, 3, 5, 8...)
+    - 일부 담보는 보험료가 다음 행과 공유됨

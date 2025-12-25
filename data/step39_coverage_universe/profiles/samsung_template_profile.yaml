@@ -1,0 +1,88 @@
+insurer: SAMSUNG
+proposal_file: 삼성_가입설계서_2511.pdf
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 2-3
+    table_name: "담보가입현황"
+    columns:
+      - coverage_name: "담보가입현황"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납입기간/보험기간"
+      - coverage_code: "우측 끝 코드 (예: ZD0547010)"
+    characteristics:
+      - grouped_by_category: true
+      - categories: ["진단", "입원", "수술", "장해/장애", "간병/사망"]
+      - multi_row_grouped_coverage: true
+      - example: "유사암 진단비 5종이 단일 보험료 셀로 병합됨"
+      - total_premium_shown: true
+      - separate_renewal_vs_non_renewal: true
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 4-7
+    table_name: "담보별 보장내용"
+    columns:
+      - coverage_name: "담보별 보장내용"
+      - coverage_description: "보장내용 (서술형 긴 문장)"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납입기간/보험기간"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_example: "※ 암(유사암 제외)의 보장개시일은 최초 계약일 또는 부활(효력회복)일부터 90일이 지난날의 다음날임"
+      - reduction_clauses_shown: true
+      - reduction_example: "※ 최초 보험가입후 1년 미만에 보험금 지급사유가 발생한 경우 50% 감액 지급"
+      - exclusions_shown: true
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: true
+    description: |
+      - 주석 문구(※)가 상세표 내부에 포함됨
+      - 상세표 각 담보 row 내부에 조건/감액/보장개시일 설명이 함께 기재됨
+      - 순수 텍스트 블록은 상세표 이후에만 존재 (예: 해약환급금, 기타사항, 권리의무 등)
+
+extraction_implications:
+  summary_table_only_sufficient: false
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **요약표의 한계**:
+    - 요약표(담보가입현황)는 담보명, 가입금액, 보험료만 나열
+    - 보장내용(coverage_description)이 없음
+    - 조건(감액, 보장개시일, 제외사항 등)이 없음
+    - 고객 질의("암 진단비는 90일 대기기간이 있나요?")에 답변 불가
+
+    **상세표의 역할**:
+    - 담보별 보장내용 컬럼에 서술형 긴 문장으로 보장 조건 기재
+    - 주석(※)으로 감액 조건, 보장개시일, 제외 담보 명시
+    - Universe 추출은 요약표 기준이지만, 고객 질의 응답은 상세표 필수
+
+    **STEP 3.9-1 추출 대상**:
+    - **Universe 추출 대상 표**: 요약표 "담보가입현황" (pages 2-3)
+    - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+    - **상세표는 보강(Augmentation) 용도로만 사용**
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 단, 요약표에서는 "유사암 진단비 5종"이 단일 행으로 병합되어 있으나,
+      상세표에서는 각 유사암별로 분리되어 기재됨
+    - 요약표 우측 끝 담보 코드(예: ZD8200010)로 1:1 매핑 가능
+
+structural_notes:
+  - 요약표는 카테고리별(진단/입원/수술/장해/간병) 시각적 구분 있음
+  - 상세표는 "기본계약" / "선택계약" 구분 있음
+  - 갱신형 담보는 "[갱신형]" 접두어로 명시됨
+  - 보험료 합계는 "갱신보험료 합계" / "비갱신보험료 합계" 분리 표시

@@ -1,0 +1,51 @@
+# STEP 3.9-0 Template Profile: SAMSUNG
+
+insurer: SAMSUNG
+proposal_files:
+  - 삼성_가입설계서_2511.pdf
+
+structure_profile:
+  summary_table:
+    exists: true
+    location_hint: "초반부 (보통 2-3페이지)"
+    header_keywords:
+      - "담보가입현황"
+      - "가입금액"
+      - "보험료(원)"
+      - "납입기간/보험기간"
+    columns:
+      - coverage_name_raw
+      - amount_raw
+      - premium_raw
+      - pay_term_raw
+      - maturity_raw
+      - notes  # 담보코드 (예: ZD0547010)
+    description: "담보 요약표 - Universe 기준"
+    detection_method: "header_keywords"
+
+  detail_table:
+    exists: true
+    location_hint: "요약표 이후 (보통 4-7페이지)"
+    header_keywords:
+      - "담보별 보장내용"
+      - "보장명 및 보장내용"
+      - "가입금액"
+    description: "담보 상세 설명표 - STEP 3.10 대상"
+
+  text_blocks:
+    exists: true
+    start_keywords:
+      - "주의사항"
+      - "예상 환급금 안내"
+      - "※"
+    description: "표 사이 주의사항/안내문"
+
+extraction_policy:
+  page_number_fixed: false
+  detection_method: "header keyword based"
+  summary_table_end_marker: "detail_table 시작 또는 주의사항 블록"
+  notes: |
+    - 요약표는 "담보가입현황" 헤더로 시작
+    - 각 담보는 1행 또는 여러 하위 담보를 묶어 표현
+    - 담보코드(ZD...)가 notes 컬럼에 위치
+    - 갱신형 담보는 "[갱신형]" 접두어 포함

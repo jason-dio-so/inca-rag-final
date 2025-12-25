@@ -1,0 +1,92 @@
+insurer: MERITZ
+proposal_file: 메리츠_가입설계서_2511.pdf
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 3-4
+    table_name: "가입담보리스트"
+    columns:
+      - coverage_name: "담보사항" with "가입담보"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납기/만기"
+    characteristics:
+      - category_grouping: true
+      - categories: ["기본계약", "사망후유", "3대진단", "입원일당", "수술", "골절/화상", "기타", "할증/제도성"]
+      - multi_level_structure: true
+      - numbered_list: true
+      - renewal_marker: "(갱신형)" or "(10년갱신)" in coverage name
+      - no_merged_cells_for_premium: true
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 6-10
+    table_name: "담보사항" with "가입담보 및 보장내용"
+    columns:
+      - coverage_name: "가입담보 및 보장내용"
+      - coverage_description: "보장내용 (서술형 긴 문장)"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납기/만기"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_example: "※ 암보장개시일 : 최초계약일 또는 부활일(효력회복일)부터 그 날을 포함하여 90일이 지난날의 다음날이고 15세 미만인 경우 최초계약일"
+      - reduction_clauses_shown: true
+      - reduction_example: "- 계약일부터 1년경과시점 전일 이전 진단시 5백만원(가입금액의 50%) 지급"
+      - exclusions_shown: true
+      - bold_markers: "최초 1회한" highlighted in red
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: true
+    description: |
+      - 주석 문구(※)가 상세표 내부에 포함됨
+      - 상세표 각 담보 row 내부에 조건/감액/보장개시일 설명이 함께 기재됨
+      - 순수 텍스트 블록은 상세표 이후에만 존재 (예: 보험료 납입면제 관련 안내, 주요사항 안내 등)
+      - Pages 5에 "보험료 납입면제 관련 안내" 별도 페이지 존재
+
+extraction_implications:
+  summary_table_only_sufficient: false
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **요약표의 한계**:
+    - 요약표("가입담보리스트")는 담보명, 가입금액, 보험료만 나열
+    - 보장내용(coverage_description)이 없음
+    - 조건(감액, 보장개시일, 제외사항 등)이 없음
+    - 고객 질의("암 진단비는 90일 대기기간이 있나요?")에 답변 불가
+
+    **상세표의 역할**:
+    - 담보별 보장내용 컬럼에 서술형 긴 문장으로 보장 조건 기재
+    - 주석(※)으로 감액 조건, 보장개시일, 제외 담보 명시
+    - 중요 문구는 붉은색으로 강조 (예: "최초 1회한")
+    - Universe 추출은 요약표 기준이지만, 고객 질의 응답은 상세표 필수
+
+    **STEP 3.9-1 추출 대상**:
+    - **Universe 추출 대상 표**: 요약표 "가입담보리스트" (pages 3-4)
+    - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+    - **상세표는 보강(Augmentation) 용도로만 사용**
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 요약표는 번호순 나열 (1, 2, 3, 5, 8, 27, 34, ...)
+    - 상세표는 카테고리별 구분 ("기본계약", "선택계약")
+    - 번호로 1:1 매핑 가능
+
+structural_notes:
+  - 요약표는 카테고리별 구분 (기본계약, 사망후유, 3대진단, 입원일당, 수술, 골절/화상, 기타, 할증/제도성)
+  - 상세표는 "기본계약" / "선택계약" 구분
+  - 갱신형 담보는 "(10년갱신)갱신형" 또는 "(20년갱신)갱신형" 접두어로 명시
+  - 보험료 합계는 "보장보험료 합계"로 표시
+  - Page 5에 "보험료 납입면제 관련 안내" 별도 섹션 존재 (요약표와 상세표 사이)
+  - 중요 조건은 붉은색으로 강조 표시

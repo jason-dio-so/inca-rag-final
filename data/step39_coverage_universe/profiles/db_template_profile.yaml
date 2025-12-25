@@ -1,0 +1,96 @@
+insurer: DB
+proposal_files:
+  - DB_가입설계서(40세이하)_2511.pdf
+  - DB_가입설계서(41세이상)_2511.pdf
+
+variant_handling:
+  exists: true
+  variants:
+    - "40세이하"
+    - "41세이상"
+  structure_diff_between_variants: false
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: page 4
+    table_name: "가입담보요약"
+    columns:
+      - coverage_name: "가입담보"
+      - amount: "가입금액(만원)"
+      - premium: "보험료(원)"
+      - term_period: "납기/만기(갱신종료시기)"
+    characteristics:
+      - simple_list_format: true
+      - no_category_grouping: true
+      - numbered_list: true
+      - renewal_marker: "(갱신형)" suffix in coverage name
+      - no_merged_cells: true
+      - one_row_per_coverage: true
+      - total_premium_shown: true
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 7-9
+    table_name: "담보 및 보장내용 예시"
+    columns:
+      - coverage_name: "가입담보[만기/납기]"
+      - amount: "가입금액(만원)"
+      - premium: "보험료(원)"
+      - coverage_description: "보장(보상)내용"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_example: "보장개시일(계약일로부터 90일이 지난날의 다음날)"
+      - reduction_clauses_shown: true
+      - reduction_example: "가입 후 1년미만시 가입금액의 50%지급"
+      - exclusions_shown: true
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: true
+    description: |
+      - 상세표 내부에 보장내용 설명이 포함됨
+      - 순수 텍스트 블록은 상세표 이후에만 존재 (예: 갱신담보, 해약환급금, 보장한도액 예시 등)
+
+extraction_implications:
+  summary_table_only_sufficient: false
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **요약표의 한계**:
+    - 요약표("가입담보요약")는 담보명, 가입금액, 보험료만 나열
+    - 보장내용(coverage_description)이 없음
+    - 조건(감액, 보장개시일, 제외사항 등)이 없음
+    - 고객 질의("암 진단비는 90일 대기기간이 있나요?")에 답변 불가
+
+    **상세표의 역할**:
+    - 담보별 보장내용 컬럼에 서술형 긴 문장으로 보장 조건 기재
+    - 보장개시일, 감액 조건, 제외 담보 명시
+    - Universe 추출은 요약표 기준이지만, 고객 질의 응답은 상세표 필수
+
+    **STEP 3.9-1 추출 대상**:
+    - **Universe 추출 대상 표**: 요약표 "가입담보요약" (page 4)
+    - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+    - **상세표는 보강(Augmentation) 용도로만 사용**
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 요약표는 번호순 단순 나열 (1, 2, 3, ...)
+    - 상세표는 동일 순서로 각 담보별 상세 설명 제공
+    - 번호로 1:1 매핑 가능
+
+structural_notes:
+  - 요약표는 카테고리 구분 없이 번호순 나열
+  - 상세표는 "기본계약" / "선택계약" 구분 있음
+  - 갱신형 담보는 "(갱신형)" 접미어로 명시됨
+  - 보험료 합계는 "보장보험료 합계"로 표시
+  - 40세이하 / 41세이상 구조 완전 동일 (보험료만 차이)

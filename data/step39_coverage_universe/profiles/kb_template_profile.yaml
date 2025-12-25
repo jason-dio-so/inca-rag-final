@@ -1,0 +1,91 @@
+insurer: KB
+proposal_file: KB_가입설계서.pdf
+
+document_structure:
+  summary_table:
+    exists: true
+    count: 1
+    location: pages 2-3
+    table_name: "통합고객님 피보험자님의 가입내용"
+    columns:
+      - coverage_name: "보장명"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납입|보험기간"
+    characteristics:
+      - simple_list_format: true
+      - no_category_grouping: true
+      - numbered_list: true
+      - renewal_marker: "(갱신형)" suffix in coverage name
+      - no_merged_cells: true
+      - one_row_per_coverage: true
+
+  detailed_table:
+    exists: true
+    count: 1
+    location: pages 4-8
+    table_name: "보장명 및 보장내용"
+    columns:
+      - coverage_name: "보장명 및 보장내용"
+      - coverage_description: "보장내용 (서술형 긴 문장)"
+      - amount: "가입금액"
+      - premium: "보험료(원)"
+      - term_period: "납입|보험기간"
+    characteristics:
+      - one_row_per_coverage: true
+      - detailed_conditions_included: true
+      - conditions_example: "※ 암보장개시일 : 계약일로부터 그날을 포함하여 90일이 지난날의 다음날"
+      - reduction_clauses_shown: true
+      - reduction_example: "※ 계약일로부터 1년미만시 보험가입금액의 50%지급"
+      - exclusions_shown: true
+      - icons_in_table: true
+      - icon_description: "우측에 달력/연도/면책 아이콘 표시"
+
+  text_blocks:
+    exists: true
+    locations:
+      - between_tables: false
+      - after_tables: true
+      - mixed_with_tables: true
+    description: |
+      - 주석 문구(※)가 상세표 내부에 포함됨
+      - 상세표 각 담보 row 내부에 조건/감액/보장개시일 설명이 함께 기재됨
+      - 순수 텍스트 블록은 상세표 이후에만 존재 (예: 기타 유의사항, 갱신계약에 관한 사항 등)
+
+extraction_implications:
+  summary_table_only_sufficient: false
+  detailed_table_required_for_customer_queries: true
+  notes: |
+    **요약표의 한계**:
+    - 요약표("통합고객님 피보험자님의 가입내용")는 담보명, 가입금액, 보험료만 나열
+    - 보장내용(coverage_description)이 없음
+    - 조건(감액, 보장개시일, 제외사항 등)이 없음
+    - 고객 질의("암 진단비는 90일 대기기간이 있나요?")에 답변 불가
+
+    **상세표의 역할**:
+    - 담보별 보장내용 컬럼에 서술형 긴 문장으로 보장 조건 기재
+    - 주석(※)으로 감액 조건, 보장개시일, 제외 담보 명시
+    - Universe 추출은 요약표 기준이지만, 고객 질의 응답은 상세표 필수
+
+    **STEP 3.9-1 추출 대상**:
+    - **Universe 추출 대상 표**: 요약표 "통합고객님 피보험자님의 가입내용" (pages 2-3)
+    - **근거**: 가입설계서에서 계약자가 실제 가입한 담보 목록의 유일한 출처
+    - **상세표는 보강(Augmentation) 용도로만 사용**
+
+relationship_between_tables:
+  summary_to_detailed_mapping: "1:1"
+  summary_only_coverage_exists: false
+  detailed_only_coverage_exists: false
+  notes: |
+    - 요약표의 모든 담보가 상세표에도 존재함
+    - 요약표는 번호순 단순 나열 (1, 2, 3, 5, 8, 70, 72, ...)
+    - 상세표는 동일 순서로 각 담보별 상세 설명 제공
+    - 번호로 1:1 매핑 가능
+
+structural_notes:
+  - 요약표는 카테고리 구분 없이 번호순 나열
+  - 상세표는 "기본계약" / "선택계약" 구분 없음 (번호순 나열)
+  - 갱신형 담보는 "(갱신형)" 접미어로 명시됨
+  - 보험료 합계는 "보장합계"로 표시
+  - 갱신담보 별도 페이지 없음 (요약표에 통합)
+  - 우측에 아이콘 표시 (예약담보, 년/월지급형담보, 면책기간有)

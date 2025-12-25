@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP 3.10-ζ Complete (ins_cd Patched + Re-run Complete)
-**Project Health:** ✅ ACTIVE - Coverage Mapping Consistency Achieved
+**Current Phase:** STEP 3.10-η Complete (Excel Enhancement - UNMAPPED Backlog Processing)
+**Project Health:** ✅ ACTIVE - Coverage Mapping Progressively Improved
 
 ---
 
@@ -24,6 +24,77 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.10-η: Excel Enhancement - UNMAPPED Backlog Processing
+**Commit:** TBD | **Date:** 2025-12-26
+
+**Summary:**
+- Processed UNMAPPED backlog from STEP 3.10-γ
+- Added 48 new mapping rows to Excel (qualified ADD targets)
+- Deferred 19 structural cases to STEP 3.10-θ
+- Generated enhanced Excel: `담보명mapping자료__inscd_patched_plus.xlsx`
+
+**Processing Rules:**
+- ✅ ADD_EXCEL_ROW: immediate processing (C1/C2/C6 causes only)
+- ✅ ADD_EXCEL_ROW_WITH_NOTE: with annotation
+- ❌ STRUCTURAL cases deferred (C3/C4/C7)
+
+**Enhancement Results:**
+- Total backlog items: 67
+- Processed (added): 48 (71.6%)
+- Deferred: 19 (28.4%)
+- Processing rate: 71.6%
+
+**Current Mapping Status:**
+- MAPPED: 259 (77.54%)
+- UNMAPPED: 75 (22.46%)
+- AMBIGUOUS: 0 (0.00%) ✅
+
+**Per-Insurer Additions:**
+| Insurer | Added Rows |
+|---------|------------|
+| N01 (SAMSUNG) | 8 |
+| N02 (HANWHA) | 2 |
+| N03 (LOTTE) | 7 |
+| N04 (MERITZ) | 11 |
+| N05 (KB) | 7 |
+| N06 (HYUNDAI) | 7 |
+| N07 (HEUNGKUK) | 3 |
+| N08 (DB) | 3 |
+
+**Generated Files:**
+- `data/담보명mapping자료__inscd_patched_plus.xlsx` (enhanced Excel)
+- `data/step310_mapping/excel_enhancement/ENHANCEMENT_LOG.csv`
+- `STEP310_ETA_EXCEL_ENHANCEMENT_REPORT.md`
+- `STEP310_ETA_FINAL_METRICS_REPORT.md`
+
+**Scripts:**
+- `scripts/step310_eta_excel_enhancement.py`
+- `scripts/step310_eta_simple_metrics.py`
+
+**Constitution Compliance:**
+- ✅ Single Source of Truth: Excel remains canonical mapping authority
+- ✅ No LLM Inference: All mappings deterministic (Excel lookup only)
+- ✅ Coverage Universe Lock: All proposals remain in universe
+- ✅ Evidence Rule: All additions traceable to backlog analysis
+- ❌ No coverage code inference
+- ❌ No structural assumptions
+
+**DoD Achievement:**
+- ✅ ADD-qualified backlog 100% processed (48/48)
+- ✅ STRUCTURAL cases 0% processed (deferred as intended: 19/19)
+- ✅ Enhanced Excel generated
+- ✅ Enhancement logs generated
+- ⚠️ MAPPED ratio 77.54% < 85% target (expected - full pipeline re-run needed)
+- ✅ AMBIGUOUS = 0 maintained
+- ⚠️ Git commit pending
+
+**Next Steps:**
+1. STEP 3.10-θ: Handle 19 deferred structural cases
+2. Full pipeline re-run with enhanced Excel to measure actual MAPPED improvement
+3. Admin UI for any remaining manual resolutions
+
+---
 
 ### ✅ STEP 3.10-ζ: ins_cd Patched Excel + Re-run Complete
 **Commits:** 2cecda1, efa43b2 | **Date:** 2025-12-26
