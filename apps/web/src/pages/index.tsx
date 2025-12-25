@@ -9,6 +9,7 @@
  * - DEV_MOCK_MODE: Scenario switcher
  * - Real/Mock API calls
  * - Contract-driven rendering
+ * - STEP 33-β: DEV Premium API triggers (for live request capture)
  */
 
 import React, { useState } from 'react';
@@ -16,6 +17,7 @@ import { compareClient, CompareResponse, ScenarioId } from '@/lib/api/compareCli
 import { ViewRenderer } from '@/components/ViewRenderer';
 import { ScenarioSwitcher } from '@/components/ScenarioSwitcher';
 import { Button } from '@/components/ui/Button';
+import type { SimplePremiumRequest, OnepagePremiumRequest, PremiumProxyResponse } from '@/lib/api/premium/types';
 
 export default function ComparePage() {
   const [query, setQuery] = useState('일반암진단비');
@@ -86,6 +88,68 @@ export default function ComparePage() {
       case 'retry':
         handleCompare();
         break;
+    }
+  };
+
+  /**
+   * DEV PREMIUM TRIGGERS (STEP 33-β)
+   *
+   * Purpose: Generate live Premium API requests for Network capture
+   * SSOT: docs/api/premium_api_spec.md
+   */
+  const handlePremiumSimpleCompare = async () => {
+    console.log('[DEV] Premium Simple Compare - Request sent');
+
+    // SSOT-based request payload (fixed test values)
+    const request: SimplePremiumRequest = {
+      baseDt: '20251225',
+      birthday: '19760101',
+      customerNm: '홍길동',
+      sex: '1',
+      age: '50',
+    };
+
+    try {
+      const response = await fetch('/api/premium/simple-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      const data: PremiumProxyResponse = await response.json();
+      console.log('[DEV] Premium Simple Compare - Response:', data);
+      alert(`Simple Compare OK: ${data.items.length} items (check Network tab)`);
+    } catch (err) {
+      console.error('[DEV] Premium Simple Compare - Error:', err);
+      alert(`Simple Compare FAIL: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  };
+
+  const handlePremiumOnepageCompare = async () => {
+    console.log('[DEV] Premium Onepage Compare - Request sent');
+
+    // SSOT-based request payload (fixed test values)
+    const request: OnepagePremiumRequest = {
+      baseDt: '20251225',
+      birthday: '19760101',
+      customerNm: '홍길동',
+      sex: '1',
+      age: '50',
+    };
+
+    try {
+      const response = await fetch('/api/premium/onepage-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      const data: PremiumProxyResponse = await response.json();
+      console.log('[DEV] Premium Onepage Compare - Response:', data);
+      alert(`Onepage Compare OK: ${data.items.length} items (check Network tab)`);
+    } catch (err) {
+      console.error('[DEV] Premium Onepage Compare - Error:', err);
+      alert(`Onepage Compare FAIL: ${err instanceof Error ? err.message : 'Unknown'}`);
     }
   };
 
@@ -184,6 +248,33 @@ export default function ComparePage() {
                 <li>• 2개 보험사를 선택하세요</li>
                 <li>• DEV 모드: 시나리오 버튼으로 테스트</li>
               </ul>
+            </div>
+
+            {/* DEV Premium Triggers (STEP 33-β) */}
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <h3 className="font-bold mb-3 text-sm text-orange-800">🧪 DEV: Premium API Triggers</h3>
+              <p className="text-xs text-orange-700 mb-3">
+                Network 탭에서 Request/Response 캡처용 (STEP 33-β)
+              </p>
+              <div className="space-y-2">
+                <Button
+                  variant="secondary"
+                  onClick={handlePremiumSimpleCompare}
+                  className="w-full text-xs"
+                >
+                  [DEV] Premium Simple Compare
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handlePremiumOnepageCompare}
+                  className="w-full text-xs"
+                >
+                  [DEV] Premium Onepage Compare
+                </Button>
+              </div>
+              <p className="text-xs text-orange-600 mt-2">
+                ⚠️ 버튼 클릭 후 DevTools → Network 탭 확인
+              </p>
             </div>
           </div>
 
