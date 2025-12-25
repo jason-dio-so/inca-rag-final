@@ -153,6 +153,63 @@ export default function ComparePage() {
     }
   };
 
+  /**
+   * STEP 33-β-1c: Experimental tests for 400 root cause
+   */
+  const handlePremiumSimpleASCII = async () => {
+    console.log('[DEV] Premium Simple (ASCII customerNm) - Request sent');
+
+    const request: SimplePremiumRequest = {
+      baseDt: '20251225',
+      birthday: '19760101',
+      customerNm: 'Hong', // ASCII only
+      sex: '1',
+      age: '50',
+    };
+
+    try {
+      const response = await fetch('/api/premium/simple-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      const data: PremiumProxyResponse = await response.json();
+      console.log('[DEV] Premium Simple ASCII - Response:', data);
+      alert(`Simple ASCII: ${response.status} - ${data.items.length} items`);
+    } catch (err) {
+      console.error('[DEV] Premium Simple ASCII - Error:', err);
+      alert(`Simple ASCII FAIL: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  };
+
+  const handlePremiumSimpleNoName = async () => {
+    console.log('[DEV] Premium Simple (No customerNm) - Request sent');
+
+    const request = {
+      baseDt: '20251225',
+      birthday: '19760101',
+      // customerNm omitted
+      sex: '1',
+      age: '50',
+    };
+
+    try {
+      const response = await fetch('/api/premium/simple-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      const data: PremiumProxyResponse = await response.json();
+      console.log('[DEV] Premium Simple NoName - Response:', data);
+      alert(`Simple NoName: ${response.status} - ${data.items.length} items`);
+    } catch (err) {
+      console.error('[DEV] Premium Simple NoName - Error:', err);
+      alert(`Simple NoName FAIL: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -275,6 +332,27 @@ export default function ComparePage() {
               <p className="text-xs text-orange-600 mt-2">
                 ⚠️ 버튼 클릭 후 DevTools → Network 탭 확인
               </p>
+
+              {/* STEP 33-β-1c: Experimental tests */}
+              <div className="mt-3 pt-3 border-t border-orange-300">
+                <p className="text-xs font-bold text-orange-800 mb-2">🔬 실험: 400 원인 분리</p>
+                <div className="space-y-2">
+                  <Button
+                    variant="secondary"
+                    onClick={handlePremiumSimpleASCII}
+                    className="w-full text-xs"
+                  >
+                    [TEST] Simple (customerNm=ASCII)
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handlePremiumSimpleNoName}
+                    className="w-full text-xs"
+                  >
+                    [TEST] Simple (No customerNm)
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 

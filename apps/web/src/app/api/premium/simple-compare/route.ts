@@ -59,13 +59,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!upstreamResponse.ok) {
-      // STEP 33-β-1b: Capture upstream error body (full text)
+      // STEP 33-β-1c: Capture full upstream error metadata
       const errorBody = await upstreamResponse.text();
-      console.error('[Premium Simple] upstream error body:', errorBody);
-      console.error('[Premium Simple] Upstream Error:', {
+
+      console.error('[Premium Simple] Upstream Error Meta:', {
         status: upstreamResponse.status,
         statusText: upstreamResponse.statusText,
+        url: upstreamResponse.url,
+        contentType: upstreamResponse.headers.get('content-type'),
+        contentLength: upstreamResponse.headers.get('content-length'),
+        contentEncoding: upstreamResponse.headers.get('content-encoding'),
+        server: upstreamResponse.headers.get('server'),
+        date: upstreamResponse.headers.get('date'),
+        bodyLen: errorBody.length,
       });
+      console.error('[Premium Simple] Upstream Error Body (first 800):', errorBody.slice(0, 800));
 
       const clipped = errorBody.slice(0, 500);
 
