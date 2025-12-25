@@ -1310,6 +1310,115 @@ Establish `out_of_universe` as a formal runtime contract state, not a failure. P
 
 ---
 
+### ✅ STEP 24: Code Registry Contract - Enum Governance for comparison_result/next_action
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Formalize comparison_result and next_action as governed enum contracts via SSOT Registry + Runtime Guard, preventing string drift.
+
+**Deliverables:**
+- SSOT Registry: `apps/api/app/contracts/compare_codes.py`
+- Runtime validation guard integrated into Compare API
+- STEP 24 registry contract tests (8 tests)
+- CI enforcement for code validation
+
+**Problem Statement:**
+- Golden snapshots freeze semantic contract (STEP 16)
+- But codes like "comparable", "COMPARE" could drift as arbitrary strings
+- Need explicit enum governance to prevent ad-hoc code additions
+
+**Solution Architecture:**
+
+**1. SSOT Registry (Single Source of Truth)**
+```python
+# apps/api/app/contracts/compare_codes.py
+ALLOWED_COMPARISON_RESULTS = {
+    "comparable",        # Scenario A, D
+    "unmapped",          # Scenario B
+    "policy_required",   # Scenario C
+    "out_of_universe",   # Scenario E
+}
+
+ALLOWED_NEXT_ACTIONS = {
+    "COMPARE",           # Scenario A, D
+    "REQUEST_MORE_INFO", # Scenario B, E
+    "VERIFY_POLICY",     # Scenario C
+}
+```
+
+**2. Runtime Guard (Fail-Fast Enforcement)**
+- Compare API calls `validate_compare_response()` before returning
+- Unknown codes → ValueError (contract violation)
+- No auto-correction (fail loudly to prevent drift)
+
+**3. Test Suite (8 Tests)**
+- Registry SSOT existence and loadability
+- All golden snapshots use only allowed codes
+- API runtime responses use only allowed codes
+- Validation functions reject unknown codes
+- Registry completeness for STEP 14-23 scenarios
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 10/10 PASS ✅
+- STEP 24: 8/8 PASS ✅
+- All existing golden snapshots: UNCHANGED ✅
+
+**Constitutional Guarantees:**
+- ✅ Codes are contracts (not just documentation)
+- ✅ SSOT Registry (no duplicate definitions)
+- ✅ Runtime guard enforces registry (fail-fast on unknown codes)
+- ✅ CI validates all golden snapshots against registry
+- ✅ No existing golden snapshots modified
+
+**Prohibited Operations:**
+- ❌ Modifying existing golden snapshots
+- ❌ Duplicating allowed codes in multiple places
+- ❌ Auto-correcting invalid codes (must fail loudly)
+- ❌ Treating codes as arbitrary strings
+
+**Contract Relationship:**
+- STEP 16: Freezes semantic contract (values, structure)
+- STEP 24: Freezes enum codes (allowed strings)
+- Complementary, not overlapping
+
+**DoD Achieved:**
+- ✅ Registry SSOT file created and documented
+- ✅ API runtime guard integrated
+- ✅ STEP 24 test suite created (8/8 PASS)
+- ✅ STEP 14/16 regression tests passing
+- ✅ CI workflow includes STEP 24 tests
+- ✅ STATUS.md updated
+- ✅ Committed and pushed
+
+**Key Files:**
+- `apps/api/app/contracts/__init__.py` (NEW)
+- `apps/api/app/contracts/compare_codes.py` (NEW - SSOT Registry)
+- `apps/api/app/routers/compare.py` (runtime guard added)
+- `tests/e2e/test_step24_code_registry_contract.py` (NEW)
+- `.github/workflows/ci-contract-guard.yml` (STEP 24 gate added)
+
+**Execution Commands:**
+```bash
+# Run STEP 24 tests locally
+env E2E_DOCKER=1 pytest tests/e2e/test_step24_code_registry_contract.py -v
+
+# Run all contract tests
+env E2E_DOCKER=1 pytest tests/e2e/test_step14_api_compare_e2e.py -v
+env E2E_DOCKER=1 pytest tests/e2e/test_step16_runtime_contract_freeze.py -v
+env E2E_DOCKER=1 pytest tests/e2e/test_step24_code_registry_contract.py -v
+```
+
+**Design Principle:**
+- Codes are first-class contract citizens
+- String literals → Governed enums
+- Runtime enforcement > Documentation
+- Fail-fast > Silent correction
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96

@@ -25,6 +25,7 @@ from ..queries.compare import (
     get_disease_code_group
 )
 from ..services.conditions_summary_service import generate_conditions_summary
+from ..contracts import validate_compare_response  # STEP 24: Runtime code guard
 
 router = APIRouter(tags=["Compare"])
 
@@ -168,6 +169,9 @@ async def compare_proposals(
                         insurer=policy_evidence_b["insurer"],
                         member_count=policy_evidence_b["member_count"]
                     )
+
+        # STEP 24: Runtime code validation (fail-fast on unknown codes)
+        validate_compare_response(comparison_result, next_action)
 
         return ProposalCompareResponse(
             query=request.query,

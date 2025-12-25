@@ -155,6 +155,19 @@ jobs:
         env:
           E2E_DOCKER: "1"
 
+      - name: Run STEP 24 Code Registry Contract Tests
+        run: |
+          echo "Verifying comparison_result/next_action codes against SSOT registry..."
+          env E2E_DOCKER=1 python -m pytest tests/e2e/test_step24_code_registry_contract.py -v || {
+            echo "ERROR: Unknown comparison_result or next_action code detected"
+            echo "This is a STEP 24 contract violation"
+            echo "Update apps/api/app/contracts/compare_codes.py or fix API logic"
+            exit 1
+          }
+          echo "Code registry contract verified ✓"
+        env:
+          E2E_DOCKER: "1"
+
       - name: Verify Golden Snapshots Unchanged
         run: |
           # Fail if golden snapshots were modified during test run
@@ -174,6 +187,7 @@ jobs:
         run: |
           echo "✅ All runtime contracts enforced:"
           echo "   - STEP 14: API E2E (22 tests)"
-          echo "   - STEP 16: Runtime Contract Freeze (8 tests)"
+          echo "   - STEP 16: Runtime Contract Freeze (10 tests)"
           echo "   - STEP 17: Contract interpretation alignment"
+          echo "   - STEP 24: Code Registry Contract (8 tests)"
           echo "   - Golden snapshots: UNCHANGED"
