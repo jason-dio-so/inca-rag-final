@@ -171,7 +171,11 @@ Server starts at: http://localhost:3000
 
 #### 3. Test Premium Proxy Endpoints
 
-**NOTE:** The proxy routes are pass-through implementations. Request payload structure depends on the upstream Premium API specification (간편비교_api.txt / 한장비교_API.txt). Update the payload below to match your actual upstream API requirements.
+**IMPORTANT:** The proxy routes are pass-through implementations. Request payload structure depends on the upstream Premium API specification.
+
+**Specification Reference:** [docs/api/premium_api_spec_minimal.md](../../docs/api/premium_api_spec_minimal.md)
+
+**Current Status:** Using placeholder payloads until actual API specifications (간편비교_api.txt / 한장비교_API.txt) are integrated. See spec document for integration TODO.
 
 **Simple Compare (간편비교):**
 
@@ -277,9 +281,11 @@ Mock scenarios available (see `src/lib/api/mocks/priceScenarios.ts`):
 
 ### Implementation Notes
 
+- **API Specification:** [docs/api/premium_api_spec_minimal.md](../../docs/api/premium_api_spec_minimal.md) (SSOT for integration)
 - Premium bridge: `src/lib/api/premium/bridge.ts`
 - Proxy routes: `src/app/api/premium/*/route.ts`
 - Type definitions: `src/lib/api/premium/types.ts`
+- Adapter (basePremium mapping): `src/lib/api/premium/adapter.ts`
 - Multiplier table: `src/lib/premium/multipliers.ts` (STEP 31-α)
 
 For detailed implementation history, see:
