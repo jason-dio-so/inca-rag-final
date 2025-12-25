@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** PRIME Explanation Layer (STEP 3.12 Complete)
-**Project Health:** ✅ ACTIVE
+**Current Phase:** Query Pipeline Complete (STEP 3.13 - THE LAST STEP)
+**Project Health:** ✅ ACTIVE - Core Pipeline Complete
 
 ---
 
@@ -24,6 +24,68 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.13: Query Pipeline (THE LAST STEP)
+**Commit:** f21f6e4 | **Date:** 2025-12-25
+
+**Summary:**
+- User query → PRIME comparison pipeline connector
+- Natural language query parsing (deterministic)
+- Automatic STEP 3.11 → STEP 3.12 orchestration
+- 100% reproducibility verified
+
+**Purpose:**
+- Connect natural language queries to comparison engine
+- Query interpretation + routing ONLY
+- NO comparison logic (already in STEP 3.11/3.12)
+
+**Pipeline Flow:**
+```
+User Query
+  ↓
+Query Parsing (insurers + coverage keyword)
+  ↓
+STEP 3.11 (Comparison Engine)
+  ↓
+STEP 3.12 (Explanation Layer)
+  ↓
+ExplainedComparisonResult
+```
+
+**Example Results:**
+- "삼성과 한화 암진단비 비교해줘"
+  - Coverage: "암진단비"
+  - Insurers: SAMSUNG, HANWHA
+  - SAMSUNG: out_of_universe
+  - HANWHA: in_universe_with_gaps (5건)
+
+- "KB 롯데 뇌졸중진단비 보여줘"
+  - Coverage: "뇌졸중진단비"
+  - Insurers: KB, LOTTE
+  - KB: in_universe_comparable
+  - LOTTE: in_universe_with_gaps (2건)
+
+**Query Parsing (Deterministic):**
+- ✅ Insurer extraction: 삼성 → SAMSUNG, 한화 → HANWHA, etc.
+- ✅ Common word removal: 비교해줘, 보여줘, etc.
+- ✅ Whitespace normalization only
+- ❌ No semantic inference
+- ❌ No coverage expansion
+
+**Reproducibility:**
+- ✅ Same query → Same result
+- ✅ 100% REPRODUCIBLE
+
+**DoD:**
+- ✅ One-line question → PRIME result
+- ✅ 100% reproducibility verified
+- ✅ No state changes, no re-judgment
+
+**This is THE LAST STEP of the core pipeline.**
+
+All subsequent work (UI, formatting, recommendations, policy expansion) builds on this foundation.
+
+---
 
 ### ✅ STEP 3.12: PRIME Explanation Layer (Immutable)
 **Commit:** 7e6d97e | **Date:** 2025-12-25
