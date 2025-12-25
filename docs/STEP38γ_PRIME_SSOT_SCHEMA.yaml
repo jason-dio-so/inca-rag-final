@@ -1,0 +1,463 @@
+# STEP 3.8-γ′ PRIME SSOT Schema
+# Purpose: 가입설계서 행(row) 기반 비교 시스템의 단일 진실 출처 스키마
+# Date: 2025-12-25
+# Version: Prime (γ′)
+
+---
+# ============================================================================
+# PART 1: Proposal Row Schema (가입설계서 행 스키마)
+# ============================================================================
+
+proposal_row:
+  # 가입설계서 표의 1행 = 완전한 증거
+
+  required_fields:
+    # 원문 데이터 (SSOT)
+    - row_id                  # Unique identifier (insurer_proposal_row_N)
+    - insurer                 # 보험사 코드 (SAMSUNG, MERITZ, DB, ...)
+    - proposal_id             # 가입설계서 문서 ID
+    - page                    # 페이지 번호
+    - coverage_name_raw       # 원문 담보명 (그대로)
+    - amount_raw              # 원문 금액 (그대로)
+
+  optional_fields:
+    # 구조화 데이터 (regex 추출)
+    - amount_value            # 금액 (원, integer)
+    - currency                # 통화 (KRW 고정)
+    - period_raw              # 원문 기간
+    - coverage_period_years   # 보장 기간 (년)
+    - payment_period_years    # 납입 기간 (년)
+    - renewal_flag            # 갱신형 여부 (boolean)
+    - age_range_raw           # 원문 연령
+    - age_min                 # 최소 나이
+    - age_max                 # 최대 나이
+
+    # 매핑 데이터 (선택)
+    - normalized_name         # 정규화 담보명 (검색용)
+    - coverage_code           # 통일 담보 코드 (분류용)
+    - mapping_status          # MAPPED | UNMAPPED | AMBIGUOUS
+
+    # 약관 참조 (비교에 사용 금지, 사람 참조용만)
+    - disease_scope_norm      # 질병 범위 (약관 그룹 참조)
+    - payout_limit            # 지급 한도 (약관 근거)
+    - exclusions              # 면책 조건 (약관 근거)
+
+  extraction_rules:
+    # 원문 추출 (deterministic only)
+    coverage_name_raw:
+      method: "직접 추출 (가입설계서 표 셀)"
+      example: "일반암진단비(유사암제외)"
+
+    amount_raw:
+      method: "직접 추출 (가입설계서 표 셀)"
+      example: "3,000만원"
+
+    # 구조화 (regex only)
+    amount_value:
+      patterns:
+        - regex: '(\d{1,3}(?:,\d{3})*)만원'
+          multiplier: 10000
+        - regex: '(\d+)억.*?(\d+)만원'
+          formula: "group1 * 100000000 + group2 * 10000"
+
+    renewal_flag:
+      pattern: '\[갱신형\]'
+      result: true
+
+    age_range:
+      pattern: '(\d+)세.*?(\d+)세'
+      extract: "age_min, age_max"
+
+# ============================================================================
+# PART 2: Comparison Axes (비교 축 - 가입설계서 기반만)
+# ============================================================================
+
+comparison_axes:
+  # 가입설계서 표에서 직접 추출 가능한 축만 포함
+
+  presence:
+    description: "담보 존재 여부"
+    logic: |
+      IF proposal_row exists:
+        state = "in_universe"
+      ELSE:
+        state = "out_of_universe"
+    note: "eligibility O/X/△ 판정 로직 제거"
+    allowed_values:
+      - "in_universe"
+      - "out_of_universe"
+
+  coverage_amount:
+    description: "보장금액"
+    source: "proposal_row.amount_raw"
+    structured: "proposal_row.amount_value"
+    data_type: "integer (KRW)"
+    extraction:
+      method: "regex"
+      patterns:
+        - '(\d{1,3}(?:,\d{3})*)만원'
+        - '(\d+)억.*?(\d+)만원'
+
+  coverage_period:
+    description: "보장 기간"
+    source: "proposal_row.period_raw"
+    structured: "proposal_row.coverage_period_years"
+    data_type: "integer (years)"
+    extraction:
+      method: "regex"
+      pattern: '(\d+)세.*?만기'
+
+  payment_period:
+    description: "납입 기간"
+    source: "proposal_row.period_raw"
+    structured: "proposal_row.payment_period_years"
+    data_type: "integer (years)"
+    extraction:
+      method: "regex"
+      pattern: '(\d+)년.*?납'
+
+  renewal_type:
+    description: "갱신 여부"
+    source: "proposal_row.coverage_name_raw"
+    structured: "proposal_row.renewal_flag"
+    data_type: "boolean"
+    extraction:
+      method: "regex"
+      pattern: '\[갱신형\]'
+
+  age_range:
+    description: "가입 연령"
+    source: "proposal_row.age_range_raw"
+    structured: "proposal_row.age_min, age_max"
+    data_type: "object {min, max}"
+    extraction:
+      method: "regex"
+      pattern: '(\d+)세.*?(\d+)세'
+
+# ============================================================================
+# PART 3: Evidence Schema (근거 = 가입설계서 행)
+# ============================================================================
+
+evidence:
+  # Evidence = 가입설계서 표의 1행
+
+  structure:
+    document_id: "SAMSUNG_PROPOSAL_2024"
+    doc_type: "PROPOSAL"
+    page: 3
+    row_id: "row_15"
+    coverage_name_raw: "일반암진단비(유사암제외)"
+    amount_raw: "3,000만원"
+
+  required_fields:
+    - document_id
+    - doc_type  # 항상 "PROPOSAL"
+    - page
+    - row_id
+    - coverage_name_raw
+
+  optional_fields:
+    - amount_raw
+    - period_raw
+    - age_range_raw
+
+  validation_rules:
+    - doc_type_must_be: "PROPOSAL"
+    - row_id_format: "{insurer}_{proposal_id}_row_{N}"
+
+  # 다른 문서 타입 금지
+  prohibited_doc_types:
+    - "PRODUCT_SUMMARY"  # 비교에 사용 금지
+    - "BUSINESS_METHOD"  # 비교에 사용 금지
+    - "POLICY"           # 비교에 사용 금지
+
+# ============================================================================
+# PART 4: Comparison States (비교 상태)
+# ============================================================================
+
+comparison_states:
+  # γ′ 기준: 5-State → 4-State (eligibility 제거)
+
+  in_universe_comparable:
+    description: "담보 존재 & 비교 가능"
+    conditions:
+      - proposal_row_exists: true
+      - matching_coverage_code: true
+      OR
+      - matching_coverage_name_raw: true
+    response_message: "비교 가능"
+
+  in_universe_unmapped:
+    description: "담보 존재 & 매핑 실패 (비교 가능, 정확도 낮음)"
+    conditions:
+      - proposal_row_exists: true
+      - mapping_status: "UNMAPPED"
+      OR
+      - mapping_status: "AMBIGUOUS"
+    response_message: "담보명 매핑 실패. 원문 기반 비교 가능 (정확도 낮음)"
+    note: "unmapped ≠ 비교 불가"
+
+  in_universe_with_gaps:
+    description: "담보 존재 & 일부 정보 누락"
+    conditions:
+      - proposal_row_exists: true
+      - some_fields_null: true
+    response_message: "일부 정보 누락. 제한적 비교 가능"
+    gap_handling: "NULL 표시, 차이 요약에서 제외"
+
+  out_of_universe:
+    description: "담보 미존재 (비교 불가)"
+    conditions:
+      - proposal_row_exists: false
+    response_message: "해당 담보는 가입설계서에 존재하지 않아 비교 불가"
+    http_status: 400
+
+# ============================================================================
+# PART 5: Comparison Logic (비교 로직)
+# ============================================================================
+
+comparison_logic:
+  # 가입설계서 행 기반 비교
+
+  step_1_load_proposals:
+    description: "가입설계서 원문 로드"
+    input: "insurer_a, insurer_b"
+    output: "rows_a[], rows_b[]"
+    method: "PDF 파싱 또는 DB 조회"
+
+  step_2_find_coverage:
+    description: "담보 매칭"
+    input: "coverage_query, rows[]"
+    matching_methods:
+      priority_1:
+        method: "coverage_code 매칭"
+        condition: "mapping_status = 'MAPPED'"
+      priority_2:
+        method: "normalized_name 매칭"
+        condition: "normalized_name exists"
+      priority_3:
+        method: "coverage_name_raw 부분 매칭"
+        condition: "always available"
+    output: "matched_row or None"
+
+  step_3_universe_check:
+    description: "Universe Lock 검증"
+    logic: |
+      IF matched_row is None:
+        return out_of_universe
+      ELSE:
+        state = in_universe
+
+  step_4_extract_facts:
+    description: "사실 추출 (가입설계서 원문)"
+    extract:
+      - coverage_name_raw
+      - amount_raw (+ amount_value)
+      - period_raw (+ coverage_period_years, payment_period_years)
+      - renewal_flag
+      - age_range (+ age_min, age_max)
+
+  step_5_calculate_deltas:
+    description: "차이 계산 (수치만)"
+    deltas:
+      - amount_diff = abs(amount_a - amount_b)
+      - period_diff = abs(period_a - period_b)
+      - renewal_diff = renewal_a != renewal_b
+
+  step_6_generate_response:
+    description: "응답 생성"
+    response_structure:
+      - comparison_table  # 필수
+      - difference_summary  # 필수
+      - optional_guidance  # 기본 null
+
+# ============================================================================
+# PART 6: Prohibited Operations (금지 행위)
+# ============================================================================
+
+prohibited_operations:
+  # γ′ 추가 금지 사항
+
+  - operation: "eligibility O/X/△ 판정"
+    reason: "존재 = 보장 가능 (판정 불필요)"
+    violation_level: "CRITICAL"
+
+  - operation: "가입설계서 외 문서 기반 비교"
+    reason: "Proposal Absolute SSOT 위반"
+    violation_level: "CRITICAL"
+    prohibited_doc_types:
+      - "PRODUCT_SUMMARY"
+      - "BUSINESS_METHOD"
+      - "POLICY"
+
+  - operation: "담보 의미 추론"
+    examples:
+      - "일반적으로 ~"
+      - "보통 ~"
+      - "유리함"
+    reason: "No Inference Rule 위반"
+    violation_level: "CRITICAL"
+
+  - operation: "매핑 실패 = 비교 실패"
+    reason: "unmapped ≠ out_of_universe"
+    violation_level: "HIGH"
+    correct_behavior: "unmapped 상태로 원문 비교 지속"
+
+  - operation: "추천 기본 포함"
+    reason: "Factual Comparison Only 위반"
+    violation_level: "HIGH"
+    correct_behavior: "사용자 명시 요청 시에만 생성"
+
+  - operation: "금액/조건 추정"
+    reason: "Honest Failure Priority 위반"
+    violation_level: "HIGH"
+    correct_behavior: "NULL 처리"
+
+  - operation: "LLM 기반 구조화"
+    reason: "Deterministic Processing 위반"
+    violation_level: "CRITICAL"
+    allowed_method: "regex only"
+
+# ============================================================================
+# PART 7: NULL Handling (NULL 처리)
+# ============================================================================
+
+null_handling:
+  # 가입설계서에 정보 없음 = NULL
+
+  null_means:
+    description: "가입설계서에 정보 없음"
+    comparison_state: "in_universe_with_gaps"
+    display: "정보 없음"
+
+  empty_array_means:
+    description: "명시적 없음"
+    example: "감액 조건: []"
+    display: "해당 없음"
+
+  zero_means:
+    description: "명시적 0"
+    example: "대기기간: 0일"
+    display: "0일 (즉시)"
+
+  examples:
+    - field: "amount_value"
+      null_value: null
+      meaning: "가입설계서에 금액 명시 없음"
+      comparison_state: "in_universe_with_gaps"
+
+    - field: "renewal_flag"
+      null_value: false
+      meaning: "갱신형 표시 없음 (비갱신형)"
+
+    - field: "age_min"
+      null_value: null
+      meaning: "가입설계서에 연령 명시 없음"
+      comparison_state: "in_universe_with_gaps"
+
+# ============================================================================
+# PART 8: Mapping Policy (매핑 정책)
+# ============================================================================
+
+mapping_policy:
+  # 매핑은 선택 (비교 성공 조건 아님)
+
+  mapping_purpose:
+    - "검색 보조 (normalized_name)"
+    - "분류 보조 (coverage_code)"
+    - "정확도 향상 (동일 담보 판별)"
+
+  mapping_not_required_for:
+    - "비교 가능 여부"
+    - "universe 존재 판정"
+    - "사실 추출"
+
+  mapping_status:
+    MAPPED:
+      description: "Excel 매핑 성공"
+      benefit: "정확한 담보 매칭 가능"
+      comparison: "coverage_code 기반 비교"
+
+    UNMAPPED:
+      description: "Excel 매핑 실패"
+      impact: "정확도 하락 (비교 불가 아님)"
+      comparison: "coverage_name_raw 기반 비교"
+      state: "in_universe_unmapped"
+
+    AMBIGUOUS:
+      description: "여러 coverage_code 후보 존재"
+      impact: "수동 해결 필요"
+      comparison: "coverage_name_raw 기반 비교"
+      state: "in_universe_unmapped"
+
+# ============================================================================
+# PART 9: Scalability (확장성)
+# ============================================================================
+
+scalability:
+  # 가입설계서만 추가하면 즉시 비교 가능
+
+  insurer_addition:
+    current_insurers:
+      - SAMSUNG
+      - MERITZ
+      - DB
+      - KB
+      - LOTTE
+      - HANWHA
+      - HEUNGKUK
+      - HYUNDAI
+
+    add_new_insurer:
+      required:
+        - 가입설계서 PDF 업로드
+      optional:
+        - Excel 매핑 데이터 추가
+        - 약관 PDF (사람 참조용)
+
+  coverage_addition:
+    method: "가입설계서에 행 추가만 하면 자동 지원"
+    no_code_change: true
+    mapping_later: "매핑은 나중에 추가 가능"
+
+  document_addition:
+    proposal_only: true
+    other_docs: "사람 참조용만 (비교에 사용 금지)"
+
+# ============================================================================
+# PART 10: Validation Rules (검증 규칙)
+# ============================================================================
+
+validation_rules:
+  # γ′ 기준 검증
+
+  rule_1_proposal_only:
+    description: "비교 근거 = PROPOSAL만"
+    check: "evidence.doc_type = 'PROPOSAL'"
+    fail_action: "reject comparison"
+
+  rule_2_no_eligibility_logic:
+    description: "eligibility 판정 로직 금지"
+    check: "no regex matching for O/X/△"
+    fail_action: "remove eligibility axis"
+
+  rule_3_no_inference:
+    description: "추론 금지"
+    prohibited_terms:
+      - "보통"
+      - "일반적으로"
+      - "유리"
+    fail_action: "reject response"
+
+  rule_4_unmapped_not_fail:
+    description: "unmapped ≠ 비교 실패"
+    check: "mapping_status = 'UNMAPPED' → state = 'in_universe_unmapped'"
+    fail_action: "correct state assignment"
+
+  rule_5_recommendation_optional:
+    description: "추천 = 사용자 요청 시에만"
+    check: "optional_guidance = null (default)"
+    fail_action: "remove from default response"
+
+---
+# End of PRIME SSOT Schema
