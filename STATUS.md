@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP 3.10-η-2 Complete (Forced Remapping - Reproducibility Locked)
-**Project Health:** ✅ ACTIVE - Coverage Mapping 94.31% MAPPED Achieved
+**Current Phase:** STEP 3.10-θ Complete (Structural UNMAPPED Strategy - Backlog Fixed)
+**Project Health:** ✅ ACTIVE - PRIME Complete, Backlog Documented
 
 ---
 
@@ -24,6 +24,89 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.10-θ: Structural UNMAPPED Strategy (C3/C4/C7 Processing)
+**Commit:** TBD | **Date:** 2025-12-26
+
+**Summary:**
+- Identified and classified 10 structural UNMAPPED cases (out of 19 total UNMAPPED)
+- All structural cases assigned S1/S2/S3 types + NextActions
+- Generated backlog for future detailed table / policy layer work
+- **No state changes**: PRIME results preserved, no UNMAPPED → MAPPED conversion
+
+**Structural Type Distribution:**
+
+| Type | Count | Percentage | Description |
+|------|-------|------------|-------------|
+| **S1_SPLIT** | 5 | 50.0% | Subcategory split (C3) |
+| **S2_COMPOSITE** | 5 | 50.0% | Composite coverage (C4) |
+| **S3_POLICY_ONLY** | 0 | 0.0% | Policy-level only (C7) |
+| **TOTAL** | 10 | 100.0% | |
+
+**Per-Insurer Breakdown:**
+
+| Insurer | Total | S1 | S2 | S3 |
+|---------|-------|----|----|-----|
+| HANWHA | 7 | 2 | 5 | 0 |
+| KB | 2 | 2 | 0 | 0 |
+| SAMSUNG | 1 | 1 | 0 | 0 |
+
+**Group Key Success:**
+- Generated: 10/10 (100.0%)
+- All structural cases successfully labeled
+
+**NextAction Distribution:**
+
+| Action | Count | Description |
+|--------|-------|-------------|
+| A1_CREATE_GROUP_KEY | 10 | Labeling for comparison grouping |
+| A2_REQUIRE_USER_DISAMBIGUATION | 10 | User query refinement needed |
+| A3_DEFER_TO_DETAIL_TABLE | 5 | Detailed table parser (STEP 4.x) |
+| A4_DEFER_TO_POLICY_LAYER | 0 | Policy document analysis |
+| A5_MANUAL_REVIEW_QUEUE | 0 | Human structure definition |
+
+**Remaining UNMAPPED Analysis:**
+- Total UNMAPPED: 19 (from η-2)
+- Structural (C3/C4/C7): 10 (52.6%) - **processed in θ**
+- Non-structural: 9 (47.4%) - **true gaps / insurer-specific**
+
+**Generated Files:**
+- `data/step310_mapping/structural_unmapped/STRUCTURAL_UNMAPPED_CASES.csv`
+- `data/step310_mapping/structural_unmapped/STRUCTURAL_UNMAPPED_SUMMARY.md`
+- `data/step310_mapping/structural_unmapped/STRUCTURAL_BACKLOG.md`
+
+**Script:**
+- `scripts/step310_theta_structural_unmapped.py`
+
+**Backlog for Future Steps:**
+1. **High Priority**: A3 - Detailed table parser (enables S2_COMPOSITE resolution)
+2. **Medium Priority**: A2 - Query refinement (improves UX for S1_SPLIT cases)
+3. **Medium Priority**: A4 - Policy layer (for S3_POLICY_ONLY if any emerge)
+4. **Low Priority**: A5 - Manual review (case-by-case)
+
+**Constitutional Compliance:**
+- ✅ No UNMAPPED → MAPPED conversion
+- ✅ No shinjeongwon code inference
+- ✅ No coverage consolidation
+- ✅ No similarity/embedding/LLM
+- ✅ PRIME state unchanged
+- ✅ Backlog only (no actual policy reading)
+- ✅ Group keys = labels only (not integration)
+
+**DoD Achievement:**
+- ✅ All C3/C4/C7 cases extracted from eta2 UNMAPPED
+- ✅ All cases assigned structural_type (S1/S2/S3)
+- ✅ All cases assigned next_actions (100%)
+- ✅ STRUCTURAL_UNMAPPED_CASES.csv + 2 MD reports generated
+- ✅ PRIME results preserved (non-destructive)
+- ✅ Reproducibility guaranteed (deterministic classification)
+
+**Key Insight:**
+- Structural UNMAPPED (10/19) require **system enhancement**, not Excel additions
+- Non-structural UNMAPPED (9/19) are **true coverage gaps** or insurer-specific unique products
+- No further UNMAPPED→MAPPED conversions possible without detailed table parser
+
+---
 
 ### ✅ STEP 3.10-η-2: Forced Remapping with Enhanced Excel (Reproducibility Locked)
 **Commit:** 2769542 | **Date:** 2025-12-26
