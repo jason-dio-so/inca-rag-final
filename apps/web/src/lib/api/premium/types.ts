@@ -65,34 +65,24 @@ export type PremiumFailureReason =
 
 /**
  * Premium API Request (간편비교)
- *
- * Based on standard Korean insurance API patterns.
- * Upstream endpoint: POST /api/v1/premium/simple
  */
 export interface SimplePremiumRequest {
-  /** 피보험자 나이 */
-  age: number;
-  /** 성별 (M/F) */
-  gender: 'M' | 'F';
-  /** 보험사 코드 (001=삼성, 002=메리츠, 004=KB, etc.) */
-  insrCoCd: string;
-  /** 담보 코드 리스트 */
-  cvrCdLst?: string[];
-  /** 가입금액 (optional) */
-  insAmt?: number;
+  // Add fields based on 간편비교_api.txt
+  // Example:
+  age?: number;
+  gender?: string;
+  coverages?: string[];
+  // ... other fields
 }
 
 /**
  * Premium API Request (한장비교)
- *
- * Based on standard Korean insurance API patterns.
- * Upstream endpoint: POST /api/v1/premium/onepage
  */
 export interface OnepagePremiumRequest {
-  /** 설계서 ID */
-  proposalId: string;
-  /** 보험사 코드 (001=삼성, 002=메리츠, 004=KB, etc.) */
-  insrCoCd: string;
+  // Add fields based on 한장비교_API.txt
+  // Example:
+  proposalId?: string;
+  // ... other fields
 }
 
 /**

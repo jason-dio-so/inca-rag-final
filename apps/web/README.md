@@ -171,32 +171,24 @@ Server starts at: http://localhost:3000
 
 #### 3. Test Premium Proxy Endpoints
 
+**NOTE:** The proxy routes are pass-through implementations. Request payload structure depends on the upstream Premium API specification (간편비교_api.txt / 한장비교_API.txt). Update the payload below to match your actual upstream API requirements.
+
 **Simple Compare (간편비교):**
 
 ```bash
+# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/simple-compare \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 35,
+    "age": 30,
     "gender": "M",
-    "insrCoCd": "001",
-    "cvrCdLst": ["C001", "C002"],
-    "insAmt": 100000000
+    "coverages": ["암진단비", "뇌출혈진단비"]
   }'
 ```
 
-**Request Fields (Required):**
-- `age`: 피보험자 나이 (number)
-- `gender`: 성별 ("M" or "F")
-- `insrCoCd`: 보험사 코드 (string, e.g., "001"=삼성, "002"=메리츠, "004"=KB)
-
-**Request Fields (Optional):**
-- `cvrCdLst`: 담보 코드 리스트 (array of strings)
-- `insAmt`: 가입금액 (number)
-
 **Route Implementation:**
 - File: `src/app/api/premium/simple-compare/route.ts`
-- Forwards request body to: `${PREMIUM_API_BASE_URL}/api/v1/premium/simple`
+- Forwards request body to: `${PREMIUM_API_BASE_URL}/simple-compare`
 - Adapts upstream response via `adaptPremiumResponse()`
 
 Expected success response (from proxy):
@@ -227,24 +219,20 @@ Expected failure response (from proxy):
 **Onepage Compare (한장비교):**
 
 ```bash
+# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/onepage-compare \
   -H "Content-Type: application/json" \
   -d '{
-    "proposalId": "PROP_20250101_001",
-    "insrCoCd": "001"
+    "proposalId": "SAMSUNG_001"
   }'
 ```
 
-**Request Fields (All Required):**
-- `proposalId`: 설계서 ID (string)
-- `insrCoCd`: 보험사 코드 (string, e.g., "001"=삼성, "002"=메리츠, "004"=KB)
-
 **Route Implementation:**
 - File: `src/app/api/premium/onepage-compare/route.ts`
-- Forwards request body to: `${PREMIUM_API_BASE_URL}/api/v1/premium/onepage`
+- Forwards request body to: `${PREMIUM_API_BASE_URL}/onepage-compare`
 - Adapts upstream response via `adaptPremiumResponse()`
 
-**Expected Response Format:** Same as simple-compare (proxy contract is unified)
+Expected response format: Same as simple-compare (proxy contract is unified)
 
 #### 4. Verification Checklist
 

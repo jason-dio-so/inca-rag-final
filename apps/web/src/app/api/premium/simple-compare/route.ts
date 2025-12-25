@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call upstream Premium API
-    const upstreamResponse = await fetch(`${upstreamUrl}/api/v1/premium/simple`, {
+    const upstreamResponse = await fetch(`${upstreamUrl}/simple-compare`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

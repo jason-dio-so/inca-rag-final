@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call upstream Premium API
-    const upstreamResponse = await fetch(`${upstreamUrl}/api/v1/premium/onepage`, {
+    const upstreamResponse = await fetch(`${upstreamUrl}/onepage-compare`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
