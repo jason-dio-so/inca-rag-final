@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Customer Response Formatter Complete (STEP 4.0)
-**Project Health:** ✅ ACTIVE - Core Pipeline + Customer Formatter Complete
+**Current Phase:** Proposal Detail Evidence Attachment (STEP 4.1)
+**Project Health:** ✅ ACTIVE - Core Pipeline + Evidence Attachment Framework Complete
 
 ---
 
@@ -25,8 +25,93 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP 4.0: Customer Response Formatter (출력 전용 레이어)
+### ✅ STEP 4.1: Proposal Detail Evidence Attachment (가입설계서 상세 근거 첨부)
 **Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- Attach proposal detail evidence (보장내용 원문) to customer response
+- Extract evidence from proposal detailed_table/text_blocks ONLY
+- Deterministic matching framework (exact → substring → no_match)
+- Template profile-based location hints (STEP 3.9-0 integration)
+
+**Purpose:**
+- Provide 보장내용 (coverage details) evidence from proposal internal documents
+- Add [보장내용 근거] section to STEP 4.0 customer response
+- NO inference, NO summarization, NO policy/summary reference (this STEP only)
+
+**Evidence Attachment Structure:**
+```
+[보장내용 근거 (가입설계서 상세)]
+
+▶ INSURER - COVERAGE_NAME
+
+- source: PROPOSAL
+- evidence_found: true|false
+- evidence_excerpt:
+  """
+  (원문 그대로, 1~6줄)
+  """
+- evidence_location:
+  - page_hint: "pages 4-7" | NULL
+  - section_hint: "담보별 보장내용" | NULL
+  - match_rule: exact|substring|no_match
+```
+
+**Matching Rules (Deterministic):**
+1. exact match: coverage_name_raw == row_coverage_name
+2. substring match: coverage_name_raw in row_coverage_name
+3. no_match: evidence_found=false
+
+**Normalization Allowed:**
+- ✅ Whitespace collapse (multiple → single)
+- ✅ Strip leading/trailing whitespace
+- ❌ NO special character removal
+- ❌ NO synonym expansion
+
+**Template Profile Integration:**
+- Loaded from `data/step39_coverage_universe/profiles/*_template_profile.yaml`
+- Uses `detailed_table.location`, `detailed_table.table_name` for hints
+- Graceful degradation if profile not available
+
+**Current Implementation Status:**
+- ✅ Framework complete (deterministic matching + evidence structure)
+- ✅ Template profile integration
+- ✅ Placeholder evidence generation
+- ⏳ Actual PDF extraction (future STEP)
+
+**Constitution Compliance:**
+- ✅ STEP 3.11/3.12/3.13/4.0 results IMMUTABLE
+- ✅ Proposal internal evidence only
+- ✅ Deterministic matching only
+- ❌ No PRIME state changes
+- ❌ No comparison result modification
+- ❌ No inference/semantic matching
+- ❌ No policy/summary/business_rules reference (this STEP)
+
+**Determinism Verification:**
+- ✅ Test script: `test_step41_determinism.py`
+- ✅ 3 sample queries executed:
+  - "삼성과 한화 암진단비 비교해줘"
+  - "KB 롯데 뇌졸중진단비 보여줘"
+  - "다빈치수술비"
+- ✅ All tests passed: Same query → Same output
+
+**DoD:**
+- ✅ STEP 4.0 output structure maintained + evidence section added
+- ✅ Proposal internal evidence extraction framework
+- ✅ Deterministic matching rules implemented
+- ✅ Template profile integration
+- ✅ 100% reproducible (determinism verified)
+- ✅ 3 sample queries executed with evidence attachment
+
+**Next Steps:**
+- STEP 4.2: Actual PDF extraction (replace placeholder evidence)
+- STEP 4.3: Policy/summary reference (if proposal insufficient)
+
+---
+
+### ✅ STEP 4.0: Customer Response Formatter (출력 전용 레이어)
+**Commit:** 2883dff | **Date:** 2025-12-25
 
 **Summary:**
 - Customer-friendly output formatter (presentation-only layer)
