@@ -1,10 +1,10 @@
 name: CI Contract Guard - Compare API
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-  push:
+  pull_request:
     branches:
       - main
 
