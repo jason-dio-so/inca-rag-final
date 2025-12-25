@@ -1,35 +1,110 @@
 /**
- * Premium API Types (STEP 32)
+ * Premium API Types (STEP 32-κ-POST - Spec-Driven)
  *
  * Constitutional Principles:
  * - Premium = proposal field (not calculated from policy)
- * - basePremium source = Premium API (monthlyPremSum)
+ * - basePremium source = spec field ONLY (prInfo: monthlyPrem, prDetail: monthlyPremSum)
  * - Coverage name mapping is NOT enforced (graceful PARTIAL)
  * - This is additional feature (does NOT affect /compare)
+ *
+ * Source: docs/api/upstream/premium_*_spec.txt (SSOT)
  */
 
 import type { InsurerCode } from '@/lib/premium/multipliers';
 
 /**
- * Upstream Premium API Response (간편비교/한장비교)
+ * Upstream prInfo (Simple Compare) Response
  *
- * Source: 간편비교_api.txt, 한장비교_API.txt
+ * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Structure: Top-level fields (no data wrapper)
  */
-export interface UpstreamPremiumResponse {
-  returnCode: string; // "0000" = success
-  returnMsg: string;
-  data?: {
-    insrCoCd?: string; // insurer code
-    monthlyPremSum?: number; // STEP 32: basePremium source (①전체)
-    cvrAmtArrLst?: Array<{
-      // Coverage details (NOT used for basePremium calculation)
-      cvrNm?: string;
-      cvrAmt?: number;
-      // ... other fields
-    }>;
-    // ... other fields
-  };
+export interface UpstreamPrInfoResponse {
+  customerSeq: number;
+  customerIpSeq: number;
+  compPlanId: number;
+  outPrList: Array<{
+    prProdLineCd: string;
+    insCd: string;         // "N01", "N02", etc.
+    insNm: string;
+    prCd: string;
+    prNm: string;
+    prScore: number;
+    newDispYn: string;
+    monthlyPrem: number;   // ★ basePremium source for simple
+    updateDt: string;
+    updatingYn: string;
+  }>;
 }
+
+/**
+ * Upstream prDetail (Onepage Compare) Response
+ *
+ * Source: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Structure: Top-level fields (no data wrapper)
+ */
+export interface UpstreamPrDetailResponse {
+  calSubSeq: number;
+  prProdLineCd: string;
+  prProdLineNm: string;
+  disSearchDiv: string | null;
+  baseDate: string;
+  nm: string | null;
+  age: number;
+  sex: string;
+  prProdLineCondOutSearchDiv: Array<{
+    searchDiv: string;
+    prProdLineCondOutIns: Array<{
+      insCd: string;
+      insNm: string;
+      prCd: string;
+      prNm: string;
+      insTrm: string;
+      pyTrm: string;
+      rnwCycle: string;
+      prodType: string;
+      updateDt: string;
+      recommYn: string | null;
+      monthlyPremSum: number;  // ★ basePremium source for onepage
+      cvrAmtArrLst?: Array<{   // Coverage list (display ONLY - NOT for calculation)
+        cvrDiv: string;
+        dispOrder: number;
+        cvrCd: string;
+        cvrNm: string;
+        creCvrCd: string;
+        accAmt: number;
+        accAmtNm: string;
+        monthlyPrem: number;
+        amtDispYn: string;
+      }>;
+    }>;
+  }>;
+}
+
+/**
+ * Generic upstream response wrapper
+ *
+ * Note: Actual upstream APIs do NOT use this wrapper in practice.
+ * This exists for compatibility with potential future API changes.
+ * Current adapter handles both wrapped and unwrapped responses.
+ */
+export interface UpstreamWrapped<T> {
+  returnCode: string;  // "0000" = success
+  returnMsg: string;
+  data?: T;
+}
+
+/**
+ * Union type for all possible upstream response formats
+ *
+ * Adapter uses runtime shape detection to handle both:
+ * - Direct response (spec-confirmed)
+ * - Wrapped response (defensive)
+ */
+export type UpstreamPremiumResponse =
+  | UpstreamPrInfoResponse
+  | UpstreamPrDetailResponse
+  | UpstreamWrapped<UpstreamPrInfoResponse>
+  | UpstreamWrapped<UpstreamPrDetailResponse>;
 
 /**
  * Premium Proxy Contract (STEP 32 SSOT)

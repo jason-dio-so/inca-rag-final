@@ -25,6 +25,18 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 32-κ-POST: Types/Docs Cleanup (Spec-Driven)
+**Commit:** [pending] | **Date:** 2025-12-25
+
+**Summary:**
+- Replaced generic `UpstreamPremiumResponse` with spec-based types (`UpstreamPrInfoResponse`, `UpstreamPrDetailResponse`)
+- Removed forced `data` wrapper assumption (defensive union type instead)
+- README smoke tests clarified: POST→GET conversion, dual response structures
+- Deprecated `premium_api_spec_minimal.md` (legacy placeholder)
+- /compare regression lock maintained ✅
+
+---
+
 ### ✅ STEP 32-κ-FIX: Adapter Response Structure Support
 **Commit:** 3469262 | **Date:** 2025-12-25
 

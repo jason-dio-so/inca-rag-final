@@ -1,15 +1,19 @@
 /**
- * Premium API Adapter (STEP 32-κ-FIX - SSOT for Mapping)
+ * Premium API Adapter (STEP 32-κ-POST - Spec-Driven)
  *
  * Constitutional Principles:
  * - basePremium = spec field ONLY (prInfo: monthlyPrem, prDetail: monthlyPremSum)
  * - NO calculation from cvrAmtArrLst ❌
  * - NO inference from policy documents ❌
  * - Coverage name mismatch → graceful (not error)
+ *
+ * Source: docs/api/premium_api_spec.md (SSOT)
  */
 
 import type {
   UpstreamPremiumResponse,
+  UpstreamPrInfoResponse,
+  UpstreamPrDetailResponse,
   PremiumProxyResponse,
   PremiumItem,
   PremiumFailureReason,
@@ -40,18 +44,19 @@ export function adaptPremiumResponse(
     };
   }
 
-  // Case 2: Upstream error (returnCode !== "0000")
-  if (upstream.returnCode !== '0000') {
+  // Case 2: Upstream error (check for wrapped returnCode if exists)
+  const wrapped = upstream as any;
+  if (wrapped.returnCode && wrapped.returnCode !== '0000') {
     return {
       ok: false,
       reason: 'UPSTREAM_ERROR',
-      message: upstream.returnMsg || 'Upstream API returned error',
+      message: wrapped.returnMsg || 'Upstream API returned error',
       items: [],
     };
   }
 
-  // Handle potential data wrapper (some responses wrap in { data: {...} }, others don't)
-  const payload = (upstream as any)?.data ?? (upstream as any);
+  // Handle potential data wrapper (defensive: spec shows no wrapper, but handle both)
+  const payload = wrapped?.data ?? wrapped;
 
   // A) prInfo (simple) shape: has outPrList[]
   if (payload.outPrList && Array.isArray(payload.outPrList)) {
@@ -78,7 +83,7 @@ export function adaptPremiumResponse(
  * Source: docs/api/upstream/premium_simple_compare_spec.txt
  * Structure: { outPrList: [{ insCd, monthlyPrem, ... }] }
  */
-function adaptSimpleCompareResponse(rawData: any): PremiumProxyResponse {
+function adaptSimpleCompareResponse(rawData: UpstreamPrInfoResponse): PremiumProxyResponse {
   const items: PremiumItem[] = [];
 
   for (const product of rawData.outPrList) {
@@ -119,7 +124,7 @@ function adaptSimpleCompareResponse(rawData: any): PremiumProxyResponse {
  * Source: docs/api/upstream/premium_onepage_compare_spec.txt
  * Structure: { prProdLineCondOutSearchDiv: [{ prProdLineCondOutIns: [{ insCd, monthlyPremSum, ... }] }] }
  */
-function adaptOnepageCompareResponse(rawData: any): PremiumProxyResponse {
+function adaptOnepageCompareResponse(rawData: UpstreamPrDetailResponse): PremiumProxyResponse {
   const items: PremiumItem[] = [];
 
   for (const searchDiv of rawData.prProdLineCondOutSearchDiv) {

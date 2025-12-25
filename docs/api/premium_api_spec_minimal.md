@@ -1,8 +1,20 @@
-# Premium API Specification (Minimal - STEP 32)
+# ⚠️ DEPRECATED - Premium API Specification (Minimal - STEP 32)
 
-**Status:** Minimal specification based on adapter expectations
-**Source:** Derived from `apps/web/src/lib/api/premium/adapter.ts` and standard Korean insurance API patterns
-**Note:** This is a placeholder until actual upstream API specifications (간편비교_api.txt, 한장비교_API.txt) are available.
+**⚠️ STATUS: LEGACY/DEPRECATED**
+
+**This document is outdated and should NOT be used as reference.**
+
+**Please use the official specification document instead:**
+👉 **[docs/api/premium_api_spec.md](premium_api_spec.md)** (SSOT)
+
+**Reason for deprecation:**
+- This was a placeholder based on assumptions before upstream specs were available
+- Real upstream specifications (premium_simple_compare_spec.txt, premium_onepage_compare_spec.txt) have been added to `docs/api/upstream/`
+- Actual API structure differs from assumptions made in this document
+
+---
+
+## Original Content (For Historical Reference Only)
 
 ---
 

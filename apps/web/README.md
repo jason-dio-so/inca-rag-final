@@ -198,7 +198,8 @@ curl -X POST http://localhost:3000/api/premium/simple-compare \
 **Route Implementation:**
 - File: `src/app/api/premium/simple-compare/route.ts`
 - Upstream: GET `https://new-prod.greenlight.direct/public/prdata/prInfo`
-- basePremium source: `outPrList[].monthlyPrem`
+- basePremium source: `outPrList[].monthlyPrem` (spec-confirmed)
+- **Note:** Our proxy accepts POST (JSON body), converts to GET (query params) for upstream
 
 Expected success response (from proxy):
 ```json
@@ -249,9 +250,15 @@ curl -X POST http://localhost:3000/api/premium/onepage-compare \
 **Route Implementation:**
 - File: `src/app/api/premium/onepage-compare/route.ts`
 - Upstream: GET `https://new-prod.greenlight.direct/public/prdata/prDetail`
-- basePremium source: `monthlyPremSum`
+- basePremium source: `prProdLineCondOutIns[].monthlyPremSum` (spec-confirmed)
+- **Note:** Our proxy accepts POST (JSON body), converts to GET (query params) for upstream
 
 **Expected Response:** Same proxy contract as simple-compare
+
+**Response Structure Differences:**
+- prInfo (simple): Multiple insurers in flat `outPrList[]` array
+- prDetail (onepage): Nested structure via `prProdLineCondOutSearchDiv[].prProdLineCondOutIns[]`
+- Adapter handles both structures automatically via runtime shape detection
 
 #### 4. Verification Checklist
 
@@ -263,7 +270,10 @@ curl -X POST http://localhost:3000/api/premium/onepage-compare \
 
 ### Constitutional Guarantees (Premium)
 
-- ✅ basePremium = `monthlyPremSum` ONLY (no calculation/inference)
+- ✅ basePremium from spec fields ONLY:
+  - prInfo: `outPrList[].monthlyPrem`
+  - prDetail: `prProdLineCondOutIns[].monthlyPremSum`
+  - NO calculation/inference from `cvrAmtArrLst` ❌
 - ✅ Coverage name unmapped → graceful PARTIAL (not error)
 - ✅ Premium failures isolated (doesn't affect /compare)
 - ✅ No fake proposalId generation
