@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Premium API Integration (STEP 33-β-2d - Customer Clarification Pending)
-**Project Health:** ⚠️ BLOCKED (Premium API access issue)
+**Current Phase:** Proposal Coverage Mapping (STEP 3.10 Complete)
+**Project Health:** ✅ ACTIVE
 
 ---
 
@@ -24,6 +24,29 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.10: Proposal Coverage → Shinjeongwon Reference Mapping
+**Commit:** 4d89681 | **Date:** 2025-12-25
+
+**Summary:**
+- Non-destructive reference mapping (상태 태깅 전용)
+- Mapped 334 proposal coverages to Shinjeongwon codes
+- Results: MAPPED (140, 41.9%), AMBIGUOUS (129, 38.6%), UNMAPPED (65, 19.5%)
+- No coverage unification, no code enforcement, no normalization
+- Reference mapping only
+
+**Outputs:**
+- `data/step310_mapping/proposal_coverage_mapping.csv` (334 rows)
+- `data/step310_mapping/mapping_report.txt` (validation report)
+
+**Constitution Compliance:**
+- ✅ 가입설계서 원본 보존 (비파괴)
+- ✅ 신정원 코드 강제 부여 금지
+- ✅ 담보 통합/판단/정규화 금지
+- ✅ 참조(reference) 매핑만 수행
+- ✅ STEP 3.11로 즉시 이행 가능
+
+---
 
 ### ⚠️ STEP 33-β-2d: Customer Clarification Pending
 **Commit:** (pending) | **Date:** 2025-12-25
