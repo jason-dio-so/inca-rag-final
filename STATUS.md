@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Premium API Integration (STEP 33-β)
-**Project Health:** ✅ HEALTHY
+**Current Phase:** Premium API Integration (STEP 33-β-2d - Customer Clarification Pending)
+**Project Health:** ⚠️ BLOCKED (Premium API access issue)
 
 ---
 
@@ -24,6 +24,60 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ⚠️ STEP 33-β-2d: Customer Clarification Pending
+**Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- Premium API integration **BLOCKED** - Upstream returns 400 with empty body
+- All client-side/proxy implementations verified correct
+- Tested variations: Korean/ASCII customerNm, browser headers, parameter combinations
+- All tests return same 400 from nginx (before application layer)
+- Spec indicates "Public API - no authentication", but actual behavior suggests access restrictions
+
+**Customer Clarification Request Created:**
+- Document: `docs/api/premium_api_customer_clarification.md`
+- Required information:
+  - Correct base URL / environment
+  - Authentication requirements (API key, session, IP whitelist)
+  - Required headers or additional parameters
+  - Working curl/Postman sample request
+  - Access restrictions (WAF, rate limit, geographic)
+
+**SSOT Updated:**
+- `docs/api/premium_api_spec.md` status: "Spec/Access Requirement Mismatch Suspected"
+- Live observation section added with test evidence
+- Integration status: BLOCKED pending customer response
+
+**Next Step:**
+- Await customer clarification
+- Do NOT proceed with authentication guesses or parameter additions
+- Resume integration only after receiving verified access method
+
+---
+
+### ✅ STEP 33-β-2: Browser Header Parity Mode
+**Commit:** 9bc7ff3 | **Date:** 2025-12-25
+
+**Summary:**
+- Added `PREMIUM_UPSTREAM_HEADER_MODE=browser` environment variable
+- Mimics browser headers (User-Agent, Referer, Accept-Language, etc.)
+- Created curl reproduction script: `apps/web/scripts/premium_upstream_curl.sh`
+- Result: No change - still 400 with empty body
+- Conclusion: Header configuration not the issue
+
+---
+
+### ✅ STEP 33-β-1e: Upstream Meta Logging
+**Commit:** 405e94f | **Date:** 2025-12-25
+
+**Summary:**
+- Added response metadata logging for both success and failure cases
+- Logs status, url, content-type, content-length, server, date
+- Confirmed nginx 400 with Content-Length: 0, bodyLen: 0
+- Evidence captured for customer clarification
+
+---
 
 ### ✅ STEP 33-β-1b: Upstream 400 Diagnosis Logging
 **Commit:** fa96c57 | **Date:** 2025-12-25

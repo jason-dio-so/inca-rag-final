@@ -1,11 +1,12 @@
 # Premium API Specification (STEP 32-κ - Spec-Driven Lock)
 
-**Status:** Confirmed from upstream specifications
+**Status:** ⚠️ Spec/Access Requirement Mismatch Suspected - Customer Clarification Pending
 **Source:**
 - `docs/api/upstream/premium_simple_compare_spec.txt`
 - `docs/api/upstream/premium_onepage_compare_spec.txt`
 
 **Last Updated:** 2025-12-25
+**Clarification Request:** `docs/api/premium_api_customer_clarification.md`
 
 ---
 
@@ -285,27 +286,49 @@ Adapter behavior tested against SSOT-based fixtures without network dependency.
 
 **Limitation:** Fixtures are synthetic based on spec documentation, not captured from live API.
 
-### C. Live-Observed (PENDING)
+### C. Live-Observed (2025-12-25)
 
-**Status:** ❌ NOT EXECUTED
+**Status:** ⚠️ SPEC/ACCESS MISMATCH - Customer Clarification Required
 
-**Reason:** Dev server not running during STEP 32-λ
+**Observation Date:** 2025-12-25 07:43 GMT
+**Test Methods:** Next.js proxy, curl, browser DevTools
 
-**Requirements for Live Verification:**
-1. Start dev server: `pnpm dev` in `apps/web/`
-2. Execute curl requests to proxy endpoints
-3. Capture actual upstream responses
-4. Compare response structure to SSOT documentation
-5. Verify field paths match spec
+**Actual Upstream Behavior:**
+- HTTP Status: 400 Bad Request
+- Response Headers:
+  - `Server: nginx`
+  - `Content-Type: application/json`
+  - `Content-Length: 0`
+- Response Body: (empty)
 
-**Pending Observations:**
-- Actual upstream response structure (wrapper presence/absence)
-- Real insurer data values
-- Error response format from upstream
-- Network timeout behavior
-- Rate limiting behavior
+**URLs Tested:**
+```
+https://new-prod.greenlight.direct/public/prdata/prInfo?baseDt=20251225&birthday=19760101&customerNm=Hong&sex=1&age=50
+https://new-prod.greenlight.direct/public/prdata/prDetail?baseDt=20251225&birthday=19760101&customerNm=Hong&sex=1&age=50
+```
 
-**Note:** Until live verification is performed, all implementation is based on SSOT documentation only.
+**Variations Tested (all returned same 400):**
+- customerNm: Korean (홍길동), ASCII (Hong), omitted
+- Headers: default, browser-parity (User-Agent, Referer, Accept-Language)
+- All parameter combinations
+
+**Observed Facts:**
+- nginx returns 400 before reaching application layer
+- No error message in response body
+- No authentication challenge headers (WWW-Authenticate, Set-Cookie)
+- No redirect or location headers
+
+**Conclusion:**
+Spec indicates "Public API - no authentication required", but actual behavior suggests:
+- Authentication/authorization required (not documented)
+- Additional required parameters (not in spec)
+- Incorrect base URL or environment
+- IP whitelist or access restrictions
+
+**Next Step:**
+Customer clarification required. See: `docs/api/premium_api_customer_clarification.md`
+
+**Integration Status:** BLOCKED pending customer response with correct access method.
 
 ### D. Defensive Handling (Not in SSOT)
 
