@@ -3189,12 +3189,174 @@ Integrate Excel multiplier table (일반보험요율예시.xlsx) as embedded Fro
 - `tests/ui/test_step31_premium_calc.py` (MODIFIED)
 
 **Next Steps (Future):**
-1. Real proposal data integration (8 insurers)
+1. ~~Real proposal data integration (8 insurers)~~ → Premium API integration (STEP 32) ✅
 2. Policy evidence extraction for multiplier validation
 3. UI enhancement (show multiplier source in tooltip)
 
 ---
 
+## ✅ STEP 32: Premium API Integration (Real basePremium, Proposal-Centered)
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Integrate real basePremium data from Premium API while maintaining proposal-centered architecture and /compare contract immutability.
+
+**Constitutional Principles:**
+- ✅ System SSOT = Proposal (premium is proposal field, not policy-derived)
+- ✅ Premium comparison is ADDITIONAL feature (does NOT affect /compare)
+- ✅ /compare contract/schema/golden snapshots IMMUTABLE
+- ✅ Premium failure = premium-only PARTIAL/MISSING (NOT system error)
+
+**Core Definitions:**
+- **basePremium source**: `monthlyPremSum` from Premium API (ONLY)
+- **Calculation rules** (STEP 31/31-α SSOT unchanged):
+  - ③무해지 = ①전체 (basePremium)
+  - ②일반 = ①전체 × multiplier
+  - multiplier priority: explicit param → table lookup → PARTIAL
+
+**Deliverables:**
+
+1. **Premium API Types & Contract**
+   - `apps/web/src/lib/api/premium/types.ts` (NEW)
+   - `UpstreamPremiumResponse`: Upstream API response schema
+   - `PremiumProxyResponse`: Standardized proxy contract
+   - `PremiumItem`: `{ insurer, coverageName, basePremium, multiplier? }`
+   - `PremiumFailureReason`: UPSTREAM_ERROR, TIMEOUT, UNAUTHORIZED, etc.
+   - `INSURER_CODE_MAP`: Upstream code → InsurerCode mapping
+
+2. **Premium Adapter (SSOT for Mapping)**
+   - `apps/web/src/lib/api/premium/adapter.ts` (NEW)
+   - `adaptPremiumResponse()`: Upstream → PremiumProxyResponse
+   - **Mapping Rule**: `basePremium = monthlyPremSum` (ONLY)
+   - **Prohibited**: ❌ cvrAmtArrLst calculation, ❌ policy inference
+   - `adaptMultiplePremiumResponses()`: Multi-insurer support
+   - `isValidBasePremium()`: Validation (≥0 or null)
+
+3. **Premium API Client**
+   - `apps/web/src/lib/api/premium/client.ts` (NEW)
+   - `PremiumClient` class with timeout/error handling
+   - `simpleCompare()`: Calls `/api/premium/simple-compare`
+   - `onepageCompare()`: Calls `/api/premium/onepage-compare`
+   - Timeout: 10s, graceful degradation on failure
+
+4. **Server-Side Proxy Routes**
+   - `apps/web/src/app/api/premium/simple-compare/route.ts` (NEW)
+   - `apps/web/src/app/api/premium/onepage-compare/route.ts` (NEW)
+   - Server-side proxy (NO client API key exposure)
+   - Auth via `process.env.PREMIUM_API_KEY`
+   - Timeout: 10s, adapter integration
+   - Returns `PremiumProxyResponse` (standardized)
+
+5. **UI Integration**
+   - `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED)
+   - `convertProxyResponseToCards()`: Proxy response → UI cards
+   - Uses `computePremiums()` SSOT (STEP 31/31-α)
+   - DEV_MOCK_MODE preserved for local testing
+   - Real data mode calls proxy routes
+
+**basePremium Mapping Rule (Fixed SSOT):**
+
+```
+basePremium = monthlyPremSum
+```
+
+**Prohibited Sources**:
+- ❌ cvrAmtArrLst (coverage array) calculation
+- ❌ Policy document extraction
+- ❌ Any inference/estimation logic
+
+**Premium Proxy Contract (Standardized)**:
+
+**Success**:
+```json
+{
+  "ok": true,
+  "items": [
+    {
+      "insurer": "SAMSUNG",
+      "coverageName": "암진단비",
+      "basePremium": 123620,
+      "multiplier": null
+    }
+  ]
+}
+```
+
+**Failure**:
+```json
+{
+  "ok": false,
+  "reason": "UPSTREAM_ERROR",
+  "message": "premium api failed",
+  "items": []
+}
+```
+
+**UI Flow (STEP 32)**:
+
+1. User enters premium comparison view
+2. Mode selection:
+   - DEV_MOCK_MODE → Mock scenarios (STEP 31-α data)
+   - Real mode → Call `/api/premium/simple-compare` or `/onepage-compare`
+3. Proxy returns `PremiumProxyResponse`
+4. UI converts to cards via `convertProxyResponseToCards()`
+5. Each card calls `computePremiums({ basePremium, multiplier?, coverageName, insurer })`
+6. Render based on status: READY / PARTIAL / MISSING
+
+**Coverage Name Handling (Graceful Degradation)**:
+
+1. Premium API coverage names may NOT match canonical coverage
+2. Coverage name used for:
+   - UI label display
+   - STEP 31-α multiplier lookup (best-effort)
+3. Mapping failure → PARTIAL (NOT error)
+4. basePremium displayed regardless of coverage name mapping
+
+**Error Handling (Premium-Only Isolation)**:
+
+- Upstream error → premium area shows PARTIAL/MISSING
+- /compare continues to work normally
+- NO system-wide errors for premium failures
+
+**Regression Lock Verification:**
+- ✅ `apps/api/` unchanged (0 files modified)
+- ✅ `tests/snapshots/compare/` unchanged (0 golden snapshots modified)
+- ✅ /compare contract immutable
+
+**Test Results:**
+- Regression lock: PASS ✅ (git diff = 0 for /compare)
+- Constitutional compliance: All principles maintained
+
+**DoD Achieved:**
+- ✅ basePremium (①전체) filled from real data (monthlyPremSum)
+- ✅ ③무해지 = ①전체 fixed
+- ✅ ②일반 = ①전체 × multiplier (explicit → lookup → PARTIAL)
+- ✅ Coverage name unmapped → graceful PARTIAL (system stable)
+- ✅ /compare contract/snapshots unchanged (0 modifications)
+- ✅ DEV_MOCK_MODE preserved
+- ✅ STATUS.md updated
+
+**Key Files:**
+- `apps/web/src/lib/api/premium/types.ts` (NEW)
+- `apps/web/src/lib/api/premium/adapter.ts` (NEW)
+- `apps/web/src/lib/api/premium/client.ts` (NEW)
+- `apps/web/src/app/api/premium/simple-compare/route.ts` (NEW)
+- `apps/web/src/app/api/premium/onepage-compare/route.ts` (NEW)
+- `apps/web/src/lib/api/mocks/priceScenarios.ts` (MODIFIED)
+
+**Environment Variables Required:**
+- `PREMIUM_API_BASE_URL`: Premium API base URL
+- `PREMIUM_API_KEY`: API key for authentication (optional)
+
+**Next Steps (Future):**
+1. Coverage name normalization pipeline (후속 단계)
+2. Multi-insurer ranking optimization
+3. Premium history/trend analysis
+
+---
+
 **Project Status:** ✅ HEALTHY
-**Next Milestone:** Real Insurer Data Loading (8 Insurers)
+**Next Milestone:** Coverage Name Normalization (후속 단계)
 **Blockers:** None

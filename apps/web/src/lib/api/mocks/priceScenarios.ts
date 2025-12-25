@@ -1,5 +1,5 @@
 /**
- * Price Comparison Mock Scenarios (STEP 31 + 31-α)
+ * Price Comparison Mock Scenarios (STEP 31 + 31-α + 32)
  *
  * DEV_MOCK_MODE extension for premium comparison testing
  *
@@ -9,12 +9,15 @@
  * - Premium data is simulated for UX testing
  *
  * STEP 31-α: Use real multipliers from GENERAL_MULTIPLIERS_BY_COVERAGE
+ * STEP 32: Real basePremium from Premium API (monthlyPremSum)
+ *          DEV_MOCK_MODE preserved for local testing
  */
 
 import type { PremiumCardData } from '@/lib/premium/types';
 import type { PremiumResult } from '@/lib/premium/types';
 import { computePremiums } from '@/lib/premium/calc';
 import type { InsurerCode } from '@/lib/premium/multipliers';
+import type { PremiumProxyResponse } from '@/lib/api/premium/types';
 
 /**
  * Mock Premium Result (READY) - STEP 31-α: Use computePremiums with coverageName/insurer
@@ -229,4 +232,42 @@ export function getPriceScenario(scenarioId: PriceScenarioId) {
     default:
       throw new Error(`Unknown price scenario: ${scenarioId}`);
   }
+}
+
+/**
+ * Convert Premium Proxy Response to PremiumCardData array
+ * (STEP 32: Bridge between real API and UI)
+ *
+ * @param response - Premium API response
+ * @returns PremiumCardData array for UI rendering
+ */
+export function convertProxyResponseToCards(
+  response: PremiumProxyResponse
+): PremiumCardData[] {
+  if (!response.ok || response.items.length === 0) {
+    return [];
+  }
+
+  // Sort by basePremium (ascending, cheapest first)
+  const sorted = [...response.items]
+    .filter((item) => item.basePremium !== null)
+    .sort((a, b) => (a.basePremium || 0) - (b.basePremium || 0));
+
+  return sorted.map((item, index) => {
+    const premiumResult = computePremiums({
+      basePremium: item.basePremium,
+      multiplier: item.multiplier,
+      coverageName: item.coverageName,
+      insurer: item.insurer,
+    });
+
+    return {
+      rank: index + 1,
+      insurer: item.insurer,
+      proposalId: `${item.insurer}_proposal_${index + 1}`,
+      premiumResult,
+      displayMode: 'COMPARISON',
+      canonicalCoverageCode: undefined, // Optional for premium view
+    };
+  });
 }
