@@ -19,7 +19,7 @@ import { formatPremium } from '@/lib/premium/calc';
 export interface PriceRankingViewProps {
   cards: PremiumCardData[];
   stateConfig: PriceStateConfig;
-  onCompare: (proposalIdA: string, proposalIdB: string) => void;
+  onCompare: (proposalIdA: string | undefined, proposalIdB: string | undefined) => void;
   onSearchAgain: () => void;
 }
 
@@ -59,9 +59,9 @@ export function PriceRankingView({
       {availableCards.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold">비교 가능</h3>
-          {availableCards.map((card) => (
+          {availableCards.map((card, index) => (
             <PremiumCard
-              key={card.proposalId}
+              key={card.proposalId || `card-${card.insurer}-${index}`}
               card={card}
               onCompare={(proposalId) => {
                 // Compare against the cheapest (rank 1)
@@ -79,8 +79,8 @@ export function PriceRankingView({
       {unavailableCards.length > 0 && (
         <div className="space-y-3 mt-6">
           <h3 className="text-lg font-semibold text-gray-500">데이터 준비 중</h3>
-          {unavailableCards.map((card) => (
-            <PremiumCardPlaceholder key={card.proposalId} card={card} />
+          {unavailableCards.map((card, index) => (
+            <PremiumCardPlaceholder key={card.proposalId || `unavailable-${card.insurer}-${index}`} card={card} />
           ))}
         </div>
       )}
@@ -103,7 +103,7 @@ function PremiumCard({
   onCompare,
 }: {
   card: PremiumCardData;
-  onCompare: (proposalId: string) => void;
+  onCompare: (proposalId: string | undefined) => void;
 }) {
   const premium = card.premiumResult.nonCancellation.premium;
   const isLowest = card.rank === 1;

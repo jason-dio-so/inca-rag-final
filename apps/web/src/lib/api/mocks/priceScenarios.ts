@@ -17,7 +17,6 @@ import type { PremiumCardData } from '@/lib/premium/types';
 import type { PremiumResult } from '@/lib/premium/types';
 import { computePremiums } from '@/lib/premium/calc';
 import type { InsurerCode } from '@/lib/premium/multipliers';
-import type { PremiumProxyResponse } from '@/lib/api/premium/types';
 
 /**
  * Mock Premium Result (READY) - STEP 31-α: Use computePremiums with coverageName/insurer
@@ -234,40 +233,3 @@ export function getPriceScenario(scenarioId: PriceScenarioId) {
   }
 }
 
-/**
- * Convert Premium Proxy Response to PremiumCardData array
- * (STEP 32: Bridge between real API and UI)
- *
- * @param response - Premium API response
- * @returns PremiumCardData array for UI rendering
- */
-export function convertProxyResponseToCards(
-  response: PremiumProxyResponse
-): PremiumCardData[] {
-  if (!response.ok || response.items.length === 0) {
-    return [];
-  }
-
-  // Sort by basePremium (ascending, cheapest first)
-  const sorted = [...response.items]
-    .filter((item) => item.basePremium !== null)
-    .sort((a, b) => (a.basePremium || 0) - (b.basePremium || 0));
-
-  return sorted.map((item, index) => {
-    const premiumResult = computePremiums({
-      basePremium: item.basePremium,
-      multiplier: item.multiplier,
-      coverageName: item.coverageName,
-      insurer: item.insurer,
-    });
-
-    return {
-      rank: index + 1,
-      insurer: item.insurer,
-      proposalId: `${item.insurer}_proposal_${index + 1}`,
-      premiumResult,
-      displayMode: 'COMPARISON',
-      canonicalCoverageCode: undefined, // Optional for premium view
-    };
-  });
-}

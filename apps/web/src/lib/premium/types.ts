@@ -61,11 +61,13 @@ export type PremiumDisplayMode = 'SINGLE' | 'COMPARISON';
 
 /**
  * Premium Card Data (for PriceRankingView)
+ *
+ * STEP 32-δ: proposalId is optional (no fake generation)
  */
 export interface PremiumCardData {
   rank: number;
   insurer: string;
-  proposalId: string;
+  proposalId?: string; // Optional: use upstream value or undefined
   premiumResult: PremiumResult;
   displayMode: PremiumDisplayMode;
   canonicalCoverageCode?: string;
