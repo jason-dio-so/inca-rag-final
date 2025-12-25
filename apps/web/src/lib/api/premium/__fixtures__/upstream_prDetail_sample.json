@@ -1,0 +1,43 @@
+{
+  "calSubSeq": 2001,
+  "prProdLineCd": "PRODLN0001",
+  "prProdLineNm": "통합",
+  "disSearchDiv": null,
+  "baseDate": "2025-12-25 10:00:00",
+  "nm": null,
+  "age": 35,
+  "sex": "1",
+  "prProdLineCondOutSearchDiv": [
+    {
+      "searchDiv": "1",
+      "prProdLineCondOutIns": [
+        {
+          "insCd": "N08",
+          "insNm": "삼성화재",
+          "prCd": "TEST001",
+          "prNm": "테스트상품",
+          "insTrm": "100세만기",
+          "pyTrm": "20년",
+          "rnwCycle": "",
+          "prodType": "1",
+          "updateDt": "20251225",
+          "recommYn": null,
+          "monthlyPremSum": 50000,
+          "cvrAmtArrLst": [
+            {
+              "cvrDiv": "1",
+              "dispOrder": 10,
+              "cvrCd": "C001",
+              "cvrNm": "암진단비",
+              "creCvrCd": "C001",
+              "accAmt": 10000000,
+              "accAmtNm": "1,000만원",
+              "monthlyPrem": 5000,
+              "amtDispYn": "Y"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

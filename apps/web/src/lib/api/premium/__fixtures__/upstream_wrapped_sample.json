@@ -1,0 +1,15 @@
+{
+  "returnCode": "0000",
+  "returnMsg": "Success",
+  "data": {
+    "customerSeq": 1001,
+    "customerIpSeq": 1,
+    "compPlanId": 100,
+    "outPrList": [
+      {
+        "insCd": "N08",
+        "monthlyPrem": 50000
+      }
+    ]
+  }
+}

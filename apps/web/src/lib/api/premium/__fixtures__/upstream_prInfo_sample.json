@@ -1,0 +1,31 @@
+{
+  "customerSeq": 1001,
+  "customerIpSeq": 1,
+  "compPlanId": 100,
+  "outPrList": [
+    {
+      "prProdLineCd": "PRODLN0001",
+      "insCd": "N08",
+      "insNm": "삼성화재",
+      "prCd": "TEST001",
+      "prNm": "테스트상품",
+      "prScore": 100,
+      "newDispYn": "N",
+      "monthlyPrem": 50000,
+      "updateDt": "20251225",
+      "updatingYn": "N"
+    },
+    {
+      "prProdLineCd": "PRODLN0001",
+      "insCd": "N10",
+      "insNm": "KB손보",
+      "prCd": "TEST002",
+      "prNm": "테스트상품2",
+      "prScore": 95,
+      "newDispYn": "N",
+      "monthlyPrem": 48000,
+      "updateDt": "20251225",
+      "updatingYn": "N"
+    }
+  ]
+}
