@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Query Pipeline Complete (STEP 3.13 - THE LAST STEP)
-**Project Health:** ✅ ACTIVE - Core Pipeline Complete
+**Current Phase:** Customer Response Formatter Complete (STEP 4.0)
+**Project Health:** ✅ ACTIVE - Core Pipeline + Customer Formatter Complete
 
 ---
 
@@ -24,6 +24,89 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 4.0: Customer Response Formatter (출력 전용 레이어)
+**Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- Customer-friendly output formatter (presentation-only layer)
+- Transforms STEP 3.13 results into customer-readable format
+- 100% IMMUTABLE (no PRIME state changes, no recalculation)
+- Fixed 3-section structure: Summary Header → Fact Table → Explanation Blocks
+
+**Purpose:**
+- Display STEP 3.11 + STEP 3.12 results in customer-friendly format
+- Presentation ONLY (no judgment, no modification, no inference)
+
+**Output Structure:**
+```
+[비교 요약]
+- Coverage query
+- Target insurers
+- Comparison status (완전 비교 가능 / 제한적 가능 / 비교 불가)
+- Limitation reasons (직접 전달)
+
+[비교 테이블]
+- STEP 3.11 comparison table (IMMUTABLE)
+- PRIME state → customer labels mapping
+- Sorted by insurer name
+
+[보험사별 상세 설명]
+- STEP 3.12 explanation blocks (IMMUTABLE)
+- Per-insurer reasoning (no sentence modification)
+```
+
+**PRIME State → Customer Label Mapping:**
+- `in_universe_comparable` → "비교 가능"
+- `in_universe_with_gaps` → "제한적 비교 가능"
+- `in_universe_unmapped` → "비교 가능 (표준 코드 미대응)"
+- `out_of_universe` → "비교 대상 아님"
+
+**Forbidden Phrase Validation:**
+- Hard ban on recommendation/inference phrases
+- Validation: "사실상 같은 담보", "유사한 담보", "추천합니다", "선택하세요", etc.
+- System fails if any forbidden phrase detected
+
+**Constitution Compliance:**
+- ✅ STEP 3.11 results IMMUTABLE (판결문)
+- ✅ STEP 3.12 explanations IMMUTABLE (이유서)
+- ✅ STEP 4.0 presentation only (출력)
+- ❌ No PRIME state changes
+- ❌ No result recalculation
+- ❌ No coverage integration
+- ❌ No similarity judgment
+- ❌ No recommendations
+
+**DoD:**
+- ✅ STEP 3.13 result → Customer-friendly format
+- ✅ 100% IMMUTABLE (no changes to STEP 3.11/3.12)
+- ✅ Forbidden phrase validation enforced
+- ✅ Same input → Same output
+- ✅ No Constitution violations
+
+**Example Output:**
+```
+[비교 요약]
+요청하신 담보: 암진단비
+비교 보험사: SAMSUNG, HANWHA
+비교 결과 요약:
+- 비교 가능 여부: 제한적 가능
+- 제한 사유:
+  • GAPS_PRESENT (1 insurers)
+  • OUT_OF_UNIVERSE (1 insurers)
+
+[비교 테이블]
+  보험사    담보명    PRIME 상태
+ SAMSUNG      -  비교 대상 아님
+  HANWHA 암진단비 제한적 비교 가능
+
+[보험사별 상세 설명]
+▶ SAMSUNG
+판단 결과: 비교 대상 아님
+사유: [STEP 3.12 explanation - IMMUTABLE]
+```
+
+---
 
 ### ✅ STEP 3.13: Query Pipeline (THE LAST STEP)
 **Commit:** f21f6e4 | **Date:** 2025-12-25
