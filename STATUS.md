@@ -25,6 +25,18 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 32-κ-POST-2: SSOT Wording Tightening
+**Commit:** 409b6b0 | **Date:** 2025-12-25
+
+**Summary:**
+- All SSOT references now point to `docs/api/premium_api_spec.md` (not upstream files)
+- Removed assertions about "actual upstream behavior" (replaced with "SSOT does not document")
+- Comment/doc wording only (no behavior change)
+- TypeScript typecheck: PASS ✅
+- /compare regression lock: 0 diff ✅
+
+---
+
 ### ✅ STEP 32-κ-POST: Types/Docs Cleanup (Spec-Driven)
 **Commit:** 95f18f4 | **Date:** 2025-12-25
 
