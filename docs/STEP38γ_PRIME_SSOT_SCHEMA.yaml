@@ -52,7 +52,7 @@ proposal_row:
       method: "직접 추출 (가입설계서 표 셀)"
       example: "3,000만원"
 
-    # 구조화 (regex only)
+    # 구조화 (결정론적 추출)
     amount_value:
       patterns:
         - regex: '(\d{1,3}(?:,\d{3})*)만원'
@@ -212,6 +212,31 @@ comparison_states:
     response_message: "해당 담보는 가입설계서에 존재하지 않아 비교 불가"
     http_status: 400
 
+  # 기존 v1.0/v1.1 (5-State)와의 호환성 매핑
+  compatibility_mapping_from_v1_1:
+    note: "γ′ (4-State) ← v1.0/v1.1 (5-State) 매핑"
+    mappings:
+      comparable_v1_1:
+        maps_to: "in_universe_comparable"
+        condition: "핵심 슬롯 모두 일치, 갭 없음"
+
+      comparable_with_gaps_v1_1:
+        maps_to: "in_universe_with_gaps"
+        condition: "담보 존재, 일부 슬롯 NULL"
+
+      non_comparable_v1_1:
+        maps_to: null
+        reason: "γ′에서는 canonical code가 다르면 비교 안 함"
+        note: "설계상 제거됨 (가입설계서 존재하면 비교함)"
+
+      unmapped_v1_1:
+        maps_to: "in_universe_unmapped"
+        condition: "매핑 실패, 원문 비교 가능"
+
+      out_of_universe_v1_1:
+        maps_to: "out_of_universe"
+        condition: "가입설계서 미존재"
+
 # ============================================================================
 # PART 5: Comparison Logic (비교 로직)
 # ============================================================================
@@ -283,12 +308,19 @@ prohibited_operations:
     violation_level: "CRITICAL"
 
   - operation: "가입설계서 외 문서 기반 비교"
-    reason: "Proposal Absolute SSOT 위반"
+    reason: "Proposal Absolute SSOT 위반 (Article VIII)"
     violation_level: "CRITICAL"
     prohibited_doc_types:
       - "PRODUCT_SUMMARY"
       - "BUSINESS_METHOD"
       - "POLICY"
+    enforcement:
+      - "비교 로직 입력단에서 doc_type 검증"
+      - "evidence.doc_type != 'PROPOSAL' → 즉시 FAIL"
+      - "슬롯 채움 시 doc_type 재검증"
+    allowed_use:
+      - "사람이 수동으로 참고 (시스템 외부)"
+      - "고객 문의 시 설명 보조 (비교 근거 아님)"
 
   - operation: "담보 의미 추론"
     examples:
@@ -316,7 +348,11 @@ prohibited_operations:
   - operation: "LLM 기반 구조화"
     reason: "Deterministic Processing 위반"
     violation_level: "CRITICAL"
-    allowed_method: "regex only"
+    allowed_methods:
+      - "표 구조 기반 row 파싱"
+      - "컬럼 위치/헤더 기반 rule"
+      - "regex 패턴 매칭"
+    note: "확률적/추론 금지, 규칙 기반만 허용"
 
 # ============================================================================
 # PART 7: NULL Handling (NULL 처리)

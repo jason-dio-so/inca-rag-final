@@ -189,30 +189,56 @@ optional_fields = [
 **가입설계서 외 문서는 비교에 사용하지 않는다**
 
 ```
-PROPOSAL (가입설계서)   → 비교 SSOT
-PRODUCT_SUMMARY         → 사람 참조용만
-BUSINESS_METHOD         → 사람 참조용만
-POLICY                  → 사람 참조용만
+PROPOSAL (가입설계서)   → 비교 SSOT (Required)
+PRODUCT_SUMMARY         → 사람 참조용만 (시스템 외부)
+BUSINESS_METHOD         → 사람 참조용만 (시스템 외부)
+POLICY                  → 사람 참조용만 (시스템 외부)
 ```
+
+**구현 강제 규칙:**
+```python
+# 비교 로직 입력단 검증
+if evidence.source_doc_type != "PROPOSAL":
+    raise ValidationError("PROPOSAL 외 문서 사용 금지")
+
+# 슬롯 채움 검증
+for slot in comparison_result:
+    if slot.evidence.doc_type != "PROPOSAL":
+        raise ConstitutionalViolation(
+            "Article VIII 위반: 비교 근거는 PROPOSAL만 허용"
+        )
+```
+
+**명확한 금지:**
+- ❌ 약관/요약서를 비교 로직 입력에 사용
+- ❌ "약관에서 보완", "요약서 참조" 등 자동 병합
+- ❌ Document Priority 개념 자체 (PROPOSAL 단독 사용)
+- ⭕ 약관/요약서는 **사람이 수동 확인**하는 참고 문서
 
 **완화 (v1.1과 차이):**
 - v1.1: PROPOSAL 필수, 나머지 선택
-- γ′: PROPOSAL만 사용, 나머지 사용 금지
+- γ′: PROPOSAL만 사용, 나머지 **시스템 사용 금지**
 
 ---
 
 ### Article IX: Deterministic Processing (결정론적 처리)
+
+**허용되는 추출 방법:**
+- ✅ 표 구조 기반 row 파싱 (테이블 경계, 셀 위치)
+- ✅ 컬럼 위치/헤더 기반 rule
+- ✅ Regex 패턴 매칭
+- ✅ 결정론적 문자열 변환
 
 **처리 흐름:**
 
 ```
 1. 가입설계서 원문 로드
    ↓
-2. 표(row) 단위로 담보 추출
+2. 표(row) 단위로 담보 추출 (표 구조 파싱)
    ↓
 3. 원문 담보명 그대로 SSOT 저장
    ↓
-4. 금액 / 기간 / 갱신 여부 구조화 (regex only)
+4. 금액 / 기간 / 갱신 여부 구조화 (regex + rule)
    ↓
 5. [OPTIONAL] 담보 매핑 (normalized_name, coverage_code)
    ↓
@@ -222,13 +248,15 @@ POLICY                  → 사람 참조용만
    ↓
 8. 차이 요약 생성
    ↓
-9. [CONDITIONAL] 사용자 요청 시에만 추천 생성
+9. [CONDITIONAL] 사용자 요청 시에만 If-Then 답변 생성
 ```
 
 **금지:**
-- ❌ LLM 기반 추론
+- ❌ LLM 기반 추론/보완
+- ❌ 확률적 방법
 - ❌ 약관 정의 병합
 - ❌ 담보 의미 일반화
+- ❌ 추정/가정 기반 슬롯 채우기
 
 ---
 
@@ -247,6 +275,48 @@ POLICY                  → 사람 참조용만
 - ❌ 추천이 기본 응답에 포함됨
 - ❌ "유리합니다" 같은 주관 서술
 - ❌ 가입설계서에 없는 정보로 슬롯 채움
+
+---
+
+## Comparison States (비교 상태)
+
+### γ′ (PRIME) 4-State System
+
+**1. in_universe_comparable**
+- 담보 존재 & 비교 가능
+- 매핑 성공 또는 원문 매칭 가능
+- 모든 핵심 정보 확보
+
+**2. in_universe_unmapped**
+- 담보 존재 & 매핑 실패
+- 원문 기반 비교 지속 (정확도 낮음)
+- ❌ 비교 불가 아님
+
+**3. in_universe_with_gaps**
+- 담보 존재 & 일부 정보 누락
+- 제한적 비교 가능
+- NULL 슬롯 명시
+
+**4. out_of_universe**
+- 담보 미존재
+- 비교 불가
+
+---
+
+### v1.0/v1.1 (5-State) 호환성 매핑
+
+| v1.0/v1.1 (5-State) | γ′ (4-State) | 비고 |
+|---------------------|-------------|------|
+| `comparable` | `in_universe_comparable` | 핵심 슬롯 모두 일치 |
+| `comparable_with_gaps` | `in_universe_with_gaps` | 일부 슬롯 NULL |
+| `non_comparable` | *(제거됨)* | γ′에서는 담보 존재 = 비교함 |
+| `unmapped` | `in_universe_unmapped` | 매핑 실패, 원문 비교 |
+| `out_of_universe` | `out_of_universe` | 담보 미존재 |
+
+**변경 이유:**
+- v1.1의 `non_comparable`은 설계상 모순
+- 가입설계서에 있으면 항상 비교 가능 (정확도는 별개)
+- γ′는 **존재 = 비교 가능** 원칙으로 단순화
 
 ---
 
@@ -353,7 +423,7 @@ POLICY                  → 사람 참조용만
 
 ## 확장성 (Scalability)
 
-**보험사 증가 (현재 7개 → 10개+):**
+**보험사 증가 (현재 8개 → 10개+):**
 - ✅ 가입설계서만 추가하면 즉시 비교 가능
 - ✅ 약관 파싱 불필요
 - ✅ 문서 계층 불필요
@@ -441,7 +511,7 @@ def compare_coverages(insurer_a, insurer_b, coverage_query):
 - ✅ SSOT 원문 중심 재정렬
 
 ### 기능적 성공
-- ✅ 7개 보험사 가입설계서 비교 작동
+- ✅ 8개 보험사 가입설계서 비교 작동
 - ✅ 담보 없음 → out_of_universe
 - ✅ 매핑 실패 → unmapped (비교 지속)
 - ✅ 약관 문장 인용 없음
