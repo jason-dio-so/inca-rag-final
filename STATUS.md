@@ -25,8 +25,60 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP 4.1: Proposal Detail Evidence Attachment (가입설계서 상세 근거 첨부)
+### ✅ STEP 3.13-α: Deterministic Query Variant Compiler
 **Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- Query-level whitespace variant handling (NO coverage normalization)
+- Deterministic whitespace rules (질병명+진단비/수술비/입원비 → space variant)
+- Resolves UX gap for 표기 차이 (e.g., "암진단비" vs "암 진단비")
+- NO PRIME state change, NO "same coverage" assertion
+
+**Purpose:**
+- Improve query matching for whitespace variations in proposal coverage names
+- Query compilation only (질의 컴파일러 보강)
+- NO judgment modification (판결문 불변)
+
+**Query Variant Generation Rules:**
+```
+Original: "암진단비"
+Variants: ["암진단비", "암 진단비"]
+
+Pattern: (질병명)(진단비|수술비|입원비|치료비|후유장해)
+→ Generate: (질병명) (suffix)
+```
+
+**Execution Flow:**
+1. Try original query first
+2. If original has in_universe hits → use original result
+3. If original all out_of_universe → try variants
+4. If variant hits → add limitation reason: QUERY_VARIANT_APPLIED_NO_INFERENCE
+
+**Constitution Compliance:**
+- ✅ Query normalization ONLY (coverage_name_raw IMMUTABLE)
+- ✅ Deterministic whitespace rules only
+- ✅ NO PRIME state re-judgment
+- ✅ NO "same coverage" assertion
+- ❌ No LLM, no similarity, no morphological analysis
+- ❌ No coverage unification
+
+**Test Results:**
+- ✅ T1 (Whitespace Effect): "암진단비" → variant "암 진단비" finds candidates
+- ✅ T2 (Reproducibility): Same query → Same result (100% deterministic)
+- ✅ T3 (No Inference): No forbidden keywords (similarity/score/rank/semantic/embedding)
+
+**DoD:**
+- ✅ "암진단비 / 암 진단비" UX gap resolved
+- ✅ PRIME constitution compliance (no violations)
+- ✅ Comparison results IMMUTABLE
+- ✅ Explanation factual only
+- ✅ 100% reproducible
+- ✅ All tests passed (T1/T2/T3)
+
+---
+
+### ✅ STEP 4.1: Proposal Detail Evidence Attachment (가입설계서 상세 근거 첨부)
+**Commit:** c38f9cd | **Date:** 2025-12-25
 
 **Summary:**
 - Attach proposal detail evidence (보장내용 원문) to customer response

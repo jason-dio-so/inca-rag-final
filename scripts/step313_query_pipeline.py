@@ -1,27 +1,29 @@
 #!/usr/bin/env python3
 """
 STEP 3.13 FINAL: User Query → PRIME Comparison Pipeline
+STEP 3.13-α: Deterministic Query Variant Compiler (Whitespace Rules)
 
 Purpose:
 - Connect natural language queries to STEP 3.11 → STEP 3.12 pipeline
 - Query interpretation + routing ONLY
 - NO comparison logic (already exists)
+- STEP 3.13-α: Handle whitespace variants deterministically (NO inference)
 
 Rules:
 ✅ Deterministic query parsing
-✅ Single query → Single comparison
+✅ Query variant generation (whitespace rules only)
 ✅ Automatic STEP 3.11 → STEP 3.12 connection
 ❌ No semantic inference
 ❌ No coverage expansion
 ❌ No "similar coverage"
 ❌ No recommendation intent interpretation
+❌ No coverage_name_raw modification
 
-This is the LAST step before:
-- UI
-- Customer response formatting
-- Recommendations
-- Policy expansion
-- Shinjeongwon enhancement
+STEP 3.13-α Additions:
+✅ Generate query variants (deterministic whitespace rules)
+✅ Execute comparison for original + variants
+✅ NO PRIME state re-judgment
+✅ NO "same coverage" assertion
 """
 
 import re
@@ -39,6 +41,7 @@ class ParsedQuery:
     """Parsed user query"""
     raw_query: str
     normalized_coverage_keyword: str
+    coverage_query_variants: List[str]  # STEP 3.13-α: variants
     target_insurers: List[str]
     execution_plan: dict
 
@@ -69,9 +72,10 @@ class QueryPipeline:
         self.comparison_engine = ProposalFactComparisonEngine()
         self.explanation_layer = PRIMEExplanationLayer()
 
-        print("Query Pipeline initialized")
+        print("Query Pipeline initialized (STEP 3.13 + 3.13-α)")
         print("  Comparison Engine: STEP 3.11")
         print("  Explanation Layer: STEP 3.12")
+        print("  Query Variant Compiler: STEP 3.13-α (deterministic)")
 
     def process(self, user_query: str) -> ExplainedComparisonResult:
         """
@@ -99,13 +103,14 @@ class QueryPipeline:
         parsed = self._parse_query(user_query)
 
         print(f"  Normalized coverage: {parsed.normalized_coverage_keyword}")
+        print(f"  Query variants: {parsed.coverage_query_variants}")
         print(f"  Target insurers: {parsed.target_insurers}")
 
-        # Step 2: Execute STEP 3.11 (Comparison)
-        print("\n[2] Executing STEP 3.11 (Comparison Engine)...")
-        comparison_result = self.comparison_engine.compare(
+        # Step 2: Execute STEP 3.11 with variants (STEP 3.13-α)
+        print("\n[2] Executing STEP 3.11 with query variants (STEP 3.13-α)...")
+        comparison_result = self._execute_comparison_with_variants(
             insurers=parsed.target_insurers,
-            coverage_query=parsed.normalized_coverage_keyword
+            query_variants=parsed.coverage_query_variants
         )
 
         # Step 3: Execute STEP 3.12 (Explanation)
@@ -141,13 +146,18 @@ class QueryPipeline:
         # Normalize coverage keyword (whitespace/case only)
         normalized_coverage = self._normalize_coverage_keyword(coverage)
 
+        # STEP 3.13-α: Generate query variants
+        query_variants = self._generate_query_variants(normalized_coverage)
+
         parsed = ParsedQuery(
             raw_query=user_query,
             normalized_coverage_keyword=normalized_coverage,
+            coverage_query_variants=query_variants,
             target_insurers=insurers,
             execution_plan={
                 'comparison_engine': 'STEP_3.11',
-                'explanation_layer': 'STEP_3.12'
+                'explanation_layer': 'STEP_3.12',
+                'query_variants': 'STEP_3.13-α'
             }
         )
 
@@ -225,6 +235,125 @@ class QueryPipeline:
         normalized = coverage.strip()
         normalized = re.sub(r'\s+', ' ', normalized)
         return normalized
+
+    def _generate_query_variants(self, coverage_query: str) -> List[str]:
+        """
+        STEP 3.13-α: Generate query variants (deterministic whitespace rules).
+
+        Rules:
+        - Original query is always first
+        - Apply deterministic whitespace rules ONLY
+        - NO LLM, NO similarity, NO morphological analysis
+
+        Deterministic Whitespace Rules (MVP):
+        Pattern: (질병명)(진단비|수술비|입원비|치료비|후유장해)
+        → Generate: (질병명) (suffix)
+
+        Examples:
+        - "암진단비" → ["암진단비", "암 진단비"]
+        - "뇌졸중진단비" → ["뇌졸중진단비", "뇌졸중 진단비"]
+        - "암수술비" → ["암수술비", "암 수술비"]
+
+        Args:
+            coverage_query: Normalized coverage query
+
+        Returns:
+            List of query variants (original first)
+        """
+        variants = [coverage_query]  # Original always first
+
+        # Deterministic whitespace rules
+        # Pattern: (text)(suffix) → (text) (suffix)
+        suffixes = ['진단비', '수술비', '입원비', '치료비', '후유장해']
+
+        for suffix in suffixes:
+            if coverage_query.endswith(suffix) and len(coverage_query) > len(suffix):
+                # Check if space doesn't already exist
+                if not coverage_query.endswith(' ' + suffix):
+                    # Generate variant with space
+                    prefix = coverage_query[:-len(suffix)]
+                    variant = f"{prefix} {suffix}"
+                    if variant not in variants:
+                        variants.append(variant)
+
+        return variants
+
+    def _execute_comparison_with_variants(
+        self,
+        insurers: List[str],
+        query_variants: List[str]
+    ):
+        """
+        STEP 3.13-α: Execute comparison with query variants.
+
+        Flow:
+        1. Try original query first
+        2. If original has in_universe hits, use original result
+        3. If original is all out_of_universe, try variants
+        4. Collect all in_universe hits from all variants
+
+        Rules:
+        - NO PRIME state re-judgment
+        - NO "same coverage" assertion
+        - If multiple variants hit, state = WITH_GAPS
+        - Add limitation reason: QUERY_VARIANT_APPLIED_NO_INFERENCE
+
+        Args:
+            insurers: Target insurers
+            query_variants: Query variants (original first)
+
+        Returns:
+            Comparison result (from best-match variant)
+        """
+        print(f"  Trying {len(query_variants)} query variant(s)...")
+
+        # Try original first
+        original_query = query_variants[0]
+        print(f"    [1] Original query: '{original_query}'")
+
+        comparison_result = self.comparison_engine.compare(
+            insurers=insurers,
+            coverage_query=original_query
+        )
+
+        # Check if original has any in_universe hits
+        has_in_universe = any(
+            state.value != 'out_of_universe'
+            for state in comparison_result.state_summary.values()
+        )
+
+        if has_in_universe:
+            print(f"    ✅ Original query has in_universe hits")
+            return comparison_result
+
+        # Try variants if original is all out_of_universe
+        if len(query_variants) > 1:
+            print(f"    ⚠️ Original query all out_of_universe, trying variants...")
+
+            for i, variant in enumerate(query_variants[1:], start=2):
+                print(f"    [{i}] Variant query: '{variant}'")
+
+                variant_result = self.comparison_engine.compare(
+                    insurers=insurers,
+                    coverage_query=variant
+                )
+
+                # Check if variant has in_universe hits
+                variant_has_in_universe = any(
+                    state.value != 'out_of_universe'
+                    for state in variant_result.state_summary.values()
+                )
+
+                if variant_has_in_universe:
+                    print(f"    ✅ Variant query has in_universe hits")
+                    # Add limitation reason for variant usage
+                    if 'QUERY_VARIANT_APPLIED_NO_INFERENCE' not in variant_result.limitation_reasons:
+                        variant_result.limitation_reasons.append('QUERY_VARIANT_APPLIED_NO_INFERENCE')
+                    return variant_result
+
+        # All variants failed, return original
+        print(f"    ⚠️ All variants out_of_universe, using original result")
+        return comparison_result
 
     def print_result(self, result: ExplainedComparisonResult):
         """
