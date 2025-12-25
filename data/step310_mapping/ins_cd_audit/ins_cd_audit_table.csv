@@ -1,0 +1,9 @@
+﻿insurer,pipeline_ins_cd,excel_company_names_found,excel_ins_cd_set,proposal_rows,issue_codes,recommended_fix_target,notes
+DB,N08,DB|DB손해보험,N13,62,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N08, Excel: {'N13'}"
+HANWHA,N02,한화|한화생명,N02,37,NONE,NONE,OK
+HEUNGKUK,N07,흥국|흥국화재,N05,23,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N07, Excel: {'N05'}"
+HYUNDAI,N06,현대|현대해상,N09,27,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N06, Excel: {'N09'}"
+KB,N05,KB|KB손해보험,N10,40,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N05, Excel: {'N10'}"
+LOTTE,N03,롯데|롯데손해보험,N03,70,NONE,NONE,OK
+MERITZ,N04,메리츠|메리츠화재,N01,34,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N04, Excel: {'N01'}"
+SAMSUNG,N01,삼성|삼성화재,N08,41,I3_MISMATCH_PIPELINE_VS_EXCEL,EXCEL,"Pipeline: N01, Excel: {'N08'}"

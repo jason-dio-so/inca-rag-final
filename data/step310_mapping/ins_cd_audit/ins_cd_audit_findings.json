@@ -1,0 +1,86 @@
+{
+  "audit_timestamp": "2025-12-25",
+  "total_insurers": 8,
+  "results": [
+    {
+      "insurer": "DB",
+      "pipeline_ins_cd": "N08",
+      "excel_company_names_found": "DB|DB손해보험",
+      "excel_ins_cd_set": "N13",
+      "proposal_rows": 62,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N08, Excel: {'N13'}"
+    },
+    {
+      "insurer": "HANWHA",
+      "pipeline_ins_cd": "N02",
+      "excel_company_names_found": "한화|한화생명",
+      "excel_ins_cd_set": "N02",
+      "proposal_rows": 37,
+      "issue_codes": "NONE",
+      "recommended_fix_target": "NONE",
+      "notes": "OK"
+    },
+    {
+      "insurer": "HEUNGKUK",
+      "pipeline_ins_cd": "N07",
+      "excel_company_names_found": "흥국|흥국화재",
+      "excel_ins_cd_set": "N05",
+      "proposal_rows": 23,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N07, Excel: {'N05'}"
+    },
+    {
+      "insurer": "HYUNDAI",
+      "pipeline_ins_cd": "N06",
+      "excel_company_names_found": "현대|현대해상",
+      "excel_ins_cd_set": "N09",
+      "proposal_rows": 27,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N06, Excel: {'N09'}"
+    },
+    {
+      "insurer": "KB",
+      "pipeline_ins_cd": "N05",
+      "excel_company_names_found": "KB|KB손해보험",
+      "excel_ins_cd_set": "N10",
+      "proposal_rows": 40,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N05, Excel: {'N10'}"
+    },
+    {
+      "insurer": "LOTTE",
+      "pipeline_ins_cd": "N03",
+      "excel_company_names_found": "롯데|롯데손해보험",
+      "excel_ins_cd_set": "N03",
+      "proposal_rows": 70,
+      "issue_codes": "NONE",
+      "recommended_fix_target": "NONE",
+      "notes": "OK"
+    },
+    {
+      "insurer": "MERITZ",
+      "pipeline_ins_cd": "N04",
+      "excel_company_names_found": "메리츠|메리츠화재",
+      "excel_ins_cd_set": "N01",
+      "proposal_rows": 34,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N04, Excel: {'N01'}"
+    },
+    {
+      "insurer": "SAMSUNG",
+      "pipeline_ins_cd": "N01",
+      "excel_company_names_found": "삼성|삼성화재",
+      "excel_ins_cd_set": "N08",
+      "proposal_rows": 41,
+      "issue_codes": "I3_MISMATCH_PIPELINE_VS_EXCEL",
+      "recommended_fix_target": "EXCEL",
+      "notes": "Pipeline: N01, Excel: {'N08'}"
+    }
+  ]
+}

@@ -25,8 +25,73 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP 3.10-γ: Excel Backlog Generator
+### ✅ STEP 3.10-ε: ins_cd Consistency Audit
 **Commit:** (pending) | **Date:** 2025-12-25
+
+**Summary:**
+- 전 보험사 ins_cd 정합성 자동 감사 (3자 교차검증)
+- Excel/Pipeline/Proposal 간 ins_cd 불일치 감지
+- 6/8 보험사에서 mismatch 발견 (75% 불일치율)
+- 감사 리포트만 생성 (수정 없음)
+
+**Purpose:**
+- Cross-validate ins_cd consistency across Excel/Pipeline/Proposal
+- Detect mismatches, collisions, missing mappings
+- Generate audit reports (NO fixes)
+
+**3-Way Cross-Validation:**
+1. **Excel**: 담보명mapping자료.xlsx (보험사명 → ins_cd)
+2. **Pipeline**: INSURER_NAMES registry (INSURER → ins_cd)
+3. **Proposal**: ALL_INSURERS_coverage_universe.csv (insurer existence)
+
+**Audit Results:**
+- Total insurers audited: 8
+- Insurers OK: 2 (HANWHA, LOTTE)
+- Insurers with issues: 6 (75%)
+
+**Issue Breakdown:**
+- **I3_MISMATCH_PIPELINE_VS_EXCEL**: 6 cases
+  - DB: Pipeline N08 ≠ Excel N13
+  - HEUNGKUK: Pipeline N07 ≠ Excel N05
+  - HYUNDAI: Pipeline N06 ≠ Excel N09
+  - KB: Pipeline N05 ≠ Excel N10
+  - MERITZ: Pipeline N04 ≠ Excel N01
+  - SAMSUNG: Pipeline N01 ≠ Excel N08
+
+**Recommended Fix:**
+- **Excel 수정 대상**: 6 insurers
+- All recommended_fix_target = **EXCEL**
+- 권장: Excel 담보명mapping자료.xlsx의 ins_cd 값을 Pipeline 기준으로 정정
+
+**Generated Reports:**
+1. CSV: `data/step310_mapping/ins_cd_audit/ins_cd_audit_table.csv`
+   - Per-insurer audit results
+2. MD: `data/step310_mapping/ins_cd_audit/INSCD_AUDIT_REPORT.md`
+   - Summary + Top 5 critical issues + recommendations
+3. JSON: `data/step310_mapping/ins_cd_audit/ins_cd_audit_findings.json`
+   - Machine-readable findings
+
+**Constitution Compliance:**
+- ✅ 3-way cross-validation (deterministic)
+- ✅ 7 fixed issue codes (I1-I7)
+- ✅ Audit reports only (no modifications)
+- ❌ No Excel/code modifications
+- ❌ No ins_cd inference/auto-correction
+
+**DoD:**
+- ✅ All insurers (8) audited
+- ✅ CSV/MD/JSON reports generated
+- ✅ Issue classification 100% applied
+- ✅ No Excel/code modifications
+- ✅ Reproducible audit
+
+**Next Step:**
+- STEP 3.10-ζ: Excel ins_cd correction (based on audit findings)
+
+---
+
+### ✅ STEP 3.10-γ: Excel Backlog Generator
+**Commit:** f076b87 | **Date:** 2025-12-25
 
 **Summary:**
 - Excel 보강 작업 목록 생성 (UNMAPPED → Backlog)
