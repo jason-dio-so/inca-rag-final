@@ -25,7 +25,10 @@ from ..queries.compare import (
     get_disease_code_group
 )
 from ..services.conditions_summary_service import generate_conditions_summary
-from ..contracts import validate_compare_response  # STEP 24: Runtime code guard
+from ..contracts import (
+    validate_compare_response,  # STEP 24: Runtime code guard
+    validate_ux_message_code,   # STEP 26: UX message code guard
+)
 
 router = APIRouter(tags=["Compare"])
 
@@ -100,7 +103,7 @@ async def compare_proposals(
             )
 
         # Step 4: Determine comparison result
-        comparison_result, next_action, message = determine_comparison_result(
+        comparison_result, next_action, message, ux_message_code = determine_comparison_result(
             coverage_a=coverage_a,
             coverage_b=coverage_b,
             query=request.query,
@@ -173,6 +176,9 @@ async def compare_proposals(
         # STEP 24: Runtime code validation (fail-fast on unknown codes)
         validate_compare_response(comparison_result, next_action)
 
+        # STEP 26: UX message code validation (fail-fast on unknown codes)
+        validate_ux_message_code(ux_message_code)
+
         return ProposalCompareResponse(
             query=request.query,
             comparison_result=comparison_result,
@@ -182,6 +188,7 @@ async def compare_proposals(
             policy_evidence_a=policy_evidence_a,
             policy_evidence_b=policy_evidence_b,
             message=message,
+            ux_message_code=ux_message_code,
             debug={
                 "canonical_code_resolved": canonical_code,
                 "raw_name_used": raw_name,
@@ -199,19 +206,20 @@ def determine_comparison_result(
     query: str,
     insurer_a: str,
     insurer_b: Optional[str]
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, str]:
     """
     Determine comparison result and UX message.
 
     Returns:
-        (comparison_result, next_action, message)
+        (comparison_result, next_action, message, ux_message_code)
     """
     # Scenario: out_of_universe
     if not coverage_a:
         return (
             "out_of_universe",
             "REQUEST_MORE_INFO",
-            f"'{query}' coverage not found in {insurer_a} proposal universe"
+            f"'{query}' coverage not found in {insurer_a} proposal universe",
+            "COVERAGE_NOT_IN_UNIVERSE"
         )
 
     # Single coverage query (Scenario B/C)
@@ -221,7 +229,8 @@ def determine_comparison_result(
             return (
                 "unmapped",
                 "REQUEST_MORE_INFO",
-                f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code"
+                f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code",
+                "COVERAGE_UNMAPPED"
             )
 
         # Check disease_scope_norm (Scenario C)
@@ -229,13 +238,15 @@ def determine_comparison_result(
             return (
                 "policy_required",
                 "VERIFY_POLICY",
-                f"Disease scope verification required for {coverage_a.get('coverage_name_raw')}"
+                f"Disease scope verification required for {coverage_a.get('coverage_name_raw')}",
+                "DISEASE_SCOPE_VERIFICATION_REQUIRED"
             )
 
         return (
             "comparable",
             "COMPARE",
-            f"{coverage_a.get('coverage_name_raw')} found in {insurer_a}"
+            f"{coverage_a.get('coverage_name_raw')} found in {insurer_a}",
+            "COVERAGE_FOUND_SINGLE_INSURER"
         )
 
     # Scenario B: UNMAPPED
@@ -243,14 +254,16 @@ def determine_comparison_result(
         return (
             "unmapped",
             "REQUEST_MORE_INFO",
-            f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code"
+            f"{coverage_a.get('coverage_name_raw')} is not mapped to canonical coverage code",
+            "COVERAGE_UNMAPPED"
         )
 
     if coverage_b.get("mapping_status") == "UNMAPPED":
         return (
             "unmapped",
             "REQUEST_MORE_INFO",
-            f"{coverage_b.get('coverage_name_raw')} is not mapped to canonical coverage code"
+            f"{coverage_b.get('coverage_name_raw')} is not mapped to canonical coverage code",
+            "COVERAGE_UNMAPPED"
         )
 
     # Scenario A: Normal comparison (same canonical code)
@@ -263,18 +276,21 @@ def determine_comparison_result(
             return (
                 "comparable_with_gaps",
                 "VERIFY_POLICY",
-                f"Coverage comparison possible but disease scope verification required"
+                f"Coverage comparison possible but disease scope verification required",
+                "COVERAGE_COMPARABLE_WITH_GAPS"
             )
 
         return (
             "comparable",
             "COMPARE",
-            f"Both insurers have {coverage_a.get('canonical_coverage_code')}"
+            f"Both insurers have {coverage_a.get('canonical_coverage_code')}",
+            "COVERAGE_MATCH_COMPARABLE"
         )
 
     # Different canonical codes
     return (
         "non_comparable",
         "REQUEST_MORE_INFO",
-        f"Different coverage types: {coverage_a.get('canonical_coverage_code')} vs {coverage_b.get('canonical_coverage_code')}"
+        f"Different coverage types: {coverage_a.get('canonical_coverage_code')} vs {coverage_b.get('canonical_coverage_code')}",
+        "COVERAGE_TYPE_MISMATCH"
     )

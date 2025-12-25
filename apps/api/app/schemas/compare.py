@@ -156,9 +156,10 @@ class ProposalCompareResponse(BaseModel):
     """
     Proposal-universe based comparison response.
 
-    UX Message Contract (STEP 12):
+    UX Message Contract (STEP 24/26):
     - comparison_result: comparable | comparable_with_gaps | non_comparable | unmapped | out_of_universe
     - next_action: COMPARE | REQUEST_MORE_INFO | VERIFY_POLICY
+    - ux_message_code: COVERAGE_MATCH_COMPARABLE | COVERAGE_UNMAPPED | etc. (STEP 26)
     """
     query: str
     comparison_result: str
@@ -171,6 +172,7 @@ class ProposalCompareResponse(BaseModel):
     policy_evidence_b: Optional[PolicyEvidence] = None
 
     message: str
+    ux_message_code: str = Field(..., description="UX message code (STEP 26 contract)")
     debug: Optional[Dict[str, Any]] = None
 
     class Config:

@@ -28,5 +28,6 @@
         "member_count": 6
     },
     "policy_evidence_b": null,
-    "query": "유사암진단금"
+    "query": "유사암진단금",
+    "ux_message_code": "DISEASE_SCOPE_VERIFICATION_REQUIRED"
 }

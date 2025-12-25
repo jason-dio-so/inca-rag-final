@@ -21,5 +21,6 @@
     "next_action": "REQUEST_MORE_INFO",
     "policy_evidence_a": null,
     "policy_evidence_b": null,
-    "query": "매핑안된담보"
+    "query": "매핑안된담보",
+    "ux_message_code": "COVERAGE_UNMAPPED"
 }

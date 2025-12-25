@@ -1552,6 +1552,143 @@ Registry changes are contract changes and require explicit approval.
 
 ---
 
+### ✅ STEP 26: UX Message Code Registry & Contract Enforcement
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Introduce UX Message Code Registry as a contract layer. Decouple message "codes" (contract) from message "text" (non-contract) to enable UX/i18n improvements without breaking the runtime contract.
+
+**Problem Statement:**
+- UX messages currently mixed code semantics with display text
+- Message text changes could accidentally break client code
+- No deterministic UX state identification
+- Golden snapshots included text but not semantic codes
+
+**Solution:**
+Introduce `ux_message_code` field in Compare API responses, governed by SSOT registry with CI enforcement.
+
+**Deliverables:**
+
+**1. UX Message Code Registry (SSOT)**
+- File: `apps/api/app/contracts/ux_message_codes.py`
+- Exports: `ALLOWED_UX_MESSAGE_CODES` (Set[str])
+- Total codes: 7
+  - `COVERAGE_MATCH_COMPARABLE`
+  - `COVERAGE_FOUND_SINGLE_INSURER`
+  - `COVERAGE_UNMAPPED`
+  - `DISEASE_SCOPE_VERIFICATION_REQUIRED`
+  - `COVERAGE_COMPARABLE_WITH_GAPS`
+  - `COVERAGE_NOT_IN_UNIVERSE`
+  - `COVERAGE_TYPE_MISMATCH`
+- Naming convention: UPPER_SNAKE_CASE (enforced by tests)
+
+**2. Runtime Guard**
+- Function: `validate_ux_message_code(code: str) -> None`
+- Fail-fast: ValueError on unknown codes
+- Called before Compare API response return
+- Integrated into `apps/api/app/contracts/__init__.py`
+
+**3. API Integration**
+- Updated: `apps/api/app/schemas/compare.py`
+  - Added `ux_message_code: str` field to `ProposalCompareResponse`
+- Updated: `apps/api/app/routers/compare.py`
+  - `determine_comparison_result()` now returns `(result, action, message, ux_message_code)`
+  - Runtime validation before response return
+- All golden snapshots updated with `ux_message_code` field
+
+**4. STEP 26 Contract Tests**
+- File: `tests/e2e/test_step26_ux_message_registry_contract.py`
+- Total tests: 9
+  1. Registry file exists and imports
+  2. Registry contains expected codes
+  3. Golden snapshots have ux_message_code field
+  4. All golden snapshot codes in registry
+  5. validate_ux_message_code accepts valid codes
+  6. validate_ux_message_code rejects unknown codes
+  7. UX message code naming convention
+  8. All registry codes follow naming convention
+  9. Golden snapshots unchanged structure
+- All tests PASS ✅
+
+**5. CI Gate**
+- Added STEP 26 UX Message Code Registry Contract Tests to CI pipeline
+- Fails if unknown UX message code detected
+- Error message directs to registry update + CHANGELOG
+
+**6. Governance Extension**
+- CI gate for `ux_message_codes.py` changes
+- Pattern: Same as STEP 25 (compare_codes.py governance)
+- Registry changes require `docs/contracts/CHANGELOG.md` update
+- CHANGELOG entry created for STEP 26
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 10/10 PASS ✅
+- STEP 24: 9/9 PASS ✅
+- STEP 26: 9/9 PASS ✅
+- All existing tests: UNCHANGED ✅
+
+**Golden Snapshot Changes:**
+- All 5 scenarios updated with `ux_message_code` field
+- Scenario A: `COVERAGE_MATCH_COMPARABLE`
+- Scenario B: `COVERAGE_UNMAPPED`
+- Scenario C: `DISEASE_SCOPE_VERIFICATION_REQUIRED`
+- Scenario D: `COVERAGE_MATCH_COMPARABLE`
+- Scenario E: `COVERAGE_NOT_IN_UNIVERSE`
+- CHANGELOG approval: ✅
+
+**Constitutional Guarantees:**
+- ✅ UX message CODE = contract (registry-governed)
+- ✅ UX message TEXT = non-contract (free to change)
+- ✅ Registry changes require CHANGELOG approval
+- ✅ Runtime validation (fail-fast on unknown codes)
+- ✅ Naming convention enforced (UPPER_SNAKE_CASE)
+- ✅ CI gate prevents unauthorized code additions
+
+**Prohibited Operations:**
+- ❌ UX message text as contract
+- ❌ Hardcoding message codes in router logic
+- ❌ Bypassing registry validation
+- ❌ Changing registry without CHANGELOG
+
+**Governance Scope (Extended):**
+- **STEP 21**: Golden snapshot changes require CHANGELOG
+- **STEP 25**: comparison_result/next_action registry changes require CHANGELOG
+- **STEP 26**: UX message code registry changes require CHANGELOG
+- **Unified**: All contract artifacts are CI-governed
+
+**DoD Achieved:**
+- ✅ UX Message Registry SSOT created
+- ✅ Runtime Guard implemented and integrated
+- ✅ Compare API router updated with ux_message_code
+- ✅ STEP 26 Contract Tests (9/9 PASS)
+- ✅ CI Gate added for STEP 26
+- ✅ Governance extension for ux_message_codes.py
+- ✅ Golden snapshots updated (5/5)
+- ✅ CHANGELOG entry created
+- ✅ STATUS.md updated
+- ✅ All STEP 14-26 tests passing
+
+**Key Files:**
+- `apps/api/app/contracts/ux_message_codes.py` (SSOT registry)
+- `apps/api/app/contracts/__init__.py` (exports)
+- `apps/api/app/schemas/compare.py` (schema update)
+- `apps/api/app/routers/compare.py` (router integration)
+- `tests/e2e/test_step26_ux_message_registry_contract.py` (9 tests)
+- `.github/workflows/ci-contract-guard.yml` (CI gate + governance)
+- `docs/contracts/CHANGELOG.md` (STEP 26 approval)
+- `tests/snapshots/compare/*.golden.json` (5 scenarios updated)
+
+**Design Principle:**
+- Code = Contract, Text = UX
+- Decouple semantic state from presentation
+- Enable i18n without breaking contract
+- Registry governance prevents code drift
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96

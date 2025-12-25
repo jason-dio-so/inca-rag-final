@@ -14,6 +14,52 @@
 
 ---
 
+## 2025-12-25 (STEP 26) - CONTRACT_CHANGE
+
+**Change Type**: CONTRACT_CHANGE
+
+**Affected Files**:
+- `tests/snapshots/compare/scenario_a.golden.json`
+- `tests/snapshots/compare/scenario_b.golden.json`
+- `tests/snapshots/compare/scenario_c.golden.json`
+- `tests/snapshots/compare/scenario_d.golden.json`
+- `tests/snapshots/compare/scenario_e.golden.json`
+
+**Changes**:
+- Added `ux_message_code` field to all golden snapshots
+- New field complements existing `message` field (text remains free-form)
+- UX message codes are now part of the runtime contract
+
+**Details**:
+- Scenario A: `ux_message_code: "COVERAGE_MATCH_COMPARABLE"`
+- Scenario B: `ux_message_code: "COVERAGE_UNMAPPED"`
+- Scenario C: `ux_message_code: "DISEASE_SCOPE_VERIFICATION_REQUIRED"`
+- Scenario D: `ux_message_code: "COVERAGE_MATCH_COMPARABLE"`
+- Scenario E: `ux_message_code: "COVERAGE_NOT_IN_UNIVERSE"`
+
+**Registry**:
+- SSOT: `apps/api/app/contracts/ux_message_codes.py`
+- ALLOWED_UX_MESSAGE_CODES: 7 codes
+- Naming convention: UPPER_SNAKE_CASE
+- Runtime validation: `validate_ux_message_code()`
+
+**Reason**:
+- Decouple UX message "codes" (contract) from "text" (non-contract)
+- Enable i18n/UX improvements without breaking runtime contract
+- Provide deterministic UX state identification
+- Extend STEP 24/25 registry governance to UX messages
+
+**Impact**:
+- Non-breaking addition (new field only)
+- Existing fields (message, comparison_result, next_action) unchanged
+- CI enforcement: STEP 26 tests + governance gate
+- Future UX message text changes do NOT require CHANGELOG update
+- Future UX message CODE changes DO require CHANGELOG update
+
+**Approver**: STEP 26 Implementation (UX Message Code Registry & Contract Enforcement)
+
+---
+
 ## 2025-12-25 (STEP 23) - CONTRACT_CHANGE
 
 **Change Type**: CONTRACT_CHANGE

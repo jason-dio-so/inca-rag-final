@@ -31,5 +31,6 @@
     "next_action": "COMPARE",
     "policy_evidence_a": null,
     "policy_evidence_b": null,
-    "query": "일반암진단비"
+    "query": "일반암진단비",
+    "ux_message_code": "COVERAGE_MATCH_COMPARABLE"
 }

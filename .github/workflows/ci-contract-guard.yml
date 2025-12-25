@@ -114,6 +114,55 @@ jobs:
             echo "No compare code registry changes detected ✓"
           fi
 
+      - name: Verify UX Message Code Registry Changes Are Approved (STEP 26)
+        run: |
+          echo "Checking if UX message code registry changes have approval documentation..."
+
+          # Determine base ref for comparison
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            echo "PR mode: comparing against ${BASE_REF}"
+          else
+            BASE_REF="HEAD~1"
+            echo "Push mode: comparing against ${BASE_REF}"
+          fi
+
+          # Check for registry changes
+          REGISTRY_CHANGES=$(git diff --name-only ${BASE_REF}...HEAD | grep '^apps/api/app/contracts/ux_message_codes\.py$' || true)
+
+          if [ -n "$REGISTRY_CHANGES" ]; then
+            echo "UX message code registry changes detected:"
+            echo "$REGISTRY_CHANGES"
+
+            # Check for CHANGELOG update
+            CHANGELOG_CHANGED=$(git diff --name-only ${BASE_REF}...HEAD | grep '^docs/contracts/CHANGELOG\.md$' || true)
+
+            if [ -z "$CHANGELOG_CHANGED" ]; then
+              echo ""
+              echo "ERROR: UX message code registry change detected without CHANGELOG approval"
+              echo ""
+              echo "Changed files:"
+              echo "$REGISTRY_CHANGES"
+              echo ""
+              echo "REQUIRED ACTION:"
+              echo "  1. Add entry to docs/contracts/CHANGELOG.md"
+              echo "  2. Include: date, STEP, change type, affected codes, reason, approver"
+              echo "  3. Commit CHANGELOG with registry changes"
+              echo ""
+              echo "This is a STEP 26 contract governance violation."
+              echo "UX message code changes are contract changes and require explicit approval."
+              echo ""
+              echo "Affected registry: apps/api/app/contracts/ux_message_codes.py"
+              echo "  - ALLOWED_UX_MESSAGE_CODES: COVERAGE_MATCH_COMPARABLE, COVERAGE_UNMAPPED, etc."
+              exit 1
+            else
+              echo "CHANGELOG update detected ✓"
+              echo "UX message registry change approval process satisfied"
+            fi
+          else
+            echo "No UX message code registry changes detected ✓"
+          fi
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -217,6 +266,19 @@ jobs:
         env:
           E2E_DOCKER: "1"
 
+      - name: Run STEP 26 UX Message Code Registry Contract Tests
+        run: |
+          echo "Verifying UX message codes against SSOT registry..."
+          env E2E_DOCKER=1 python -m pytest tests/e2e/test_step26_ux_message_registry_contract.py -v || {
+            echo "ERROR: Unknown UX message code detected"
+            echo "This is a STEP 26 contract violation"
+            echo "Update apps/api/app/contracts/ux_message_codes.py or fix API logic"
+            exit 1
+          }
+          echo "UX message code registry contract verified ✓"
+        env:
+          E2E_DOCKER: "1"
+
       - name: Verify Golden Snapshots Unchanged
         run: |
           # Fail if golden snapshots were modified during test run
@@ -241,5 +303,7 @@ jobs:
           echo "   - STEP 21: Golden Change Approval Protocol"
           echo "   - STEP 24: Code Registry Contract (8 tests)"
           echo "   - STEP 25: Registry Change Approval Protocol"
+          echo "   - STEP 26: UX Message Code Registry Contract (9 tests)"
           echo "   - Golden snapshots: UNCHANGED"
           echo "   - Code registry: UNCHANGED or APPROVED"
+          echo "   - UX message registry: UNCHANGED or APPROVED"

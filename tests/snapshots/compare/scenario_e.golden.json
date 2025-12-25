@@ -11,5 +11,6 @@
     "next_action": "REQUEST_MORE_INFO",
     "policy_evidence_a": null,
     "policy_evidence_b": null,
-    "query": "다빈치 수술비"
+    "query": "다빈치 수술비",
+    "ux_message_code": "COVERAGE_NOT_IN_UNIVERSE"
 }
