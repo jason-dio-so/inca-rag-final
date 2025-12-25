@@ -14,6 +14,46 @@
 
 ---
 
+## 2025-12-25 (STEP 23) - CONTRACT_CHANGE
+
+**Change Type**: CONTRACT_CHANGE
+
+**Affected Files**:
+- `tests/snapshots/compare/scenario_e.golden.json` (NEW)
+
+**Changes**:
+- Added Scenario E: Out-of-Universe query contract
+- Query: "다빈치 수술비" (Da Vinci surgery cost)
+- Insurer: SAMSUNG (primary)
+- Contract pattern: `out_of_universe` with `next_action: REQUEST_MORE_INFO`
+
+**Details**:
+- comparison_result: out_of_universe
+- next_action: REQUEST_MORE_INFO
+- coverage_a: null
+- coverage_b: null
+- policy_evidence_a: null
+- policy_evidence_b: null
+- debug.universe_lock_enforced: true
+- debug.canonical_code_resolved: null
+
+**Reason**:
+- Establish "data not found" as a meaningful contract state (not a failure)
+- Formalize Universe Lock enforcement (STEP 6-C constitutional principle)
+- Provide explicit runtime contract for out-of-scope queries
+- Ensure UX/CI/Runtime consistency for edge cases
+
+**Impact**:
+- Non-breaking addition (extends contract, does not modify existing)
+- Existing scenarios A/B/C/D unchanged
+- New test: `test_scenario_e_out_of_universe_golden_snapshot`
+- Total golden scenarios: 5 (A/B/C/D/E)
+- Proves graceful degradation is part of the contract
+
+**Approver**: STEP 23 Implementation (Out-of-Universe Contract Formalization)
+
+---
+
 ## 2025-12-25 (STEP 22) - CONTRACT_CHANGE
 
 **Change Type**: CONTRACT_CHANGE

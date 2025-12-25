@@ -266,6 +266,47 @@ class TestSTEP16RuntimeContractFreeze:
 
         deep_equal_assert(actual_normalized, golden_normalized)
 
+    def test_scenario_e_out_of_universe_golden_snapshot(self):
+        """
+        Scenario E: Out-of-Universe Query (다빈치 수술비) - STEP 23
+
+        Expected:
+        - comparison_result: "out_of_universe"
+        - next_action: "REQUEST_MORE_INFO"
+        - coverage_a: null
+        - coverage_b: null
+        - No policy evidence
+        - debug.universe_lock_enforced: true
+        - debug.canonical_code_resolved: null
+
+        Contract Significance:
+        - "Data not found" is NOT a failure - it's a meaningful contract state
+        - Proves Universe Lock enforcement (STEP 6-C principle)
+        - Demonstrates graceful handling of out-of-scope queries
+        """
+        import requests
+
+        response = requests.post(
+            f"{self.API_BASE}/compare",
+            json={
+                "query": "다빈치 수술비",
+                "insurer_a": "SAMSUNG",
+                "insurer_b": None,
+                "include_policy_evidence": False
+            },
+            timeout=10
+        )
+
+        assert response.status_code == 200, f"HTTP {response.status_code}: {response.text}"
+
+        actual = response.json()
+        golden = load_golden_snapshot("scenario_e")
+
+        actual_normalized = normalize_response(actual)
+        golden_normalized = normalize_response(golden)
+
+        deep_equal_assert(actual_normalized, golden_normalized)
+
     def test_ux_message_code_contract(self):
         """
         UX Message Code Contract Validation.
@@ -384,7 +425,7 @@ class TestSTEP16RuntimeContractFreeze:
         """
         import json
 
-        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d"]
+        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d", "scenario_e"]
 
         for scenario_name in required_snapshots:
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f"{scenario_name}.golden.json")
@@ -423,7 +464,7 @@ class TestSTEP16RuntimeContractFreeze:
 
         Ensures all required golden snapshots exist and are valid JSON.
         """
-        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d"]
+        required_snapshots = ["scenario_a", "scenario_b", "scenario_c", "scenario_d", "scenario_e"]
 
         for scenario_name in required_snapshots:
             snapshot = load_golden_snapshot(scenario_name)
