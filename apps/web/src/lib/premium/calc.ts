@@ -1,5 +1,5 @@
 /**
- * Premium Calculation Logic (STEP 31 - SSOT)
+ * Premium Calculation Logic (STEP 31 + 31-α - SSOT)
  *
  * Constitutional Principles:
  * - Premium = proposal field (not calculated from policy)
@@ -11,10 +11,10 @@
  * 2. basePremium present, multiplier missing → nonCancellation READY, general PARTIAL
  * 3. basePremium present, multiplier present → both READY
  *
- * Important:
- * - In STEP 31, multiplier source is NOT implemented (hardcoded/mock for now)
- * - Future: multiplier comes from Excel table via inca-rag
- * - NO API calls, NO Backend changes
+ * STEP 31-α Changes:
+ * - Multiplier source: GENERAL_MULTIPLIERS_BY_COVERAGE (embedded Excel data)
+ * - Lookup: getGeneralMultiplier(coverageName, insurer)
+ * - Backward compatible: explicit multiplier param takes precedence
  */
 
 import type {
@@ -23,6 +23,7 @@ import type {
   PremiumResult,
   PlanType,
 } from './types';
+import { getGeneralMultiplier, type InsurerCode } from './multipliers';
 
 /**
  * Compute premium for a specific plan type
@@ -93,21 +94,49 @@ function computePlanPremium(
 }
 
 /**
+ * Extended PremiumInput with coverageName and insurer for multiplier lookup
+ */
+export interface PremiumInputExtended extends PremiumInput {
+  coverageName?: string;
+  insurer?: InsurerCode;
+}
+
+/**
  * Compute premiums for both nonCancellation and general plans
  *
- * @param input - basePremium and multiplier
+ * STEP 31-α: Enhanced with coverageName/insurer lookup
+ *
+ * Multiplier Priority:
+ * 1. Explicit multiplier param (backward compatibility)
+ * 2. Lookup via getGeneralMultiplier(coverageName, insurer)
+ * 3. undefined → general becomes PARTIAL
+ *
+ * @param input - basePremium, multiplier (optional), coverageName (optional), insurer (optional)
  * @returns PremiumResult with both plans
  */
-export function computePremiums(input: PremiumInput): PremiumResult {
-  const { basePremium, multiplier } = input;
+export function computePremiums(input: PremiumInputExtended): PremiumResult {
+  const { basePremium, multiplier, coverageName, insurer } = input;
+
+  // Determine effective multiplier
+  let effectiveMultiplier = multiplier;
+
+  // STEP 31-α: Lookup multiplier if not provided but coverageName/insurer are
+  if (
+    effectiveMultiplier === null ||
+    effectiveMultiplier === undefined
+  ) {
+    if (coverageName && insurer) {
+      effectiveMultiplier = getGeneralMultiplier(coverageName, insurer);
+    }
+  }
 
   const nonCancellation = computePlanPremium(
     basePremium,
-    multiplier,
+    effectiveMultiplier,
     'NON_CANCELLATION'
   );
 
-  const general = computePlanPremium(basePremium, multiplier, 'GENERAL');
+  const general = computePlanPremium(basePremium, effectiveMultiplier, 'GENERAL');
 
   return {
     nonCancellation,
