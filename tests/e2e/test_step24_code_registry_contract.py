@@ -308,6 +308,46 @@ class TestSTEP24CodeRegistryContract:
         for code in ALLOWED_NEXT_ACTIONS:
             validate_next_action(code)  # Should not raise
 
+    def test_code_naming_convention_enforcement(self):
+        """
+        Code Naming Convention Enforcement (STEP 25 Meta-Test).
+
+        Ensures code naming follows consistent patterns:
+        - comparison_result: lower_snake_case
+        - next_action: UPPER_SNAKE_CASE
+
+        This prevents style drift that could confuse UX/client code.
+        """
+        from apps.api.app.contracts import (
+            ALLOWED_COMPARISON_RESULTS,
+            ALLOWED_NEXT_ACTIONS,
+        )
+
+        violations = []
+
+        # Check comparison_result: must be lower_snake_case (no uppercase)
+        for code in ALLOWED_COMPARISON_RESULTS:
+            if not code.islower() or not all(c.isalnum() or c == '_' for c in code):
+                violations.append(
+                    f"comparison_result '{code}' violates lower_snake_case convention"
+                )
+
+        # Check next_action: must be UPPER_SNAKE_CASE (no lowercase)
+        for code in ALLOWED_NEXT_ACTIONS:
+            if not code.isupper() or not all(c.isalnum() or c == '_' for c in code):
+                violations.append(
+                    f"next_action '{code}' violates UPPER_SNAKE_CASE convention"
+                )
+
+        assert not violations, (
+            "Code naming convention violations detected:\n" +
+            "\n".join(f"  - {v}" for v in violations) +
+            "\n\nThis is a STEP 25 contract violation.\n"
+            "Code naming conventions are part of the contract:\n"
+            "  - comparison_result: lower_snake_case\n"
+            "  - next_action: UPPER_SNAKE_CASE"
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

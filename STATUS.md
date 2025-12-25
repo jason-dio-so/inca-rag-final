@@ -1419,6 +1419,139 @@ env E2E_DOCKER=1 pytest tests/e2e/test_step24_code_registry_contract.py -v
 
 ---
 
+### ✅ STEP 25: Registry Change Approval Protocol - Enum Governance Extension
+**Status:** COMPLETE
+**Commit:** [current]
+**Date:** 2025-12-25
+
+**Purpose:**
+Extend governance to code registry changes. Just as golden snapshots require CHANGELOG approval (STEP 21), registry changes must also be approved to prevent silent enum drift.
+
+**Problem Statement:**
+- STEP 24 created SSOT Registry for comparison codes
+- But registry changes could bypass approval process
+- Someone could add codes → "contract extension" without documentation
+- UI/clients wouldn't know about new codes until runtime failure
+
+**Solution:**
+CI gate enforces that `apps/api/app/contracts/compare_codes.py` changes require CHANGELOG approval.
+
+**CI Gate Implementation:**
+
+**1. Registry Change Detection**
+```bash
+# Detect registry file changes
+REGISTRY_CHANGES=$(git diff --name-only ${BASE_REF}...HEAD | grep '^apps/api/app/contracts/compare_codes\.py$' || true)
+
+if [ -n "$REGISTRY_CHANGES" ]; then
+  # Check for CHANGELOG approval
+  CHANGELOG_CHANGED=$(git diff --name-only ${BASE_REF}...HEAD | grep '^docs/contracts/CHANGELOG\.md$' || true)
+
+  if [ -z "$CHANGELOG_CHANGED" ]; then
+    echo "ERROR: Compare code registry change detected without CHANGELOG approval"
+    exit 1
+  fi
+fi
+```
+
+**2. Approval Protocol**
+When changing `compare_codes.py`:
+1. Modify registry (add/remove/change codes)
+2. Add entry to `docs/contracts/CHANGELOG.md`
+3. Commit both together
+4. PR reviewer approves as "contract change"
+5. CI validates CHANGELOG presence
+6. Merge after CI passes
+
+**3. Test Enhancement (Naming Convention Enforcement)**
+Added meta-test to STEP 24 suite:
+- Validates code naming conventions:
+  - `comparison_result`: must be `lower_snake_case`
+  - `next_action`: must be `UPPER_SNAKE_CASE`
+- Prevents style drift that confuses UX/client code
+- Total STEP 24 tests: 9 (was 8, +1 naming convention test)
+
+**Test Results:**
+- STEP 14: 22/22 PASS ✅
+- STEP 16: 10/10 PASS ✅
+- STEP 24: 9/9 PASS ✅ (was 8/8, +1 naming convention)
+- All existing files: UNCHANGED ✅
+
+**CI Gate Scenarios:**
+
+| Scenario | Registry Changed | CHANGELOG Changed | CI Result |
+|----------|-----------------|-------------------|-----------|
+| A: No registry change | ❌ | ❌ | ✅ PASS |
+| B: Registry + CHANGELOG | ✅ | ✅ | ✅ PASS |
+| C: Registry without CHANGELOG | ✅ | ❌ | ❌ FAIL |
+
+**Error Message (Scenario C):**
+```
+ERROR: Compare code registry change detected without CHANGELOG approval
+
+REQUIRED ACTION:
+  1. Add entry to docs/contracts/CHANGELOG.md
+  2. Include: date, STEP, change type, affected codes, reason, approver
+  3. Commit CHANGELOG with registry changes
+
+This is a STEP 25 contract governance violation.
+Registry changes are contract changes and require explicit approval.
+```
+
+**Constitutional Guarantees:**
+- ✅ Contracts are code (registry = contract)
+- ✅ Registry changes require CHANGELOG approval
+- ✅ CI enforces approval process
+- ✅ 1-minute traceability: "why did registry change?"
+- ✅ No golden snapshots modified
+- ✅ Naming conventions enforced as contract
+
+**Prohibited Operations:**
+- ❌ Changing registry without CHANGELOG
+- ❌ Bypassing approval via comments instead of docs
+- ❌ Disabling/removing CI gate
+- ❌ Treating registry changes as "internal refactoring"
+
+**Governance Scope:**
+- **STEP 21**: Golden snapshot changes require CHANGELOG
+- **STEP 25**: Registry changes require CHANGELOG
+- **Unified**: Both golden + registry are governed contract artifacts
+
+**DoD Achieved:**
+- ✅ CI gate for registry change detection + CHANGELOG enforcement
+- ✅ Meta-test for naming convention enforcement
+- ✅ STEP 14/16/24 all passing
+- ✅ CI workflow updated with STEP 25 gate
+- ✅ STATUS.md updated with scenarios table
+- ✅ Committed and pushed
+
+**Key Files:**
+- `.github/workflows/ci-contract-guard.yml` (STEP 25 gate added)
+- `tests/e2e/test_step24_code_registry_contract.py` (naming convention test added)
+- `STATUS.md` (STEP 25 section)
+
+**Execution Example:**
+```bash
+# Simulate registry change without CHANGELOG (should fail in CI)
+# 1. Edit apps/api/app/contracts/compare_codes.py
+# 2. Commit without CHANGELOG update
+# 3. CI detects violation → FAIL
+
+# Correct approach
+# 1. Edit apps/api/app/contracts/compare_codes.py
+# 2. Add CHANGELOG entry to docs/contracts/CHANGELOG.md
+# 3. Commit both together
+# 4. CI validates → PASS
+```
+
+**Design Principle:**
+- Enum changes = Contract changes
+- All contract changes require approval
+- Documentation is not optional
+- CI enforces governance, not humans
+
+---
+
 ### ✅ STEP 6-C-β: CLAUDE.md Runtime 정합성 패치
 **Status:** COMPLETE
 **Commit:** e294b96

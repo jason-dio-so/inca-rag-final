@@ -65,6 +65,56 @@ jobs:
             echo "No golden snapshot changes detected ✓"
           fi
 
+      - name: Verify Compare Code Registry Changes Are Approved (STEP 25)
+        run: |
+          echo "Checking if compare code registry changes have approval documentation..."
+
+          # Determine base ref for comparison
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            echo "PR mode: comparing against ${BASE_REF}"
+          else
+            BASE_REF="HEAD~1"
+            echo "Push mode: comparing against ${BASE_REF}"
+          fi
+
+          # Check for registry changes
+          REGISTRY_CHANGES=$(git diff --name-only ${BASE_REF}...HEAD | grep '^apps/api/app/contracts/compare_codes\.py$' || true)
+
+          if [ -n "$REGISTRY_CHANGES" ]; then
+            echo "Compare code registry changes detected:"
+            echo "$REGISTRY_CHANGES"
+
+            # Check for CHANGELOG update
+            CHANGELOG_CHANGED=$(git diff --name-only ${BASE_REF}...HEAD | grep '^docs/contracts/CHANGELOG\.md$' || true)
+
+            if [ -z "$CHANGELOG_CHANGED" ]; then
+              echo ""
+              echo "ERROR: Compare code registry change detected without CHANGELOG approval"
+              echo ""
+              echo "Changed files:"
+              echo "$REGISTRY_CHANGES"
+              echo ""
+              echo "REQUIRED ACTION:"
+              echo "  1. Add entry to docs/contracts/CHANGELOG.md"
+              echo "  2. Include: date, STEP, change type, affected codes, reason, approver"
+              echo "  3. Commit CHANGELOG with registry changes"
+              echo ""
+              echo "This is a STEP 25 contract governance violation."
+              echo "Registry changes are contract changes and require explicit approval."
+              echo ""
+              echo "Affected registry: apps/api/app/contracts/compare_codes.py"
+              echo "  - ALLOWED_COMPARISON_RESULTS: comparable, unmapped, policy_required, out_of_universe"
+              echo "  - ALLOWED_NEXT_ACTIONS: COMPARE, REQUEST_MORE_INFO, VERIFY_POLICY"
+              exit 1
+            else
+              echo "CHANGELOG update detected ✓"
+              echo "Registry change approval process satisfied"
+            fi
+          else
+            echo "No compare code registry changes detected ✓"
+          fi
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -189,5 +239,8 @@ jobs:
           echo "   - STEP 14: API E2E (22 tests)"
           echo "   - STEP 16: Runtime Contract Freeze (10 tests)"
           echo "   - STEP 17: Contract interpretation alignment"
+          echo "   - STEP 21: Golden Change Approval Protocol"
           echo "   - STEP 24: Code Registry Contract (8 tests)"
+          echo "   - STEP 25: Registry Change Approval Protocol"
           echo "   - Golden snapshots: UNCHANGED"
+          echo "   - Code registry: UNCHANGED or APPROVED"
