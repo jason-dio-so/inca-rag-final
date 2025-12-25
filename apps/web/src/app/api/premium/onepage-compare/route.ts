@@ -37,21 +37,31 @@ export async function POST(request: NextRequest) {
       age: body.age,
     });
 
+    const upstreamFullUrl = `${upstreamUrl}/public/prdata/prDetail?${params.toString()}`;
+
+    // STEP 33-β-1a: Log upstream request for debugging
+    console.log('[Premium Onepage] Upstream Request URL:', upstreamFullUrl);
+
     // Call upstream Premium API (GET with query params)
-    const upstreamResponse = await fetch(
-      `${upstreamUrl}/public/prdata/prDetail?${params.toString()}`,
-      {
-        method: 'GET',
-        signal: AbortSignal.timeout(10000), // 10s timeout
-      }
-    );
+    const upstreamResponse = await fetch(upstreamFullUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10000), // 10s timeout
+    });
 
     if (!upstreamResponse.ok) {
+      // STEP 33-β-1a: Capture upstream error body for debugging
+      const errorBody = await upstreamResponse.text();
+      console.error('[Premium Onepage] Upstream Error:', {
+        status: upstreamResponse.status,
+        statusText: upstreamResponse.statusText,
+        body: errorBody,
+      });
+
       return NextResponse.json(
         {
           ok: false,
           reason: 'UPSTREAM_ERROR',
-          message: `Upstream returned ${upstreamResponse.status}`,
+          message: `Upstream returned ${upstreamResponse.status}: ${errorBody}`,
           items: [],
         },
         { status: upstreamResponse.status }
