@@ -25,6 +25,18 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 33-α: CORS Preflight Fix
+**Commit:** 59af9e9 | **Date:** 2025-12-25
+
+**Summary:**
+- Added CORS middleware to FastAPI (allows OPTIONS preflight from http://localhost:3000)
+- Env-controlled via `CORS_ORIGINS` (defaults to localhost:3000 for dev)
+- OPTIONS /compare now returns 200 with proper CORS headers
+- /compare business logic unchanged ✅
+- /compare snapshots unchanged ✅
+
+---
+
 ### ⚠️ STEP 32-λ-2: Truth Lock Hotfix
 **Commit:** 9c85092 | **Date:** 2025-12-25
 
