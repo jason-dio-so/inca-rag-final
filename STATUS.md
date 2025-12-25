@@ -26,7 +26,7 @@
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
 ### ✅ STEP 32-κ-POST: Types/Docs Cleanup (Spec-Driven)
-**Commit:** [pending] | **Date:** 2025-12-25
+**Commit:** 95f18f4 | **Date:** 2025-12-25
 
 **Summary:**
 - Replaced generic `UpstreamPremiumResponse` with spec-based types (`UpstreamPrInfoResponse`, `UpstreamPrDetailResponse`)
