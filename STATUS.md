@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-25
-**Current Phase:** Proposal-based Comparison Engine (STEP 3.11′ HOTFIX Complete)
+**Current Phase:** PRIME Explanation Layer (STEP 3.12 Complete)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -24,6 +24,48 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.12: PRIME Explanation Layer (Immutable)
+**Commit:** 7e6d97e | **Date:** 2025-12-25
+
+**Summary:**
+- Explanation layer for PRIME comparison results
+- STEP 3.11 results are IMMUTABLE (판결문)
+- STEP 3.12 provides reasoning only (이유서)
+- No state changes, no re-judgment, no recommendations
+
+**Purpose:**
+- Answers ONLY: "이 PRIME 결과가 나온 사실적 이유는 무엇인가?"
+- Does NOT answer: "어느 담보가 더 낫다" / "사실상 같은 담보다" / "추천한다"
+
+**PRIME State Explanations:**
+- `out_of_universe`: 요약표에 해당 담보 없음
+- `in_universe_with_gaps`: N건 후보 존재 또는 축 정보 누락 (의미 추론 불가)
+- `in_universe_unmapped`: 가입설계서 존재하나 신정원 코드 미대응
+- `in_universe_comparable`: 단일 담보, 모든 축 존재
+
+**Output Structure:**
+```json
+{
+  "comparison_result": { ... STEP 3.11 original ... },
+  "explanation": {
+    "summary": "전체 요약",
+    "details": [보험사별 상세 설명]
+  }
+}
+```
+
+**Immutability Verification:**
+- ✅ Test: `test_step312_immutability.py`
+- ✅ Result: NO CHANGES - IMMUTABILITY VERIFIED
+
+**Constitution Compliance:**
+- ✅ PRIME 상태 변경 없음
+- ✅ 추론/의미 통합 없음
+- ✅ 사실 기반 설명만 제공
+- ✅ STEP 3.11 결과 100% 재현 가능
+
+---
 
 ### ✅ STEP 3.11′ HOTFIX: PRIME-aligned Comparison Engine
 **Commit:** 6dbb6ae | **Date:** 2025-12-25
