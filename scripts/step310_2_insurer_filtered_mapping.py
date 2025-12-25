@@ -23,7 +23,7 @@ from collections import defaultdict
 # Paths
 BASE_DIR = Path(__file__).parent.parent
 UNIVERSE_CSV = BASE_DIR / "data/step39_coverage_universe/extracts/ALL_INSURERS_coverage_universe.csv"
-MAPPING_EXCEL = BASE_DIR / "data/담보명mapping자료.xlsx"
+MAPPING_EXCEL = BASE_DIR / "data/담보명mapping자료__inscd_patched.xlsx"  # STEP 3.10-ζ patched version
 OUTPUT_DIR = BASE_DIR / "data/step310_mapping"
 OUTPUT_CSV = OUTPUT_DIR / "proposal_coverage_mapping_insurer_filtered.csv"
 REPORT_TXT = OUTPUT_DIR / "mapping_report_insurer_filtered.txt"
@@ -31,16 +31,16 @@ REPORT_TXT = OUTPUT_DIR / "mapping_report_insurer_filtered.txt"
 # Previous results for comparison
 PREVIOUS_CSV = OUTPUT_DIR / "proposal_coverage_mapping.csv"
 
-# Insurer name to ins_cd mapping (from Excel)
+# Insurer name to ins_cd mapping (STEP 3.10-ζ corrected values)
 INSURER_TO_INS_CD = {
-    'MERITZ': 'N01',      # 메리츠
+    'MERITZ': 'N04',      # 메리츠 (corrected)
     'HANWHA': 'N02',      # 한화
     'LOTTE': 'N03',       # 롯데
-    'SAMSUNG': 'N05',     # 삼성
-    'DB': 'N08',          # DB
-    'HEUNGKUK': 'N09',    # 흥국
-    'KB': 'N10',          # KB
-    'HYUNDAI': 'N13'      # 현대
+    'SAMSUNG': 'N01',     # 삼성 (corrected)
+    'DB': 'N08',          # DB (corrected)
+    'HEUNGKUK': 'N07',    # 흥국 (corrected)
+    'KB': 'N05',          # KB (corrected)
+    'HYUNDAI': 'N06'      # 현대 (corrected)
 }
 
 

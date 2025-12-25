@@ -8,9 +8,9 @@ Insurer-Filtered vs Unfiltered Mapping
 
 STEP 3.10-2 (Insurer-Filtered):
   Total rows: 334
-  MAPPED:      143 ( 42.8%)
+  MAPPED:      259 ( 77.5%)
   AMBIGUOUS:     0 (  0.0%)
-  UNMAPPED:    191 ( 57.2%)
+  UNMAPPED:     75 ( 22.5%)
 
 STEP 3.10 (Unfiltered):
   Total rows: 334
@@ -19,9 +19,9 @@ STEP 3.10 (Unfiltered):
   UNMAPPED:     65 ( 19.5%)
 
 Change (Filtered - Unfiltered):
-  MAPPED:       +3 ( +0.9%)
+  MAPPED:     +119 (+35.6%)
   AMBIGUOUS:  -129 (-38.6%)
-  UNMAPPED:   +126 (+37.7%)
+  UNMAPPED:    +10 ( +3.0%)
 
 ✅ AMBIGUOUS 감소율: 100.0%
 
@@ -31,14 +31,14 @@ Change (Filtered - Unfiltered):
 
 mapping_status  MAPPED  AMBIGUOUS  UNMAPPED  TOTAL  MAPPED_%  AMBIGUOUS_%  UNMAPPED_%
 insurer                                                                              
-DB                   6          0        56     62       9.7          0.0        90.3
+DB                  58          0         4     62      93.5          0.0         6.5
 HANWHA              28          0         9     37      75.7          0.0        24.3
-HEUNGKUK             0          0        23     23       0.0          0.0       100.0
-HYUNDAI              0          0        27     27       0.0          0.0       100.0
+HEUNGKUK            18          0         5     23      78.3          0.0        21.7
+HYUNDAI             18          0         9     27      66.7          0.0        33.3
 KB                  28          0        12     40      70.0          0.0        30.0
 LOTTE               56          0        14     70      80.0          0.0        20.0
 MERITZ              21          0        13     34      61.8          0.0        38.2
-SAMSUNG              4          0        37     41       9.8          0.0        90.2
+SAMSUNG             32          0         9     41      78.0          0.0        22.0
 
 
 [3] AMBIGUOUS CASES (상위 20개)
@@ -49,29 +49,29 @@ AMBIGUOUS 매핑 없음 ✅
 [4] UNMAPPED SUMMARY
 --------------------------------------------------------------------------------
 
-총 UNMAPPED: 191
+총 UNMAPPED: 75
 
 주요 사유:
-  no entry in N08: 56건
-  no entry in N05: 37건
-  no entry in N13: 27건
-  no entry in N09: 23건
   no entry in N03: 14건
-  no entry in N01: 13건
-  no entry in N10: 12건
+  no entry in N04: 13건
+  no entry in N05: 12건
   no entry in N02: 9건
+  no entry in N06: 9건
+  no entry in N01: 9건
+  no entry in N07: 5건
+  no entry in N08: 4건
 
 자주 나타나는 UNMAPPED 담보 (상위 10개):
-  고액치료비암진단비: 3회
-  상해후유장해(3-100%): 3회
-  뇌졸중진단비: 3회
-  주요심장염증질환진단비: 3회
-  질병입원비(1일-180일): 2회
-  상해입원비(1일-180일): 2회
-  급성심근경색증(I21) 혈전용해치료비: 2회
-  허혈성심장질환진단비: 2회
+  상해사망·후유장해(20-100%): 2회
+  일반암수술비(1회한): 2회
+  암직접입원비(요양병원제외)(1일-120일): 2회
   뇌경색증(I63) 혈전용해치료비: 2회
-  심근병증진단비: 2회
+  허혈성심장질환진단비: 2회
+  급성심근경색증(I21) 혈전용해치료비: 2회
+  상해입원비(1일-180일): 2회
+  질병입원비(1일-180일): 2회
+  일반상해중환자실입원일당(1일이상): 1회
+  카티(CAR-T)항암약물허가치료비(연간1회한)(갱신형): 1회
 
 
 [5] KEY IMPROVEMENTS
@@ -79,8 +79,8 @@ AMBIGUOUS 매핑 없음 ✅
 
 ins_cd 필터 적용 효과:
   - AMBIGUOUS 감소: 129 → 0 (100.0% 감소)
-  - MAPPED 증가: 140 → 143 (+3)
-  - UNMAPPED 증가: 65 → 191 (+126)
+  - MAPPED 증가: 140 → 259 (+119)
+  - UNMAPPED 증가: 65 → 75 (+10)
 
 설계 상태:
   ✅ 보험사 필터 적용됨 (ins_cd filter APPLIED)

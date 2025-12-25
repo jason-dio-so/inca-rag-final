@@ -56,7 +56,7 @@ class UnmappedCauseEffectAnalyzer:
     def __init__(self):
         """Initialize analyzer"""
         self.mapping_csv = Path("data/step310_mapping/proposal_coverage_mapping_insurer_filtered.csv")
-        self.excel_file = Path("data/담보명mapping자료.xlsx")
+        self.excel_file = Path("data/담보명mapping자료__inscd_patched.xlsx")  # STEP 3.10-ζ patched version
 
         print("UNMAPPED Cause-Effect Analyzer initialized (STEP 3.10-β)")
         print(f"  Input CSV: {self.mapping_csv}")
