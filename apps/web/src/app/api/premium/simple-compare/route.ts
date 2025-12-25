@@ -52,9 +52,24 @@ export async function POST(request: NextRequest) {
     console.log('[Premium Simple] params:', params.toString());
     console.log('[Premium Simple] upstreamFullUrl:', upstreamFullUrl);
 
+    // STEP 33-β-2: Browser header parity mode
+    const headerMode = process.env.PREMIUM_UPSTREAM_HEADER_MODE || 'none';
+    const browserHeaders = headerMode === 'browser' ? {
+      'accept': 'application/json, text/plain, */*',
+      'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      'cache-control': 'no-cache',
+      'pragma': 'no-cache',
+      'referer': `${upstreamUrl}/`,
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+    } : undefined;
+
+    console.log('[Premium Simple] Header mode:', headerMode);
+
     // Call upstream Premium API (GET with query params)
     const upstreamResponse = await fetch(upstreamFullUrl, {
       method: 'GET',
+      headers: browserHeaders,
+      redirect: 'follow',
       signal: AbortSignal.timeout(10000), // 10s timeout
     });
 
