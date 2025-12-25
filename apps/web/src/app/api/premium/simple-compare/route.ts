@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SimplePremiumRequest, UpstreamPremiumResponse } from '@/lib/api/premium/types';
 import { adaptPremiumResponse } from '@/lib/api/premium/adapter';
 
+// STEP 33-β-1b: Module load guarantee
+console.log('🚨 [premium:simple-compare] module loaded');
+
 /**
  * POST /api/premium/simple-compare
  *
@@ -21,9 +24,15 @@ import { adaptPremiumResponse } from '@/lib/api/premium/adapter';
  * NOTE: Our route accepts POST, but upstream uses GET with query params
  */
 export async function POST(request: NextRequest) {
+  // STEP 33-β-1b: Handler entry guarantee
+  console.log('🚨 [premium:simple-compare] handler entered');
+
   try {
     // Parse request body
     const body: SimplePremiumRequest = await request.json();
+
+    // STEP 33-β-1b: Log parsed body
+    console.log('[Premium Simple] body:', body);
 
     // Get upstream API config from env
     const upstreamUrl = process.env.PREMIUM_API_BASE_URL || 'https://new-prod.greenlight.direct';
@@ -39,8 +48,9 @@ export async function POST(request: NextRequest) {
 
     const upstreamFullUrl = `${upstreamUrl}/public/prdata/prInfo?${params.toString()}`;
 
-    // STEP 33-β-1a: Log upstream request for debugging
-    console.log('[Premium Simple] Upstream Request URL:', upstreamFullUrl);
+    // STEP 33-β-1b: Log params and URL
+    console.log('[Premium Simple] params:', params.toString());
+    console.log('[Premium Simple] upstreamFullUrl:', upstreamFullUrl);
 
     // Call upstream Premium API (GET with query params)
     const upstreamResponse = await fetch(upstreamFullUrl, {
@@ -49,19 +59,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!upstreamResponse.ok) {
-      // STEP 33-β-1a: Capture upstream error body for debugging
+      // STEP 33-β-1b: Capture upstream error body (full text)
       const errorBody = await upstreamResponse.text();
+      console.error('[Premium Simple] upstream error body:', errorBody);
       console.error('[Premium Simple] Upstream Error:', {
         status: upstreamResponse.status,
         statusText: upstreamResponse.statusText,
-        body: errorBody,
       });
+
+      const clipped = errorBody.slice(0, 500);
 
       return NextResponse.json(
         {
           ok: false,
           reason: 'UPSTREAM_ERROR',
-          message: `Upstream returned ${upstreamResponse.status}: ${errorBody}`,
+          message: `Upstream returned ${upstreamResponse.status}: ${clipped}`,
           items: [],
         },
         { status: upstreamResponse.status }
