@@ -25,6 +25,18 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 32-λ: Fixture-Based Regression Tests
+**Commit:** 427da8c, 0274c91 | **Date:** 2025-12-25
+
+**Summary:**
+- Created 3 SSOT-based test fixtures (prInfo, prDetail, wrapped)
+- Added adapter regression tests (5 scenarios, network-independent)
+- Smoke test script: `node apps/web/scripts/premium_adapter_smoke.mjs`
+- Locked SSOT doc with Verified/Defensive distinction
+- /compare regression lock: 0 diff ✅
+
+---
+
 ### ✅ STEP 32-κ-POST-2: SSOT Wording Tightening
 **Commit:** 409b6b0 | **Date:** 2025-12-25
 
