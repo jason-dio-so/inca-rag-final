@@ -1,0 +1,535 @@
+# STEP 3.8-γ SSOT Schema v1.1
+# Purpose: 가입설계서 기반 비교 시스템의 단일 진실 출처 스키마
+# Date: 2025-12-25
+# Changes from v1.0:
+#   1. Document Priority 완화 (PROPOSAL 필수, 나머지 선택)
+#   2. Recommendation을 Optional로 강등
+#   3. eligibility 축 재정의 (in_universe 기본)
+#   4. evidence_order_validator 수정 (존재하는 것만 순서대로)
+#   5. fail_fast step_5 수정 (evidence 없으면 comparable_with_gaps)
+#   6. normalized_name required 제거
+#   7. LOW confidence 처리 강화
+#   8. Rule-based Summary → Factual Deltas Summary
+
+---
+# ============================================================================
+# PART 1: Comparison Axes (비교 축 정의)
+# ============================================================================
+
+comparison_axes:
+  # 고객이 요구한 5개 비교 축만 허용
+  # 보험사 증가(3→8개)에도 변경 금지
+
+  eligibility:
+    description: "보장 가능 여부 (Universe 내 담보는 기본 'O')"
+    allowed_values:
+      - "O"          # 보장됨 (Universe에 있으면 기본값)
+      - "△"          # 조건부 (조건 명시 필수)
+    note: |
+      X는 원칙적으로 out_of_universe로 처리.
+      가입설계서에 담보가 존재하면 기본 eligibility = 'O'.
+      조건부 보장만 '△'로 표시.
+    evidence_required: true
+    source_documents:
+      primary: "PROPOSAL"        # 가입설계서에서만 확인
+
+    # 보험사별 표현 패턴 (deterministic matching)
+    insurer_patterns:
+      SAMSUNG:
+        - regex: "보장.*가능"
+          value: "O"
+        - regex: "조건.*충족"
+          value: "△"
+      MERITZ:
+        - regex: "지급.*대상"
+          value: "O"
+        - regex: "조건.*부합"
+          value: "△"
+      DB:
+        - regex: "보장"
+          value: "O"
+        - regex: "제한.*조건"
+          value: "△"
+
+    fail_fast_rules:
+      - if: "not_in_universe"
+        action: "return_out_of_universe"
+        message: "가입설계서에 담보 없음 (비교 불가)"
+      - if: "no_evidence_found"
+        action: "set_null_and_mark_gaps"
+        message: "가입설계서에 보장 여부 명시 없음 (comparable_with_gaps)"
+
+  coverage_limit:
+    description: "보장한도 (금액)"
+    data_type: "integer"
+    unit: "KRW"
+    evidence_required: true
+    source_documents:
+      primary: "PROPOSAL"
+
+    # 금액 추출 패턴 (deterministic regex only)
+    extraction_patterns:
+      - regex: '(\d{1,3}(?:,\d{3})*)만원'
+        multiplier: 10000
+        confidence: "high"
+      - regex: '(\d+)억.*?(\d+)만원'
+        formula: "group1 * 100000000 + group2 * 10000"
+        confidence: "high"
+      - regex: '(\d+)천만원'
+        multiplier: 10000000
+        confidence: "high"
+
+    validation_rules:
+      - min_value: 0
+      - max_value: 100000000000  # 1000억 (sanity check)
+      - if: "no_amount_found"
+        action: "set_null_and_mark_gaps"
+        message: "가입설계서에 금액 명시 없음 (comparable_with_gaps)"
+      - if: "no_evidence_found"
+        action: "set_null_and_mark_gaps"
+        message: "금액 근거 없음 (comparable_with_gaps)"
+
+  coverage_start:
+    description: "보장개시"
+    data_type: "object"
+    evidence_required: true
+    source_documents:
+      primary: "PROPOSAL"
+      secondary: "POLICY"  # 정확한 조건은 약관에서 (필요 시에만)
+
+    schema:
+      type: "string"
+      enum:
+        - "immediate"           # 즉시 (보장개시일부터)
+        - "waiting_period"      # 대기기간 있음
+      waiting_days:
+        type: "integer"
+        nullable: true
+      condition_text:
+        type: "string"
+        nullable: true
+
+    extraction_patterns:
+      - regex: "보장개시일\\s*(?:부터|즉시)"
+        type: "immediate"
+        waiting_days: 0
+      - regex: "보장개시일\\s*(\\d+)일\\s*(?:후|경과)"
+        type: "waiting_period"
+        waiting_days: "capture_group_1"
+
+  exclusions:
+    description: "면책/감액 조건"
+    data_type: "array"
+    evidence_required: true
+    source_documents:
+      primary: "PROPOSAL"
+      secondary: "POLICY"  # 필요 시에만
+
+    schema:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          exclusion_type:
+            type: "string"
+            enum: ["reduction", "exemption"]  # 감액 or 면책
+          period_days:
+            type: "integer"
+            nullable: true
+          reduction_rate:
+            type: "number"  # 0.0 ~ 1.0
+            nullable: true
+          condition:
+            type: "string"
+
+    extraction_patterns:
+      - regex: "(\\d+)년\\s*(\\d+)%"
+        exclusion_type: "reduction"
+        period_days: "group1 * 365"
+        reduction_rate: "group2 / 100"
+      - regex: "감액\\s*없음"
+        result: "[]"  # empty array (명시적 없음)
+
+  enrollment_condition:
+    description: "가입조건 (나이/기간/납입)"
+    data_type: "object"
+    evidence_required: true
+    source_documents:
+      primary: "PROPOSAL"
+      secondary: "BUSINESS_METHOD"  # 필요 시에만
+
+    schema:
+      type: "object"
+      properties:
+        age_min:
+          type: "integer"
+          nullable: true
+        age_max:
+          type: "integer"
+          nullable: true
+        coverage_period_years:
+          type: "integer"
+          nullable: true
+        payment_period_years:
+          type: "integer"
+          nullable: true
+
+    extraction_patterns:
+      - regex: "(\\d+)세.*?(\\d+)세"
+        age_min: "group1"
+        age_max: "group2"
+      - regex: "(\\d+)년.*?만기"
+        coverage_period_years: "group1"
+
+# ============================================================================
+# PART 2: Coverage Item Schema (담보 데이터 구조)
+# ============================================================================
+
+coverage_item:
+  # proposal_coverage_universe 기준 스키마
+
+  required_fields:
+    - universe_id          # PK (proposal_coverage_universe.id)
+    - insurer              # 보험사 코드
+    - insurer_coverage_name  # 가입설계서 원문 담보명 (SSOT)
+    - mapping_status       # MAPPED | UNMAPPED | AMBIGUOUS
+    - canonical_coverage_code  # nullable (MAPPED일 때만 필수)
+
+  optional_fields:
+    - normalized_name      # 정규화 담보명 (검색용, required 아님)
+    - amount_value         # 금액 (KRW)
+    - currency             # 통화 (KRW만 허용)
+    - payout_amount_unit   # 지급 단위
+    - source_page          # 가입설계서 페이지
+    - span_text            # 원문 텍스트
+    - content_hash         # 중복 방지
+
+  slot_fields:
+    # Slot Schema v1.1.1 기준
+    - event_type           # diagnosis | surgery | hospitalization | ...
+    - disease_scope_raw    # 가입설계서 원문 (예: "유사암 제외")
+    - disease_scope_norm   # 약관 기반 그룹 참조 (nullable)
+    - waiting_period_days  # 대기기간 (일)
+    - reduction_periods    # 감액 기간 배열
+    - payout_limit         # 지급 한도 객체
+    - treatment_method     # 치료 방법 배열
+    - renewal_flag         # 갱신형 여부
+    - source_confidence    # proposal_confirmed | policy_required | unknown
+
+  # Unknown 값 표현 (1급 값)
+  unknown_value_rules:
+    null_means: "정보 없음 (추출 실패)"
+    empty_array_means: "명시적 없음 (예: 감액 없음)"
+    zero_means: "명시적 0 (예: 대기기간 0일)"
+    examples:
+      - field: "reduction_periods"
+        null_value: null
+        meaning: "가입설계서에 언급 없음"
+      - field: "reduction_periods"
+        null_value: []
+        meaning: "감액 없음 명시"
+      - field: "waiting_period_days"
+        null_value: 0
+        meaning: "보장개시일부터 명시"
+      - field: "waiting_period_days"
+        null_value: null
+        meaning: "대기기간 언급 없음"
+
+# ============================================================================
+# PART 3: Evidence Schema (근거 연결 구조)
+# ============================================================================
+
+evidence:
+  # 모든 비교 판정은 evidence 필수
+
+  required_fields:
+    - document_id        # 문서 식별자
+    - doc_type           # PROPOSAL | PRODUCT_SUMMARY | BUSINESS_METHOD | POLICY
+    - page               # 페이지 번호 (integer >= 1)
+    - span_text          # 추출 텍스트 (최소 1자)
+    - source_confidence  # proposal_confirmed | policy_required | unknown
+
+  optional_fields:
+    - extracted_at       # 추출 시각 (ISO 8601)
+    - extraction_rule    # 추출 규칙 ID
+    - insurer            # 보험사 (multi-insurer 비교 시)
+
+  # Document Priority (완화: PROPOSAL 필수, 나머지 선택)
+  document_priority:
+    required:
+      - PROPOSAL           # 필수: 가입설계서 근거 없으면 비교 불가
+    optional:
+      - PRODUCT_SUMMARY    # 선택: 일반 설명 필요 시에만
+      - BUSINESS_METHOD    # 선택: 실무 제약 필요 시에만
+      - POLICY             # 선택: 법적 해석 필요 시에만
+
+  # Evidence 그룹화 규칙
+  grouping_rules:
+    - by_document_type: true   # 문서 유형별로 그룹화
+    - by_insurer: true         # 보험사별로 그룹화
+    - order_by: "document_priority"  # 우선순위 순서
+
+  # Evidence 출력 순서 (사용자 응답) - 존재하는 것만
+  output_order:
+    rule: "include_only_if_exists"  # 존재하는 문서만 순서대로 출력
+    1:
+      doc_type: "PROPOSAL"
+      required: true
+      message_template: "이 담보는 {insurer} 가입설계서 {page}페이지에 존재합니다."
+    2:
+      doc_type: "PRODUCT_SUMMARY"
+      required: false
+      message_template: "상품요약서 {page}페이지: {span_text}"
+    3:
+      doc_type: "BUSINESS_METHOD"
+      required: false
+      message_template: "사업방법서 {page}페이지: {span_text}"
+    4:
+      doc_type: "POLICY"
+      required: false
+      message_template: "약관 {page}페이지: {span_text}"
+
+  # Evidence 누락 시 처리
+  missing_evidence_policy:
+    if: "no_proposal_evidence"
+    action: "set_null_and_mark_gaps"
+    message: "가입설계서에 근거 없음 (comparable_with_gaps)"
+    comparison_state: "comparable_with_gaps"
+
+# ============================================================================
+# PART 4: Comparison States (비교 결과 상태)
+# ============================================================================
+
+comparison_states:
+  # 5-State System (고정)
+
+  comparable:
+    description: "비교 가능 (모든 핵심 축 일치)"
+    conditions:
+      canonical_coverage_code_match: true
+      critical_slots_complete: true
+      gap_slots_count: 0
+    response_message: "담보 비교 가능"
+
+  comparable_with_gaps:
+    description: "일부 누락 (약관 확인 필요 또는 evidence 부족)"
+    conditions:
+      canonical_coverage_code_match: true
+      gap_slots_count_gt: 0
+    response_message: "일부 정보 누락. 약관 확인 필요"
+    required_fields_in_response:
+      - gap_slots              # 누락된 슬롯 배열
+      - policy_verification_required: true
+
+  non_comparable:
+    description: "비교 불가 (담보 성격 다름)"
+    conditions:
+      any_of:
+        - canonical_coverage_code_match: false
+        - event_type_mismatch: true
+    response_message: "담보 성격이 달라 비교 불가"
+
+  unmapped:
+    description: "매핑 실패 (Excel에 없음)"
+    conditions:
+      any_of:
+        - mapping_status: "UNMAPPED"
+        - mapping_status: "AMBIGUOUS"
+    response_message: "담보명 매핑 실패. 관리자 확인 필요"
+    http_status: 400
+
+  out_of_universe:
+    description: "가입설계서에 없음 (Universe Lock 위반)"
+    conditions:
+      not_in_proposal_coverage_universe: true
+    response_message: "해당 담보는 가입설계서에 존재하지 않아 비교 불가"
+    http_status: 400
+    suggestion: "가입설계서에 포함된 담보만 비교 가능합니다"
+
+# ============================================================================
+# PART 5: Fail-Fast Validation Rules
+# ============================================================================
+
+fail_fast_validation:
+  # 비교 시작 전 필수 검증 (순서 중요)
+
+  step_1_universe_lock:
+    description: "가입설계서 존재 확인"
+    check: "coverage IN proposal_coverage_universe"
+    fail_action:
+      state: "out_of_universe"
+      stop_comparison: true
+      return_error: true
+
+  step_2_mapping_validation:
+    description: "Excel 매핑 확인"
+    check: "mapping_status = 'MAPPED'"
+    fail_action:
+      state: "unmapped"
+      stop_comparison: true
+      return_error: true
+
+  step_3_canonical_code:
+    description: "Canonical code 존재 확인"
+    check: "canonical_coverage_code IS NOT NULL"
+    fail_action:
+      state: "non_comparable"
+      stop_comparison: true
+      reason: "canonical_code_missing"
+
+  step_4_critical_slots:
+    description: "핵심 슬롯 확인"
+    required_slots:
+      - canonical_coverage_code
+      - event_type
+    fail_action:
+      state: "comparable_with_gaps"
+      policy_verification_required: true
+
+  step_5_evidence_check:
+    description: "PROPOSAL 근거 존재 확인"
+    check: "evidence.doc_type = 'PROPOSAL' AND evidence.document_id IS NOT NULL"
+    fail_action:
+      state: "comparable_with_gaps"
+      set_affected_axis_to_null: true
+      policy_verification_required: true
+      message: "가입설계서 근거 부족 (해당 축 NULL 처리)"
+
+# ============================================================================
+# PART 6: Integrity Check Rules
+# ============================================================================
+
+integrity_checks:
+  # 데이터 정합성 검증
+
+  amount_validation:
+    description: "금액 단위 및 범위 검증"
+    rules:
+      - check: "currency = 'KRW'"
+        fail_message: "KRW 외 통화 불허"
+      - check: "amount_value >= 0"
+        fail_message: "음수 금액 불가"
+      - check: "amount_value <= 100000000000"
+        fail_message: "1000억 초과 금액 의심 (재확인 필요)"
+
+  eligibility_validation:
+    description: "O/△ 판정 검증 (X는 out_of_universe)"
+    rules:
+      - check: "value IN ['O', '△']"
+        fail_message: "허용되지 않은 값 (X는 out_of_universe)"
+      - check: "evidence.doc_type = 'PROPOSAL'"
+        fail_message: "PROPOSAL 근거 없는 판정 금지"
+      - if: "value = '△'"
+        require: "condition_text IS NOT NULL"
+        fail_message: "조건부 판정은 조건 명시 필수"
+
+  disease_scope_validation:
+    description: "질병 범위 검증"
+    rules:
+      - check: "disease_scope_norm IS NULL OR is_group_reference"
+        fail_message: "disease_scope_norm은 그룹 참조만 허용 (코드 배열 금지)"
+      - if: "disease_scope_norm IS NOT NULL"
+        require: "evidence.doc_type = 'POLICY'"
+        fail_message: "disease_scope_norm은 약관 근거 필수"
+
+# ============================================================================
+# PART 7: Insurer Scalability (보험사 확장 전략)
+# ============================================================================
+
+insurer_scalability:
+  # 보험사 3개 → 8개 확장 시 안정성 전략
+
+  current_insurers:
+    - SAMSUNG
+    - MERITZ
+    - DB
+
+  target_insurers:
+    - SAMSUNG
+    - MERITZ
+    - DB
+    - LOTTE
+    - KB
+    - HANWHA
+    - SHINHAN
+    - AIA
+
+  # 보험사별 신뢰도 스코어
+  insurer_confidence_score:
+    description: "보험사별 데이터 품질 스코어"
+    schema:
+      insurer: "string"
+      proposal_coverage_count: "integer"  # 가입설계서 담보 수
+      mapping_success_rate: "float"       # Excel 매핑 성공률
+      evidence_completeness: "float"      # Evidence 완전성
+      confidence_level: "enum"            # HIGH | MEDIUM | LOW
+
+    thresholds:
+      HIGH:
+        mapping_success_rate_gte: 0.9
+        evidence_completeness_gte: 0.8
+      MEDIUM:
+        mapping_success_rate_gte: 0.7
+        evidence_completeness_gte: 0.6
+      LOW:
+        mapping_success_rate_lt: 0.7
+        evidence_completeness_lt: 0.6
+
+  # LOW confidence 처리 강화
+  low_confidence_policy:
+    action: "partial_comparison_restriction"
+    rules:
+      - if: "confidence_level = 'LOW'"
+        then:
+          display_warning: true
+          warning_message: "{insurer} 데이터 품질이 낮습니다 (매핑 성공률: {rate}%). 비교 결과가 불완전할 수 있습니다."
+          restrict_comparison: true
+          restriction_detail: "해당 보험사는 비교표에 포함하되, 종합평가/추천에서 제외"
+      - if: "confidence_level = 'MEDIUM'"
+        then:
+          display_warning: true
+          allow_full_comparison: true
+      - if: "confidence_level = 'HIGH'"
+        then:
+          allow_full_comparison: true
+
+# ============================================================================
+# PART 8: Prohibited Operations (금지 행위)
+# ============================================================================
+
+prohibited_operations:
+  # 절대 금지 행위 리스트
+
+  - operation: "약관 기반 비교 대상 생성"
+    reason: "가입설계서만 비교 대상 결정 가능 (Universe Lock)"
+    violation_level: "CRITICAL"
+
+  - operation: "LLM 기반 coverage_code 추론"
+    reason: "Excel 단일 출처 원칙 위반"
+    violation_level: "CRITICAL"
+
+  - operation: "Evidence 없는 O/△ 판정"
+    reason: "정직한 실패 원칙 위반"
+    violation_level: "CRITICAL"
+
+  - operation: "임의 비교 축 추가"
+    reason: "비교 축 고정 원칙 위반 (5 axes only)"
+    violation_level: "HIGH"
+
+  - operation: "자연어 추천 문구 생성"
+    reason: "구조화 응답 원칙 위반"
+    violation_level: "HIGH"
+
+  - operation: "보험료 API 실패 시 비교 중단"
+    reason: "보험료 보조 원칙 위반"
+    violation_level: "MEDIUM"
+
+  - operation: "불확실성 은폐"
+    examples:
+      - "보통은 ~하다"
+      - "일반적으로 ~"
+    reason: "정직한 실패 원칙 위반"
+    violation_level: "HIGH"
+
+---
+# End of SSOT Schema v1.1
