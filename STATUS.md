@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
-**Last Updated:** 2025-12-25
-**Current Phase:** Proposal Detail Evidence Attachment (STEP 4.1)
-**Project Health:** ✅ ACTIVE - Core Pipeline + Evidence Attachment Framework Complete
+**Last Updated:** 2025-12-26
+**Current Phase:** STEP 3.10-ζ Complete (ins_cd Patched + Re-run Complete)
+**Project Health:** ✅ ACTIVE - Coverage Mapping Consistency Achieved
 
 ---
 
@@ -25,8 +25,74 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 3.10-ζ: ins_cd Patched Excel + Re-run Complete
+**Commits:** 2cecda1, efa43b2 | **Date:** 2025-12-26
+
+**Summary:**
+- ins_cd 자동 정합화 패치본 Excel 생성 (비파괴)
+- STEP 3.10-2/β/γ 패치본 기준 재실행
+- I3_MISMATCH_PIPELINE_VS_EXCEL: 6 → 0 ✅
+- AMBIGUOUS mappings: 129 → 0 ✅
+
+**Patch Results:**
+- Original Excel preserved: `data/담보명mapping자료.xlsx` (read-only)
+- Patched Excel generated: `data/담보명mapping자료__inscd_patched.xlsx`
+- Total affected rows: 194/264 (73.5%)
+- ins_cd corrections: 6 insurers (DB, KB, 메리츠, 삼성, 현대, 흥국)
+
+**Validation:**
+- ✅ ins_cd-only changes verified
+- ✅ ins_cd uniqueness per insurer verified
+- ✅ I3_MISMATCH_PIPELINE_VS_EXCEL = 0
+- ✅ Row count preserved (264 rows)
+
+**Re-run Results:**
+1. **STEP 3.10-2** (Insurer-Filtered Mapping):
+   - MAPPED: 259 (77.5%)
+   - AMBIGUOUS: 0 (0.0%) ← 129 → 0 (100% reduction)
+   - UNMAPPED: 75 (22.5%)
+
+2. **STEP 3.10-β** (UNMAPPED Cause-Effect):
+   - Total UNMAPPED analyzed: 75
+   - Cause-effect classifications complete
+
+3. **STEP 3.10-γ** (Excel Backlog):
+   - Unique backlog items: 67
+   - Per-insurer backlog CSVs generated
+
+**Generated Files:**
+- `data/담보명mapping자료__inscd_patched.xlsx`
+- `data/step310_mapping/ins_cd_patch/PATCH_LOG.csv`
+- `data/step310_mapping/ins_cd_patch/PATCH_SUMMARY.md`
+- `data/step310_mapping/ins_cd_patch/VERIFICATION_REPORT.md`
+- All STEP 3.10-2/β/γ reports regenerated
+
+**Scripts:**
+- `scripts/step310_zeta_patch_inscd.py`
+- `scripts/step310_zeta_verify.py`
+- `scripts/step310_2_insurer_filtered_mapping.py` (updated)
+- `scripts/step310_beta_unmapped_analysis.py` (updated)
+
+**Constitution Compliance:**
+- ✅ Original Excel preserved (non-destructive)
+- ✅ ins_cd-only changes (deterministic)
+- ✅ Pipeline canonical ins_cd as ground truth
+- ✅ Verification script confirms I3 = 0
+- ❌ No coverage code inference
+- ❌ No mapping logic changes
+
+**DoD Achievement:**
+- ✅ Patched Excel generated
+- ✅ Patch logs generated
+- ✅ I3 mismatch = 0 achieved
+- ✅ STEP 3.10-2/β/γ re-run complete
+- ✅ Git commits complete
+- ✅ STATUS.md updated
+
+---
+
 ### ✅ STEP 3.10-ε: ins_cd Consistency Audit
-**Commit:** (pending) | **Date:** 2025-12-25
+**Commit:** 9b08c86 | **Date:** 2025-12-25
 
 **Summary:**
 - 전 보험사 ins_cd 정합성 자동 감사 (3자 교차검증)
