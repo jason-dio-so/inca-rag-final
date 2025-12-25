@@ -1,5 +1,4 @@
 name: CI Contract Guard - Compare API
-
 on:
   push:
     branches:
