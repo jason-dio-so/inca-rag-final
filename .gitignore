@@ -19,6 +19,8 @@ data/**
 !data/담보명mapping자료.xlsx
 !data/step39_coverage_universe/
 !data/step39_coverage_universe/**
+!data/step310_mapping/
+!data/step310_mapping/**
 
 # Logs
 *.log
