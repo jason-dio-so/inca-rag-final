@@ -3,7 +3,9 @@ inca-RAG-final STEP 5 FastAPI Application
 
 Contract-driven implementation enforcing operational constitution.
 """
+import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .routers import products, compare, evidence
 
@@ -19,6 +21,19 @@ STEP 5 API Contract Implementation
 - coverage_standard 자동 INSERT/UPDATE 금지 (해당 API 없음)
 - premium mode 정렬은 premium 필터 없으면 400
 """,
+)
+
+# CORS middleware (STEP 33-α: Allow preflight for /compare)
+# Controlled via CORS_ORIGINS env (defaults to localhost:3000 for dev)
+cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Includes OPTIONS for preflight
+    allow_headers=["*"],  # Includes Content-Type
 )
 
 # Register routers
