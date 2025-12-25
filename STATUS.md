@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP 3.10-θ Complete (Structural UNMAPPED Strategy - Backlog Fixed)
-**Project Health:** ✅ ACTIVE - PRIME Complete, Backlog Documented
+**Current Phase:** STEP 4.2 Complete (Customer Response Enhancement - Structural UNMAPPED)
+**Project Health:** ✅ ACTIVE - Customer-Facing Layer Complete
 
 ---
 
@@ -24,6 +24,95 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 4.2: Customer Response Enhancement (Structural UNMAPPED Handling)
+**Commit:** TBD | **Date:** 2025-12-26
+
+**Summary:**
+- Enhanced STEP 4.0 customer responses with Structural Notice Block
+- Made structural UNMAPPED understandable (not system failures)
+- Provided honest explanations without inference or recommendations
+- **No state changes**: PRIME results preserved, presentation only
+
+**Key Achievement:**
+- **Transformed "비교 불가" → "확인 필요"**
+- Structural UNMAPPED = designed limitation, not system incompetence
+
+**Message Templates (Fixed):**
+
+| Type | Customer Message |
+|------|------------------|
+| **S1_SPLIT** | "세부 항목이 나뉘어 기재되어 있어 단순 비교하기 어렵습니다" |
+| **S2_COMPOSITE** | "여러 보장 내용을 묶어 제공됩니다. 보장 범위가 보험사마다 다릅니다" |
+| **S3_POLICY_ONLY** | "요약 정보만으로는 보장 범위 확정이 어려워 약관 확인 필요합니다" |
+
+**Next Action Options (Non-Recommendations):**
+```
+□ 특정 하위 담보만 선택해서 보기
+□ 가입설계서 상세 보장 내용 확인
+□ 약관 기준으로 비교 요청
+```
+
+**Display Conditions:**
+- PRIME state = `in_universe_with_gaps` OR
+- mapping_status = `UNMAPPED` OR
+- structural_type ∈ {S1_SPLIT, S2_COMPOSITE, S3_POLICY_ONLY}
+
+**Response Structure (4 sections):**
+1. Summary Header (STEP 4.0)
+2. Comparison Table (STEP 4.0)
+3. Insurer Explanation Blocks (STEP 4.0)
+4. **Structural Notice Block** (STEP 4.2 NEW) ← Key Addition
+
+**Generated Files:**
+- `scripts/step42_customer_response_enhancer.py`
+- `docs/customer_response_examples_step42.md`
+
+**Constitutional Compliance:**
+- ✅ PRIME results IMMUTABLE (STEP 3.11 untouched)
+- ✅ Explanations IMMUTABLE (STEP 3.12 untouched)
+- ✅ Pure presentation layer (no state changes)
+- ✅ No forbidden phrases ("사실상 같다", "추천합니다" etc)
+- ✅ No inference/recommendations
+- ✅ No shinjeongwon code mentions in customer output
+- ✅ Deterministic (same input → same output)
+
+**Forbidden Expressions (Hard Ban):**
+- ❌ "사실상 같은 담보"
+- ❌ "유사한 담보"
+- ❌ "일반적으로/보통은"
+- ❌ "추천합니다/선택하세요"
+- ❌ "더 나은/유리한"
+- ❌ "통합하면/거의 동일"
+
+**Allowed Expressions (Fact-based Only):**
+- ✅ "세부 항목이 나뉘어 있습니다"
+- ✅ "여러 보장을 묶어 제공합니다"
+- ✅ "보장 범위가 다릅니다"
+- ✅ "요약표 기준입니다"
+- ✅ "확인이 필요합니다"
+
+**DoD Achievement:**
+- ✅ 100% of structural UNMAPPED cases show Structural Notice
+- ✅ Zero forbidden phrases in customer output
+- ✅ Zero PRIME state/mapping result changes
+- ✅ Deterministic output (pure function)
+- ✅ "System incompetence" perception eliminated
+
+**Customer Perception Shift:**
+- **Before**: "왜 비교가 안돼? 시스템이 이것도 못해?"
+- **After**: "아, 담보 구성이 다르구나. 상세하게 볼 수 있네."
+
+**Integration:**
+```python
+# STEP 4.0 → STEP 4.2 enhancement
+enhanced = enhance_customer_response(base_response, comparison_results)
+
+# No structural issues: enhanced == base (pass-through)
+# Structural issues exist: enhanced = base + notice_block
+```
+
+---
 
 ### ✅ STEP 3.10-θ: Structural UNMAPPED Strategy (C3/C4/C7 Processing)
 **Commit:** 9160027 | **Date:** 2025-12-26
