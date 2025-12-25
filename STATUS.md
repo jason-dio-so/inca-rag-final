@@ -26,7 +26,7 @@
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
 ### ⚠️ STEP 32-λ-2: Truth Lock Hotfix
-**Commit:** [pending] | **Date:** 2025-12-25
+**Commit:** 9c85092 | **Date:** 2025-12-25
 
 **Summary:**
 - Corrected misleading "Verified" claims in Premium API spec
