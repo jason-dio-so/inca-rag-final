@@ -171,9 +171,12 @@ Server starts at: http://localhost:3000
 
 #### 3. Test Premium Proxy Endpoints
 
+**NOTE:** The proxy routes are pass-through implementations. Request payload structure depends on the upstream Premium API specification (간편비교_api.txt / 한장비교_API.txt). Update the payload below to match your actual upstream API requirements.
+
 **Simple Compare (간편비교):**
 
 ```bash
+# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/simple-compare \
   -H "Content-Type: application/json" \
   -d '{
@@ -183,7 +186,12 @@ curl -X POST http://localhost:3000/api/premium/simple-compare \
   }'
 ```
 
-Expected success response:
+**Route Implementation:**
+- File: `src/app/api/premium/simple-compare/route.ts`
+- Forwards request body to: `${PREMIUM_API_BASE_URL}/simple-compare`
+- Adapts upstream response via `adaptPremiumResponse()`
+
+Expected success response (from proxy):
 ```json
 {
   "ok": true,
@@ -198,12 +206,12 @@ Expected success response:
 }
 ```
 
-Expected failure response:
+Expected failure response (from proxy):
 ```json
 {
   "ok": false,
   "reason": "UPSTREAM_ERROR",
-  "message": "Premium API connection failed",
+  "message": "Upstream returned 500",
   "items": []
 }
 ```
@@ -211,15 +219,20 @@ Expected failure response:
 **Onepage Compare (한장비교):**
 
 ```bash
+# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/onepage-compare \
   -H "Content-Type: application/json" \
   -d '{
-    "proposalId": "SAMSUNG_001",
-    "insurer": "SAMSUNG"
+    "proposalId": "SAMSUNG_001"
   }'
 ```
 
-Expected response format: Same as simple-compare
+**Route Implementation:**
+- File: `src/app/api/premium/onepage-compare/route.ts`
+- Forwards request body to: `${PREMIUM_API_BASE_URL}/onepage-compare`
+- Adapts upstream response via `adaptPremiumResponse()`
+
+Expected response format: Same as simple-compare (proxy contract is unified)
 
 #### 4. Verification Checklist
 
