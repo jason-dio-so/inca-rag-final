@@ -1,0 +1,42 @@
+insurer,proposal_file,proposal_variant,row_id,coverage_name_raw,amount_raw,premium_raw,pay_term_raw,maturity_raw,renewal_raw,notes
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,보험료 납입면제대상Ⅱ,10만원,189,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,암 진단비(유사암 제외),3000만원,40620,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,유사암 진단비(기타피부암)(1년50%),600만원,NULL,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,유사암 진단비(갑상선암)(1년50%),600만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,유사암 진단비(대장점막내암)(1년50%),600만원,1440,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,유사암 진단비(제자리암)(1년50%),600만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,유사암 진단비(경계성종양)(1년50%),600만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,신재진단암(기타피부암 및 갑상선암 포함) 진단비(1년주기5회한),1000만원,15760,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,뇌출혈 진단비,1000만원,1790,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,뇌졸중 진단비(1년50%),1000만원,7060,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,뇌혈관질환 진단비(1년50%),1000만원,9300,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,허혈성심장질환 진단비(1년50%),1000만원,5700,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,기타 심장부정맥 진단비(1년50%),100만원,870,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,특정3대심장질환 진단비(1년50%),100만원,1681,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,골절 진단비(치아파절(깨짐 부러짐) 제외),10만원,626,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,화상 진단비,10만원,81,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,상해 입원일당(1일이상),1만원,1267,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,질병 입원일당(1일이상),1만원,4386,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,암 직접치료 입원일당Ⅱ(1일이상)(요양병원 제외),2만원,2006,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,항암방사선·약물 치료비Ⅲ(암(기타피부암 및 갑상선암 제외)),300만원,3318,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,항암방사선·약물 치료비Ⅲ(기타피부암 및 갑상선암),300만원,72,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,[갱신형] 표적항암약물허가 치료비(1년50%),1000만원,400,10년갱신,100세만기,갱신형,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,혈전용해 치료비(뇌경색증),200만원,NULL,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,혈전용해 치료비(급성심근경색증),200만원,166,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,상해 입원 수술비(당일입원 제외),10만원,381,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,상해 통원 수술비(외래 및 당일입원),10만원,321,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,질병 입원 수술비Ⅱ(당일입원 제외),10만원,925,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,질병 통원 수술비Ⅱ(외래 및 당일입원),10만원,1130,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,암 수술비(유사암 제외),500만원,9450,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,기타피부암 수술비,30만원,NULL,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,제자리암 수술비,30만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,경계성종양 수술비,30만원,52,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,갑상선암 수술비,30만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,대장점막내암 수술비,30만원,NULL,NULL,NULL,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,[갱신형] 암(특정암 제외) 다빈치로봇 수술비(1년 감액),1000만원,470,10년갱신,100세만기,갱신형,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,[갱신형] 특정암 다빈치로봇 수술비(1년 감액),1000만원,180,10년갱신,100세만기,갱신형,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,2대주요기관질병 관혈수술비Ⅱ(1년50%),500만원,1585,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,2대주요기관질병 비관혈수술비Ⅱ(1년50%),500만원,1070,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,상해 후유장해(3~100%),1000만원,540,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,상해 사망,1000만원,560,20년납,100세만기,NULL,NULL
+SAMSUNG,삼성_가입설계서_2511.pdf,NULL,NULL,질병 사망,1000만원,6000,20년납,80세만기,NULL,NULL
