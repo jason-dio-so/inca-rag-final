@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP 3.10-η Complete (Excel Enhancement - UNMAPPED Backlog Processing)
-**Project Health:** ✅ ACTIVE - Coverage Mapping Progressively Improved
+**Current Phase:** STEP 3.10-η-2 Complete (Forced Remapping - Reproducibility Locked)
+**Project Health:** ✅ ACTIVE - Coverage Mapping 94.31% MAPPED Achieved
 
 ---
 
@@ -24,6 +24,77 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP 3.10-η-2: Forced Remapping with Enhanced Excel (Reproducibility Locked)
+**Commit:** TBD | **Date:** 2025-12-26
+
+**Summary:**
+- Forced re-execution of STEP 3.10-2 mapping logic
+- Used enhanced Excel (`담보명mapping자료__inscd_patched_plus.xlsx`) as input
+- Generated new mapping results with __eta2 suffix
+- **Proved η enhancement effectiveness with numbers**
+
+**Results (Numbers Only):**
+
+| Status | ζ (Baseline) | η-2 (Enhanced) | Change |
+|--------|--------------|----------------|--------|
+| **MAPPED** | 259 (77.54%) | **315 (94.31%)** | **+56** |
+| **UNMAPPED** | 75 (22.46%) | **19 (5.69%)** | **-56** |
+| **AMBIGUOUS** | 0 (0.00%) | 0 (0.00%) | 0 |
+| **TOTAL** | 334 | 334 | 0 |
+
+**Key Metrics:**
+- MAPPED improvement: **+56 entries** (116.7% of 48 Excel additions)
+- UNMAPPED reduction: **-56 entries** (74.7% reduction)
+- Final MAPPED ratio: **94.31%** (exceeds 85% target ✅)
+- DB & LOTTE: **100% MAPPED** 🎉
+
+**Per-Insurer Results:**
+| Insurer | MAPPED | UNMAPPED | Ratio |
+|---------|--------|----------|-------|
+| DB | 62 | 0 | 100.0% ✅ |
+| LOTTE | 70 | 0 | 100.0% ✅ |
+| SAMSUNG | 40 | 1 | 97.6% |
+| MERITZ | 32 | 2 | 94.1% |
+| HYUNDAI | 25 | 2 | 92.6% |
+| HEUNGKUK | 21 | 2 | 91.3% |
+| KB | 35 | 5 | 87.5% |
+| HANWHA | 30 | 7 | 81.1% |
+
+**Generated Files:**
+- New mapping CSV: `proposal_coverage_mapping_insurer_filtered__eta2.csv`
+- Comparison report: `mapping_report_insurer_filtered__eta2.md`
+- Reproducibility doc: `EXCEL_REPRODUCE_INSTRUCTIONS.md`
+
+**Script:**
+- `scripts/step310_eta2_forced_remapping.py`
+
+**Reproducibility Lock:**
+- ✅ Enhanced Excel regeneration path documented
+- ✅ Complete reproduction instructions provided
+- ✅ Same input → same output guaranteed
+
+**Constitutional Compliance:**
+- ✅ Mapping logic unchanged (STEP 3.10-2 as-is)
+- ✅ Enhanced Excel as sole input
+- ✅ No rule modifications
+- ✅ Deterministic execution
+- ✅ Numbers-only proof (no claims without data)
+
+**DoD Achievement:**
+- ✅ Enhanced Excel-based remapping complete
+- ✅ Before/after metrics reported (numbers only)
+- ✅ Excel reproducibility path fixed
+- ✅ Reproducibility guaranteed
+- ✅ UNMAPPED reduction proven (+56 MAPPED)
+- ✅ 94.31% MAPPED ratio achieved (target: ≥85%)
+
+**Effectiveness Proof:**
+- 48 Excel rows added → 56 new MAPPED entries
+- Conversion rate: 116.7% (some rows matched multiple proposals)
+- Zero AMBIGUOUS maintained throughout
+
+---
 
 ### ✅ STEP 3.10-η: Excel Enhancement - UNMAPPED Backlog Processing
 **Commit:** cde40d8 | **Date:** 2025-12-26
