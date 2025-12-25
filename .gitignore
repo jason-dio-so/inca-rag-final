@@ -14,9 +14,11 @@ __pycache__/
 # Artifacts
 artifacts/
 
-# Data (exclude all except Excel canonical source)
+# Data (exclude all except Excel canonical source and STEP 3.9 universe CSV)
 data/**
 !data/담보명mapping자료.xlsx
+!data/step39_coverage_universe/
+!data/step39_coverage_universe/**
 
 # Logs
 *.log
