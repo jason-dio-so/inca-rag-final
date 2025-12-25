@@ -25,6 +25,31 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
+### ✅ STEP 33-β-1b: Upstream 400 Diagnosis Logging
+**Commit:** fa96c57 | **Date:** 2025-12-25
+
+**Summary:**
+- Added guaranteed logging to Premium proxy routes for 400 error diagnosis
+- Module load log: `🚨 [premium:<route>] module loaded`
+- Handler entry log: `🚨 [premium:<route>] handler entered`
+- Request body, params, full upstream URL logging
+- Upstream error body capture (up to 500 chars in response, full in console)
+- Purpose: Identify whether 400 is from routing issue or upstream validation
+- /compare contract unchanged ✅ (zero diff)
+
+**Logs Added:**
+```
+🚨 [premium:simple-compare] handler entered
+[Premium Simple] body: {...}
+[Premium Simple] params: baseDt=...&birthday=...
+[Premium Simple] upstreamFullUrl: https://.../public/prdata/prInfo?...
+[Premium Simple] upstream error body: <full text>
+```
+
+**Next:** User clicks DEV buttons → Copy terminal logs → Analyze upstream 400 root cause
+
+---
+
 ### ✅ STEP 33-β-1: DEV Premium Triggers (Live Capture UI)
 **Commit:** 1864f5c | **Date:** 2025-12-25
 
@@ -35,7 +60,6 @@ Detailed implementation logs available in [`docs/status/`](docs/status/).
 - Request payloads based on SSOT (`docs/api/premium_api_spec.md`)
 - Fixed test values: baseDt=20251225, birthday=19760101, age=50, sex=1, customerNm=홍길동
 - /compare contract unchanged ✅ (zero diff in apps/api, tests/snapshots)
-- Next: User captures live upstream responses for STEP 33-β-2 analysis
 
 **DoD:**
 - ✅ UI triggers visible at http://localhost:3000 (orange DEV section)
