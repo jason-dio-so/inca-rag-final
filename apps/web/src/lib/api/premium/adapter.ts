@@ -1,8 +1,8 @@
 /**
- * Premium API Adapter (STEP 32 - SSOT for Mapping)
+ * Premium API Adapter (STEP 32-κ-FIX - SSOT for Mapping)
  *
  * Constitutional Principles:
- * - basePremium = monthlyPremSum (ONLY)
+ * - basePremium = spec field ONLY (prInfo: monthlyPrem, prDetail: monthlyPremSum)
  * - NO calculation from cvrAmtArrLst ❌
  * - NO inference from policy documents ❌
  * - Coverage name mismatch → graceful (not error)
@@ -20,10 +20,9 @@ import type { InsurerCode } from '@/lib/premium/multipliers';
 /**
  * Adapt upstream Premium API response to PremiumProxyResponse
  *
- * STEP 32 Mapping Rule:
- * - basePremium = data.monthlyPremSum (ONLY source)
- * - insurer = mapInsurerCode(data.insrCoCd)
- * - coverageName = first coverage name (if available, else "상품")
+ * STEP 32-κ-FIX: Supports both API response structures:
+ * - prInfo (simple): outPrList[] → monthlyPrem
+ * - prDetail (onepage): prProdLineCondOutSearchDiv[].prProdLineCondOutIns[] → monthlyPremSum
  *
  * @param upstream - upstream API response
  * @returns PremiumProxyResponse
@@ -51,45 +50,116 @@ export function adaptPremiumResponse(
     };
   }
 
-  // Case 3: No data
-  if (!upstream.data) {
-    return {
-      ok: false,
-      reason: 'INVALID_RESPONSE',
-      message: 'Upstream data is missing',
-      items: [],
-    };
+  // Detect response shape and delegate to specific adapter
+  const rawData = upstream as any;
+
+  // A) prInfo (simple) shape: has outPrList[]
+  if (rawData.outPrList && Array.isArray(rawData.outPrList)) {
+    return adaptSimpleCompareResponse(rawData);
   }
 
-  // Extract basePremium (STEP 32 SSOT)
-  const basePremium = upstream.data.monthlyPremSum ?? null;
-
-  // Extract insurer
-  const insurerCode = mapInsurerCode(upstream.data.insrCoCd);
-  if (!insurerCode) {
-    return {
-      ok: false,
-      reason: 'INVALID_RESPONSE',
-      message: `Unknown insurer code: ${upstream.data.insrCoCd}`,
-      items: [],
-    };
+  // B) prDetail (onepage) shape: has prProdLineCondOutSearchDiv[]
+  if (rawData.prProdLineCondOutSearchDiv && Array.isArray(rawData.prProdLineCondOutSearchDiv)) {
+    return adaptOnepageCompareResponse(rawData);
   }
 
-  // Extract coverage name (fallback to "상품")
-  const coverageName =
-    upstream.data.cvrAmtArrLst?.[0]?.cvrNm || '상품';
-
-  // Build item
-  const item: PremiumItem = {
-    insurer: insurerCode,
-    coverageName,
-    basePremium,
-    multiplier: null, // Upstream rarely provides this
+  // C) Unknown shape
+  return {
+    ok: false,
+    reason: 'INVALID_RESPONSE',
+    message: 'Unknown upstream response structure',
+    items: [],
   };
+}
+
+/**
+ * Adapt prInfo (simple compare) response
+ *
+ * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Structure: { outPrList: [{ insCd, monthlyPrem, ... }] }
+ */
+function adaptSimpleCompareResponse(rawData: any): PremiumProxyResponse {
+  const items: PremiumItem[] = [];
+
+  for (const product of rawData.outPrList) {
+    const insurerCode = mapInsurerCode(product.insCd);
+    if (!insurerCode) {
+      // Skip unknown insurer (graceful degradation)
+      continue;
+    }
+
+    const basePremium = product.monthlyPrem ?? null;
+
+    items.push({
+      insurer: insurerCode,
+      coverageName: 'PREMIUM_TOTAL', // Simple API doesn't provide coverage breakdown
+      basePremium,
+      multiplier: null,
+    });
+  }
+
+  if (items.length === 0) {
+    return {
+      ok: false,
+      reason: 'INVALID_RESPONSE',
+      message: 'No valid insurers found in outPrList',
+      items: [],
+    };
+  }
 
   return {
     ok: true,
-    items: [item],
+    items,
+  };
+}
+
+/**
+ * Adapt prDetail (onepage compare) response
+ *
+ * Source: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Structure: { prProdLineCondOutSearchDiv: [{ prProdLineCondOutIns: [{ insCd, monthlyPremSum, ... }] }] }
+ */
+function adaptOnepageCompareResponse(rawData: any): PremiumProxyResponse {
+  const items: PremiumItem[] = [];
+
+  for (const searchDiv of rawData.prProdLineCondOutSearchDiv) {
+    if (!searchDiv.prProdLineCondOutIns || !Array.isArray(searchDiv.prProdLineCondOutIns)) {
+      continue;
+    }
+
+    for (const insurer of searchDiv.prProdLineCondOutIns) {
+      const insurerCode = mapInsurerCode(insurer.insCd);
+      if (!insurerCode) {
+        // Skip unknown insurer (graceful degradation)
+        continue;
+      }
+
+      const basePremium = insurer.monthlyPremSum ?? null;
+
+      // Extract coverage name from first coverage (if available)
+      const coverageName = insurer.cvrAmtArrLst?.[0]?.cvrNm || 'PREMIUM_TOTAL';
+
+      items.push({
+        insurer: insurerCode,
+        coverageName,
+        basePremium,
+        multiplier: null,
+      });
+    }
+  }
+
+  if (items.length === 0) {
+    return {
+      ok: false,
+      reason: 'INVALID_RESPONSE',
+      message: 'No valid insurers found in prProdLineCondOutIns',
+      items: [],
+    };
+  }
+
+  return {
+    ok: true,
+    items,
   };
 }
 
