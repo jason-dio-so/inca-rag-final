@@ -65,40 +65,59 @@ export type PremiumFailureReason =
 
 /**
  * Premium API Request (간편비교)
+ *
+ * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Method: GET (query parameters)
+ * URL: /public/prdata/prInfo
  */
 export interface SimplePremiumRequest {
-  // Add fields based on 간편비교_api.txt
-  // Example:
-  age?: number;
-  gender?: string;
-  coverages?: string[];
-  // ... other fields
+  /** Base date (YYYYMMDD) */
+  baseDt: string;
+  /** Birthday (YYYYMMDD) */
+  birthday: string;
+  /** Customer name */
+  customerNm: string;
+  /** Gender ("1"=M, "2"=F) */
+  sex: string;
+  /** Age (string) */
+  age: string;
 }
 
 /**
  * Premium API Request (한장비교)
+ *
+ * Source: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Method: GET (query parameters)
+ * URL: /public/prdata/prDetail
  */
 export interface OnepagePremiumRequest {
-  // Add fields based on 한장비교_API.txt
-  // Example:
-  proposalId?: string;
-  // ... other fields
+  /** Base date (YYYYMMDD) */
+  baseDt: string;
+  /** Birthday (YYYYMMDD) */
+  birthday: string;
+  /** Customer name */
+  customerNm: string;
+  /** Gender ("1"=M, "2"=F) */
+  sex: string;
+  /** Age (string) */
+  age: string;
 }
 
 /**
  * Insurer Code Mapping (Premium API → Our System)
  *
- * Maps upstream insurer codes to our InsurerCode type.
+ * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Maps upstream insurer codes (insCd) to our InsurerCode type.
  */
 export const INSURER_CODE_MAP: Record<string, InsurerCode> = {
-  '001': 'SAMSUNG', // 삼성화재
-  '002': 'MERITZ', // 메리츠화재
-  '003': 'HYUNDAI', // 현대해상
-  '004': 'KB', // KB손해보험
-  '005': 'HANWHA', // 한화손해보험
-  '006': 'LOTTE', // 롯데손해보험
-  '007': 'DB', // DB손해보험
-  '008': 'HEUNGKUK', // 흥국화재
+  'N01': 'MERITZ',   // 메리츠화재
+  'N02': 'HANWHA',   // 한화손보
+  'N03': 'LOTTE',    // 롯데손보
+  'N05': 'HEUNGKUK', // 흥국화재
+  'N08': 'SAMSUNG',  // 삼성화재
+  'N09': 'HYUNDAI',  // 현대해상
+  'N10': 'KB',       // KB손보
+  'N13': 'DB',       // DB손보
 };
 
 /**

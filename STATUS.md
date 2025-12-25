@@ -295,3 +295,15 @@ inca-RAG-final/
 
 **Last Full Archive:** [docs/status/legacy_STATUS_full.md](docs/status/legacy_STATUS_full.md) (3194 lines)
 **This Index:** ~320 lines (10× reduction for accessibility)
+
+---
+
+### ✅ STEP 32-κ: Premium API Spec-Driven Lock
+**Commit:** [pending] | **Date:** 2025-12-25
+
+**Summary:**
+- Locked Premium integration to actual upstream specifications (spec-driven, zero assumptions)
+- basePremium sources: `monthlyPrem` (simple) / `monthlyPremSum` (onepage)
+- Upstream method: GET (not POST), insurer codes: N01-N13 format
+- README curl examples now executable with real payload structure
+

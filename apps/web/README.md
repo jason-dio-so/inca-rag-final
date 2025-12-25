@@ -171,29 +171,34 @@ Server starts at: http://localhost:3000
 
 #### 3. Test Premium Proxy Endpoints
 
-**IMPORTANT:** The proxy routes are pass-through implementations. Request payload structure depends on the upstream Premium API specification.
-
-**Specification Reference:** [docs/api/premium_api_spec_minimal.md](../../docs/api/premium_api_spec_minimal.md)
-
-**Current Status:** Using placeholder payloads until actual API specifications (간편비교_api.txt / 한장비교_API.txt) are integrated. See spec document for integration TODO.
+**Specification:** [docs/api/premium_api_spec.md](../../docs/api/premium_api_spec.md) (SSOT)
+**Status:** ✅ Locked to upstream specifications
 
 **Simple Compare (간편비교):**
 
 ```bash
-# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/simple-compare \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 30,
-    "gender": "M",
-    "coverages": ["암진단비", "뇌출혈진단비"]
+    "baseDt": "20251126",
+    "birthday": "19760101",
+    "customerNm": "홍길동",
+    "sex": "1",
+    "age": "50"
   }'
 ```
 
+**Request Fields (All Required):**
+- `baseDt`: Base date (YYYYMMDD format)
+- `birthday`: Birthday (YYYYMMDD format)
+- `customerNm`: Customer name
+- `sex`: Gender ("1"=Male, "2"=Female)
+- `age`: Age (string)
+
 **Route Implementation:**
 - File: `src/app/api/premium/simple-compare/route.ts`
-- Forwards request body to: `${PREMIUM_API_BASE_URL}/simple-compare`
-- Adapts upstream response via `adaptPremiumResponse()`
+- Upstream: GET `https://new-prod.greenlight.direct/public/prdata/prInfo`
+- basePremium source: `outPrList[].monthlyPrem`
 
 Expected success response (from proxy):
 ```json
@@ -223,20 +228,30 @@ Expected failure response (from proxy):
 **Onepage Compare (한장비교):**
 
 ```bash
-# Example: Adjust payload to match upstream API spec
 curl -X POST http://localhost:3000/api/premium/onepage-compare \
   -H "Content-Type: application/json" \
   -d '{
-    "proposalId": "SAMSUNG_001"
+    "baseDt": "20251126",
+    "birthday": "19760101",
+    "customerNm": "홍길동",
+    "sex": "1",
+    "age": "50"
   }'
 ```
 
+**Request Fields (All Required):**
+- `baseDt`: Base date (YYYYMMDD format)
+- `birthday`: Birthday (YYYYMMDD format)
+- `customerNm`: Customer name
+- `sex`: Gender ("1"=Male, "2"=Female)
+- `age`: Age (string)
+
 **Route Implementation:**
 - File: `src/app/api/premium/onepage-compare/route.ts`
-- Forwards request body to: `${PREMIUM_API_BASE_URL}/onepage-compare`
-- Adapts upstream response via `adaptPremiumResponse()`
+- Upstream: GET `https://new-prod.greenlight.direct/public/prdata/prDetail`
+- basePremium source: `monthlyPremSum`
 
-Expected response format: Same as simple-compare (proxy contract is unified)
+**Expected Response:** Same proxy contract as simple-compare
 
 #### 4. Verification Checklist
 
@@ -281,7 +296,7 @@ Mock scenarios available (see `src/lib/api/mocks/priceScenarios.ts`):
 
 ### Implementation Notes
 
-- **API Specification:** [docs/api/premium_api_spec_minimal.md](../../docs/api/premium_api_spec_minimal.md) (SSOT for integration)
+- **API Specification:** [docs/api/premium_api_spec.md](../../docs/api/premium_api_spec.md) (SSOT - Spec-Driven Lock)
 - Premium bridge: `src/lib/api/premium/bridge.ts`
 - Proxy routes: `src/app/api/premium/*/route.ts`
 - Type definitions: `src/lib/api/premium/types.ts`
