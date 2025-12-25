@@ -7,7 +7,8 @@
  * - Coverage name mapping is NOT enforced (graceful PARTIAL)
  * - This is additional feature (does NOT affect /compare)
  *
- * Source: docs/api/upstream/premium_*_spec.txt (SSOT)
+ * Source (SSOT): docs/api/premium_api_spec.md
+ * Upstream spec files (reference): docs/api/upstream/premium_*_spec.txt
  */
 
 import type { InsurerCode } from '@/lib/premium/multipliers';
@@ -15,8 +16,9 @@ import type { InsurerCode } from '@/lib/premium/multipliers';
 /**
  * Upstream prInfo (Simple Compare) Response
  *
- * Source: docs/api/upstream/premium_simple_compare_spec.txt
- * Structure: Top-level fields (no data wrapper)
+ * Source (SSOT): docs/api/premium_api_spec.md § API 1
+ * Reference: docs/api/upstream/premium_simple_compare_spec.txt
+ * Structure: Top-level fields (per SSOT, no wrapper documented)
  */
 export interface UpstreamPrInfoResponse {
   customerSeq: number;
@@ -39,8 +41,9 @@ export interface UpstreamPrInfoResponse {
 /**
  * Upstream prDetail (Onepage Compare) Response
  *
- * Source: docs/api/upstream/premium_onepage_compare_spec.txt
- * Structure: Top-level fields (no data wrapper)
+ * Source (SSOT): docs/api/premium_api_spec.md § API 2
+ * Reference: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Structure: Top-level fields (per SSOT, no wrapper documented)
  */
 export interface UpstreamPrDetailResponse {
   calSubSeq: number;
@@ -83,9 +86,9 @@ export interface UpstreamPrDetailResponse {
 /**
  * Generic upstream response wrapper
  *
- * Note: Actual upstream APIs do NOT use this wrapper in practice.
- * This exists for compatibility with potential future API changes.
- * Current adapter handles both wrapped and unwrapped responses.
+ * Note: SSOT does not document this wrapper structure.
+ * This type exists for defensive handling of potential wrapped responses.
+ * Adapter handles both wrapped ({ returnCode, data }) and unwrapped formats.
  */
 export interface UpstreamWrapped<T> {
   returnCode: string;  // "0000" = success
@@ -97,8 +100,8 @@ export interface UpstreamWrapped<T> {
  * Union type for all possible upstream response formats
  *
  * Adapter uses runtime shape detection to handle both:
- * - Direct response (spec-confirmed)
- * - Wrapped response (defensive)
+ * - Direct response (SSOT-confirmed structure)
+ * - Wrapped response (defensive fallback)
  */
 export type UpstreamPremiumResponse =
   | UpstreamPrInfoResponse
@@ -141,7 +144,8 @@ export type PremiumFailureReason =
 /**
  * Premium API Request (간편비교)
  *
- * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Source (SSOT): docs/api/premium_api_spec.md § API 1
+ * Reference: docs/api/upstream/premium_simple_compare_spec.txt
  * Method: GET (query parameters)
  * URL: /public/prdata/prInfo
  */
@@ -161,7 +165,8 @@ export interface SimplePremiumRequest {
 /**
  * Premium API Request (한장비교)
  *
- * Source: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Source (SSOT): docs/api/premium_api_spec.md § API 2
+ * Reference: docs/api/upstream/premium_onepage_compare_spec.txt
  * Method: GET (query parameters)
  * URL: /public/prdata/prDetail
  */
@@ -181,7 +186,8 @@ export interface OnepagePremiumRequest {
 /**
  * Insurer Code Mapping (Premium API → Our System)
  *
- * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Source (SSOT): docs/api/premium_api_spec.md § Insurer Code Mapping
+ * Reference: docs/api/upstream/premium_simple_compare_spec.txt
  * Maps upstream insurer codes (insCd) to our InsurerCode type.
  */
 export const INSURER_CODE_MAP: Record<string, InsurerCode> = {

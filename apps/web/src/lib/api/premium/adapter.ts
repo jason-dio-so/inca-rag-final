@@ -7,7 +7,7 @@
  * - NO inference from policy documents ❌
  * - Coverage name mismatch → graceful (not error)
  *
- * Source: docs/api/premium_api_spec.md (SSOT)
+ * Source (SSOT): docs/api/premium_api_spec.md
  */
 
 import type {
@@ -55,7 +55,7 @@ export function adaptPremiumResponse(
     };
   }
 
-  // Handle potential data wrapper (defensive: spec shows no wrapper, but handle both)
+  // Handle potential data wrapper (SSOT does not document wrapper; defensive handling)
   const payload = wrapped?.data ?? wrapped;
 
   // A) prInfo (simple) shape: has outPrList[]
@@ -80,7 +80,8 @@ export function adaptPremiumResponse(
 /**
  * Adapt prInfo (simple compare) response
  *
- * Source: docs/api/upstream/premium_simple_compare_spec.txt
+ * Source (SSOT): docs/api/premium_api_spec.md § API 1
+ * Reference: docs/api/upstream/premium_simple_compare_spec.txt
  * Structure: { outPrList: [{ insCd, monthlyPrem, ... }] }
  */
 function adaptSimpleCompareResponse(rawData: UpstreamPrInfoResponse): PremiumProxyResponse {
@@ -121,7 +122,8 @@ function adaptSimpleCompareResponse(rawData: UpstreamPrInfoResponse): PremiumPro
 /**
  * Adapt prDetail (onepage compare) response
  *
- * Source: docs/api/upstream/premium_onepage_compare_spec.txt
+ * Source (SSOT): docs/api/premium_api_spec.md § API 2
+ * Reference: docs/api/upstream/premium_onepage_compare_spec.txt
  * Structure: { prProdLineCondOutSearchDiv: [{ prProdLineCondOutIns: [{ insCd, monthlyPremSum, ... }] }] }
  */
 function adaptOnepageCompareResponse(rawData: UpstreamPrDetailResponse): PremiumProxyResponse {
