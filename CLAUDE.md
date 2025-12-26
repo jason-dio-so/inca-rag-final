@@ -755,6 +755,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AF: Proposal Detail → Comparison Description (Non-Breaking)
 - ✅ STEP NEXT-AF-FIX: Deterministic extraction + Row-level join + Template isolation
 - ✅ STEP NEXT-AF-FIX-2: STATUS.md 복구 + Template+Insurer isolation + Raw key matching
+- ✅ STEP NEXT-AF-FIX-3: Row-level proposal detail matching (coverage_id + template_id)
 
 **현재 브랜치**: `main`
 
@@ -791,6 +792,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-26 | Proposal Detail | (기능 없음) | STEP NEXT-AF: v2.proposal_coverage_detail + comparison_description 필드 | 가입설계서 상세표를 Comparison Description으로 분리 (Evidence 아님) |
 | 2025-12-26 | AF-FIX | Manual INSERT 허용 + DROP migration | Deterministic only + Safe migration + Row-level join + Template isolation | 수동 데이터 금지, 데이터 파괴 방지, 템플릿 혼입 방지 |
 | 2025-12-26 | AF-FIX-2 | STATUS.md 덮어쓰기 + template_id만으로 조회 | STATUS.md 복구 + template_id+insurer_code isolation + raw key matching | 히스토리 보존, 템플릿+보험사 격리, DB raw 키 사용 |
+| 2025-12-26 | AF-FIX-3 | coverage_metadata reuse across rows | Row-level keys (coverage_id + template_id + insurer_coverage_name_raw) | FactTableRow마다 독립적인 comparison_description 조회 보장 |
 
 ---
 

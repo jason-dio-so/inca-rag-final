@@ -26,49 +26,77 @@ def fetch_comparison_description(
     conn: PGConnection,
     template_id: str,
     insurer_code: str,
-    insurer_coverage_name_raw: str
+    coverage_id: Optional[int] = None,
+    insurer_coverage_name_raw: Optional[str] = None
 ) -> tuple[Optional[str], Optional[dict]]:
     """
-    Fetch comparison description from v2.proposal_coverage_detail (STEP NEXT-AF-FIX-2).
+    Fetch comparison description from v2.proposal_coverage_detail (STEP NEXT-AF-FIX-3).
 
-    IMPORTANT: Template + Insurer isolation - prevent cross-template/cross-insurer mixing.
+    IMPORTANT: Row-level matching with template + insurer isolation.
+
+    Priority:
+    1. coverage_id (most precise)
+    2. template_id + insurer_coverage_name_raw (fallback)
 
     Args:
         conn: DB connection
         template_id: Template ID (for isolation)
         insurer_code: Insurer code (for additional isolation)
-        insurer_coverage_name_raw: Raw coverage name (DB key, not normalized)
+        coverage_id: Row-level PK (v2.proposal_coverage.coverage_id) - highest priority
+        insurer_coverage_name_raw: Raw coverage name (DB key, not normalized) - fallback
 
     Returns:
         (detail_text, source_metadata) or (None, None) if not found
     """
     cursor = conn.cursor()
 
-    # AF-FIX-2: Match by template_id + insurer_coverage_name_raw
-    # Additional safety: verify template belongs to same insurer
-    # Prefer matched (coverage_id NOT NULL), fallback to unmatched within same template
-    cursor.execute("""
-        SELECT d.detail_text, d.source_page
-        FROM v2.proposal_coverage_detail d
-        JOIN v2.template t ON t.template_id = d.template_id
-        JOIN v2.product p ON p.product_id = t.product_id
-        WHERE d.template_id = %s
-          AND p.insurer_code = %s
-          AND d.insurer_coverage_name = %s
-          AND d.source_doc_type = 'proposal_detail'
-          AND d.extraction_method LIKE 'deterministic%%'
-        ORDER BY (d.coverage_id IS NOT NULL) DESC, d.updated_at DESC
-        LIMIT 1
-    """, (template_id, insurer_code, insurer_coverage_name_raw))
+    # STEP NEXT-AF-FIX-3: Priority 1 - coverage_id (exact row match)
+    if coverage_id is not None:
+        cursor.execute("""
+            SELECT d.detail_text, d.source_page
+            FROM v2.proposal_coverage_detail d
+            JOIN v2.template t ON t.template_id = d.template_id
+            JOIN v2.product p ON p.product_id = t.product_id
+            WHERE d.coverage_id = %s
+              AND d.template_id = %s
+              AND p.insurer_code = %s
+              AND d.source_doc_type = 'proposal_detail'
+              AND d.extraction_method LIKE 'deterministic%%'
+            ORDER BY d.detail_id DESC
+            LIMIT 1
+        """, (coverage_id, template_id, insurer_code))
 
-    row = cursor.fetchone()
+        row = cursor.fetchone()
+        if row:
+            cursor.close()
+            detail_text, source_page = row
+            source_meta = {"doc_type": "proposal_detail", "page": source_page}
+            return detail_text, source_meta
+
+    # STEP NEXT-AF-FIX-3: Priority 2 - template_id + insurer_coverage_name_raw (fallback)
+    if insurer_coverage_name_raw:
+        cursor.execute("""
+            SELECT d.detail_text, d.source_page
+            FROM v2.proposal_coverage_detail d
+            JOIN v2.template t ON t.template_id = d.template_id
+            JOIN v2.product p ON p.product_id = t.product_id
+            WHERE d.template_id = %s
+              AND p.insurer_code = %s
+              AND d.insurer_coverage_name = %s
+              AND d.source_doc_type = 'proposal_detail'
+              AND d.extraction_method LIKE 'deterministic%%'
+            ORDER BY (d.coverage_id IS NOT NULL) DESC, d.detail_id DESC
+            LIMIT 1
+        """, (template_id, insurer_code, insurer_coverage_name_raw))
+
+        row = cursor.fetchone()
+        if row:
+            cursor.close()
+            detail_text, source_page = row
+            source_meta = {"doc_type": "proposal_detail", "page": source_page}
+            return detail_text, source_meta
+
     cursor.close()
-
-    if row:
-        detail_text, source_page = row
-        source_meta = {"doc_type": "proposal_detail", "page": source_page}
-        return detail_text, source_meta
-
     return None, None
 
 
@@ -118,63 +146,30 @@ async def compare_view_model(
         # Step 3: Convert to dict
         view_model_dict = view_model.model_dump(mode="json")
 
-        # Step 3.5: Enrich with comparison_description (STEP NEXT-AF-FIX-2)
-        # Row-level matching with template_id + insurer_code isolation + raw coverage name
+        # Step 3.5: Enrich with comparison_description (STEP NEXT-AF-FIX-3)
+        # Row-level matching using coverage_id + template_id from FactTableRow
         if "fact_table" in view_model_dict and "rows" in view_model_dict["fact_table"]:
-            # Build coverage metadata map (insurer → coverage_item)
-            coverage_metadata = {}
-
-            if compare_response.coverage_a:
-                coverage_metadata[compare_response.coverage_a.insurer.upper()] = compare_response.coverage_a
-
-            if compare_response.coverage_b:
-                coverage_metadata[compare_response.coverage_b.insurer.upper()] = compare_response.coverage_b
-
-            # Get template_id for each insurer (with insurer_code safety check)
-            cursor = conn.cursor()
-            template_ids = {}
-
-            for insurer_upper, coverage_item in coverage_metadata.items():
-                # AF-FIX-2: Get template_id with insurer_code verification
-                cursor.execute("""
-                    SELECT pc.template_id
-                    FROM v2.proposal_coverage pc
-                    JOIN v2.template t ON t.template_id = pc.template_id
-                    JOIN v2.product p ON p.product_id = t.product_id
-                    WHERE pc.insurer_coverage_name = %s
-                      AND p.insurer_code = %s
-                    ORDER BY pc.updated_at DESC
-                    LIMIT 1
-                """, (coverage_item.coverage_name_raw, coverage_item.insurer.upper()))
-
-                result = cursor.fetchone()
-                if result:
-                    template_ids[insurer_upper] = result[0]
-
-            cursor.close()
-
-            # Enrich each row with comparison_description
+            # STEP NEXT-AF-FIX-3: Each row has its own row-level keys
+            # ❌ Do NOT reuse coverage_metadata across rows
+            # ✅ Use row.coverage_id / row.template_id / row.insurer_coverage_name_raw
             for row in view_model_dict["fact_table"]["rows"]:
-                insurer = row.get("insurer")
+                # Get row-level keys (populated by ViewModel assembler)
+                coverage_id = row.get("coverage_id")
+                template_id = row.get("template_id")
+                insurer_code = row.get("insurer")
+                insurer_coverage_name_raw = row.get("insurer_coverage_name_raw")
 
-                # Get coverage metadata for this row's insurer
-                coverage_item = coverage_metadata.get(insurer)
-                if not coverage_item:
+                # Skip if no keys available
+                if not template_id or not insurer_code:
                     continue
 
-                # Get template_id for this insurer
-                template_id = template_ids.get(insurer)
-                if not template_id:
-                    continue
-
-                # AF-FIX-2: Use coverage_name_raw (DB key) instead of coverage_title_normalized (UI string)
-                # The row's coverage_title_normalized might be canonical_coverage_code,
-                # but we need to match by original insurer_coverage_name
+                # Row-level lookup with priority: coverage_id > insurer_coverage_name_raw
                 detail_text, source_meta = fetch_comparison_description(
                     conn,
-                    template_id,
-                    coverage_item.insurer.upper(),  # insurer_code
-                    coverage_item.coverage_name_raw  # raw DB key, not normalized UI string
+                    template_id=template_id,
+                    insurer_code=insurer_code,
+                    coverage_id=coverage_id,  # Priority 1 (exact row match)
+                    insurer_coverage_name_raw=insurer_coverage_name_raw  # Priority 2 (fallback)
                 )
 
                 if detail_text:

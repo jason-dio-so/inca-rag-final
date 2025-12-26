@@ -145,6 +145,10 @@ class ProposalCoverageItem(BaseModel):
     disease_scope_norm: Optional[Dict[str, Any]] = None
     source_confidence: Optional[str] = None
 
+    # STEP NEXT-AF-FIX-3: Row-level keys for deterministic DB lookup
+    coverage_id: Optional[int] = None  # v2.proposal_coverage.coverage_id (PK)
+    template_id: Optional[str] = None  # v2.template.template_id (for isolation)
+
     class Config:
         extra = "forbid"
 

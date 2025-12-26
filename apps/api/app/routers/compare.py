@@ -120,14 +120,17 @@ async def compare_proposals(
         if coverage_a:
             response_coverage_a = ProposalCoverageItem(
                 insurer=coverage_a["insurer"],
-                proposal_id=coverage_a["proposal_id"],
+                proposal_id=coverage_a.get("proposal_id", f"proposal_{coverage_a.get('coverage_id', 'unknown')}"),
                 coverage_name_raw=coverage_a["coverage_name_raw"],
                 canonical_coverage_code=coverage_a.get("canonical_coverage_code"),
                 mapping_status=coverage_a.get("mapping_status", "UNKNOWN"),
                 amount_value=coverage_a.get("amount_value"),
                 disease_scope_raw=coverage_a.get("disease_scope_raw"),
                 disease_scope_norm=coverage_a.get("disease_scope_norm"),
-                source_confidence=coverage_a.get("source_confidence")
+                source_confidence=coverage_a.get("source_confidence"),
+                # STEP NEXT-AF-FIX-3: Row-level keys
+                coverage_id=coverage_a.get("coverage_id"),
+                template_id=coverage_a.get("template_id")
             )
 
             # Get policy evidence if disease_scope_norm exists
@@ -148,14 +151,17 @@ async def compare_proposals(
         if coverage_b:
             response_coverage_b = ProposalCoverageItem(
                 insurer=coverage_b["insurer"],
-                proposal_id=coverage_b["proposal_id"],
+                proposal_id=coverage_b.get("proposal_id", f"proposal_{coverage_b.get('coverage_id', 'unknown')}"),
                 coverage_name_raw=coverage_b["coverage_name_raw"],
                 canonical_coverage_code=coverage_b.get("canonical_coverage_code"),
                 mapping_status=coverage_b.get("mapping_status", "UNKNOWN"),
                 amount_value=coverage_b.get("amount_value"),
                 disease_scope_raw=coverage_b.get("disease_scope_raw"),
                 disease_scope_norm=coverage_b.get("disease_scope_norm"),
-                source_confidence=coverage_b.get("source_confidence")
+                source_confidence=coverage_b.get("source_confidence"),
+                # STEP NEXT-AF-FIX-3: Row-level keys
+                coverage_id=coverage_b.get("coverage_id"),
+                template_id=coverage_b.get("template_id")
             )
 
             # Get policy evidence if disease_scope_norm exists

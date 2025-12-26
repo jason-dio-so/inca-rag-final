@@ -186,24 +186,55 @@ WHERE u.insurer = %(insurer)s
 LIMIT 1;
 """
 
+# STEP NEXT-AF-FIX-3: v2 schema query with coverage_id + template_id for row-level matching
+PROPOSAL_COVERAGE_V2_LOOKUP_SQL = """
+SELECT
+    pc.coverage_id,
+    pc.template_id,
+    p.insurer_code AS insurer,
+    pc.insurer_coverage_name AS coverage_name_raw,
+    pc.amount_value,
+    cm.canonical_coverage_code,
+    cm.mapping_status,
+    NULL AS disease_scope_raw,
+    NULL AS disease_scope_norm,
+    NULL AS source_confidence
+FROM v2.proposal_coverage pc
+JOIN v2.template t ON t.template_id = pc.template_id
+JOIN v2.product p ON p.product_id = t.product_id
+LEFT JOIN v2.coverage_mapping cm ON cm.coverage_id = pc.coverage_id
+WHERE p.insurer_code = %(insurer)s
+  AND (
+    cm.canonical_coverage_code = %(canonical_code)s
+    OR pc.insurer_coverage_name = %(raw_name)s
+  )
+ORDER BY pc.coverage_id DESC
+LIMIT 1;
+"""
+
 
 def get_proposal_coverage(
     conn: PGConnection,
     insurer: str,
     canonical_code: Optional[str] = None,
-    raw_name: Optional[str] = None
+    raw_name: Optional[str] = None,
+    use_v2: bool = True  # STEP NEXT-AF-FIX-3: Default to v2 schema
 ) -> Optional[Dict[str, Any]]:
     """
     Get coverage from proposal universe by canonical code or raw name.
+
+    STEP NEXT-AF-FIX-3: Now returns coverage_id + template_id for row-level matching.
 
     Args:
         conn: Database connection
         insurer: Insurer name (e.g., 'SAMSUNG', 'MERITZ', 'KB')
         canonical_code: Canonical coverage code (e.g., 'CA_DIAG_GENERAL')
         raw_name: Raw coverage name from proposal (e.g., '매핑안된담보')
+        use_v2: Use v2 schema (default: True)
 
     Returns:
-        Coverage dict or None if not in universe
+        Coverage dict with coverage_id, template_id, insurer, coverage_name_raw, etc.
+        or None if not in universe
     """
     params = {
         "insurer": insurer,
@@ -211,7 +242,9 @@ def get_proposal_coverage(
         "raw_name": raw_name
     }
 
-    rows = execute_readonly_query(conn, PROPOSAL_COVERAGE_LOOKUP_SQL, params)
+    # STEP NEXT-AF-FIX-3: Use v2 schema for row-level keys
+    sql = PROPOSAL_COVERAGE_V2_LOOKUP_SQL if use_v2 else PROPOSAL_COVERAGE_LOOKUP_SQL
+    rows = execute_readonly_query(conn, sql, params)
     if rows:
         return rows[0]
     return None

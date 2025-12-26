@@ -88,6 +88,14 @@ class FactTableRow(BaseModel):
     comparison_description: Optional[str] = None  # STEP NEXT-AF: Proposal detail text (NOT evidence)
     comparison_description_source: Optional[ComparisonDescriptionSource] = None  # STEP NEXT-AF: Source metadata
 
+    # STEP NEXT-AF-FIX-3: Row-level raw keys (for DB lookup, NOT for UI display)
+    # These are deterministic keys from proposal_coverage table
+    # Priority: coverage_id > insurer_coverage_name_raw
+    # ❌ coverage_title_normalized is UI display only, NOT a DB key
+    coverage_id: Optional[int] = None  # FK to v2.proposal_coverage
+    insurer_coverage_name_raw: Optional[str] = None  # Raw coverage name from proposal (DB key)
+    template_id: Optional[str] = None  # Template ID (for isolation)
+
 
 class SortMetadata(BaseModel):
     """v2: Optional sorting configuration (UI hint)"""

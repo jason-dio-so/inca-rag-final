@@ -356,7 +356,11 @@ def assemble_view_model(
                 comparison_result=compare_response.comparison_result,
                 mapping_status=cov_a.mapping_status,
                 has_policy_evidence=compare_response.policy_evidence_a is not None
-            )
+            ),
+            # STEP NEXT-AF-FIX-3: Row-level keys for DB lookup
+            coverage_id=cov_a.coverage_id,
+            insurer_coverage_name_raw=cov_a.coverage_name_raw,
+            template_id=cov_a.template_id
         ))
 
     # Process coverage_b fact row
@@ -395,7 +399,11 @@ def assemble_view_model(
                 comparison_result=compare_response.comparison_result,
                 mapping_status=cov_b.mapping_status,
                 has_policy_evidence=compare_response.policy_evidence_b is not None
-            )
+            ),
+            # STEP NEXT-AF-FIX-3: Row-level keys for DB lookup
+            coverage_id=cov_b.coverage_id,
+            insurer_coverage_name_raw=cov_b.coverage_name_raw,
+            template_id=cov_b.template_id
         ))
 
     # Deterministic sorting: insurer ASC, coverage_title ASC
