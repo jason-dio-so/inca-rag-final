@@ -26,7 +26,7 @@
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
 ### ✅ STEP NEXT-5: ViewModel Assembler + Frontend Renderer (Complete)
-**Commit:** [pending] | **Date:** 2025-12-26
+**Commit:** 0ee2373 | **Date:** 2025-12-26
 
 **Summary:**
 - Backend: ViewModel assembler (ProposalCompareResponse → ViewModel JSON)
