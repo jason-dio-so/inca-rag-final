@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP 4.2 Complete (Customer Response Enhancement - Structural UNMAPPED)
-**Project Health:** ✅ ACTIVE - Customer-Facing Layer Complete
+**Current Phase:** STEP NEXT-3 Complete (UI Output Format Schema)
+**Project Health:** ✅ ACTIVE - Presentation Layer Standardized
 
 ---
 
@@ -24,6 +24,90 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP NEXT-3: UI Output Format Schema (Fixed Presentation Layer)
+**Commit:** 1270a87 | **Date:** 2025-12-26
+
+**Summary:**
+- Defined fixed 4-block output format for ChatGPT-style insurance comparison MVP
+- JSON Schema for frontend-ready presentation layer (view model only)
+- Fact-based comparison output (no inference, no judgment, no recommendations)
+- A2 user selection format for label disambiguation (표기 차이 해결)
+
+**4-Block Structure:**
+1. **summary_block**: Comparison status (full/limited/confirmation_required) + summary text
+2. **comparison_table_block**: Insurer × Coverage × Amount/Conditions table
+3. **insurer_explanation_block[]**: Per-insurer coverage explanations with source hints
+4. **user_action_block**: User selection UI for disambiguation (A2)
+
+**A2 User Selection (Label Disambiguation):**
+- Trigger: "암 진단비" vs "암진단비" (표기 차이)
+- Effect: `subsequent_query_refinement_only` (no PRIME state changes)
+- Selection scope: `current_session_only` (no permanent mapping changes)
+- System does NOT judge "same coverage" - user chooses for query refinement only
+
+**comparison_status Values:**
+| Status | Meaning |
+|--------|---------|
+| `full` | All coverages comparable |
+| `limited` | Some UNMAPPED/STRUCTURAL cases |
+| `confirmation_required` | User selection needed (A2) |
+
+**Cell Status in Comparison Table:**
+| Status | Display |
+|--------|---------|
+| `mapped` | Normal display (amount + conditions) |
+| `unmapped` | Grey + "매핑 정보 없음" |
+| `structural` | Grey + "해당 담보 없음" (Universe Lock) |
+
+**source_hints (Evidence Transparency):**
+- `proposal`: 가입설계서 (Universe Lock SSOT)
+- `summary`: 상품요약서 (customer-friendly)
+- `business_rules`: 사업방법서 (operational rules)
+- `policy`: 약관 (legal interpretation)
+
+**Constitutional Compliance:**
+- ✅ PRIME results IMMUTABLE (presentation only)
+- ✅ No coverage integration/judgment
+- ✅ No canonical code exposure to customers
+- ✅ No recommendations/優劣 comparison
+- ✅ Fact-based description only
+- ✅ Deterministic output (same input → same structure)
+
+**Forbidden Expressions (Hard Ban):**
+- ❌ "사실상 같은 담보" / "유사한 담보"
+- ❌ "추천합니다" / "선택하세요"
+- ❌ "더 유리함" / "더 나은"
+- ❌ Shinjeongwon code mentions in customer output
+
+**Allowed Expressions:**
+- ✅ "5,000만원 (최초 1회)"
+- ✅ "가입설계서 기준"
+- ✅ "약관 확인 필요"
+- ✅ Status labels (mapped/unmapped/structural)
+
+**Generated Files:**
+- `docs/ui/STEP_NEXT3_OUTPUT_SCHEMA.md` (full specification + JSON examples)
+
+**DoD Achievement:**
+- ✅ Fixed 4-block structure defined
+- ✅ JSON Schema with complete examples
+- ✅ A2 user selection format specified
+- ✅ Frontend-ready (no ambiguity in structure)
+- ✅ PRIME/STEP 3.x results untouched
+- ✅ Constitutional compliance verified
+
+**Integration:**
+- Output format ready for frontend implementation
+- Backend generates JSON matching this schema
+- Frontend renders blocks in fixed order
+
+**Key Principle:**
+- **Presentation Layer ONLY**: No business logic, no state changes, no inference
+- **View Model**: Transforms PRIME results → customer-readable format
+- **Fixed Structure**: Same input → same output structure guaranteed
+
+---
 
 ### ✅ STEP 4.2: Customer Response Enhancement (Structural UNMAPPED Handling)
 **Commit:** 00b5c70 | **Date:** 2025-12-26
