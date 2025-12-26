@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-7 Complete (Admin Mapping Workbench)
-**Project Health:** ✅ ACTIVE - Admin Mapping Resolution Pipeline Complete
+**Current Phase:** STEP NEXT-8A Complete (SSOT Entry Point Lock)
+**Project Health:** ✅ ACTIVE - Constitutional Guardrails Hardened
 
 ---
 
@@ -24,6 +24,63 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP NEXT-8A: CLAUDE.md SSOT Entry Point Lock (Complete)
+**Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- CLAUDE.md 최상단에 SSOT 배너 섹션 추가 (🔴 SSOT ENTRY POINT)
+- 고객 요구사항 범위 선언 (Customer Intent Lock)
+- 보험료/요율 기능 보류 원칙 명문화
+- Claude 작업 방식 강제 규칙 추가
+- 대화 기억/추론 의존 차단, 레포 내 CLAUDE.md = 유일한 실행 헌법
+
+**목적:**
+- Claude의 암묵적 추론/대화 기억 의존을 완전히 차단
+- CLAUDE.md + data/inca-dio.pdf를 유일한 작업 기준으로 고정
+- 뺑뺑이 방지 (무엇을 하고, 무엇을 하지 않는지 명시)
+
+**추가된 섹션:**
+1. **🔴 SSOT ENTRY POINT (MANDATORY)**
+   - 고객 요구사항 단일 출처: data/inca-dio.pdf
+   - 현재 단계 사용 데이터: 보험용어, 가입설계서, 약관, 사업방법서, 상품요약서
+   - 현재 단계 보류: data/호출_api/ (보험료 기능)
+   - UI 목표: ChatGPT 스타일 (좌측 질의, 우측 근거 패널)
+   - 금지 사항: 추천/우열/해석/추론
+   - 작업 시작 규칙: CLAUDE.md + inca-dio.pdf 필수 확인
+
+2. **고객 요구사항 범위 선언 (Customer Intent Lock)**
+   - 1차 목표: 보험상품 AI 가이드 (ChatGPT UI)
+   - FAQ ①⑦, 예제 14 = 기능 요구사항 (참고 예시 아님)
+   - 시스템 목적: 질의 구조화 + 가입설계서 기준 비교 + 근거 제시
+   - 보험료 계산/비교: 현 범위 제외
+
+3. **보험료/요율 기능 보류 원칙**
+   - data/호출_api/ = 읽기/구현/연결 금지
+   - 보험료 기능은 별도 STEP (UI/비교/담보 구조 고정 이후)
+
+4. **Claude 작업 방식 (강제)**
+   - CLAUDE.md 범위 밖 변경 금지 (문서 수정 PR 먼저)
+   - "뭘 더 해줄까?" 질문 금지
+   - 응답 유형: 설계/구현/문서 수정/보류 사유 명시만 허용
+
+**DoD Achievement:**
+- ✅ CLAUDE.md 최상단에 SSOT 배너 추가
+- ✅ 고객 요구사항 범위 / 보험료 보류 규칙 명문화
+- ✅ Claude 작업 방식 강제 섹션 추가
+- ✅ STATUS.md 업데이트 (NEXT-8A 항목)
+- ⏳ git commit + push (pending)
+
+**Constitutional Compliance:**
+- ✅ 구현이 아닌 헌법 정비 (documentation only)
+- ✅ 추론/설계 확장/기능 추가 없음
+- ✅ 문서 현행화에만 집중
+
+**Next Steps:**
+- Git commit + push
+- 이후 모든 작업은 CLAUDE.md + inca-dio.pdf 기준으로만 진행
+
+---
 
 ### ✅ STEP NEXT-7: Admin Mapping Workbench (Complete)
 **Commit:** 946e1e4 | **Date:** 2025-12-26
