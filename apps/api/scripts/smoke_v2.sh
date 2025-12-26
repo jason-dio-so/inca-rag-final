@@ -169,11 +169,11 @@ else
 fi
 
 # ============================================
-# Test 8: Coverage Evidence (STEP NEXT-AE)
+# Test 8: Coverage Evidence (STEP NEXT-AE-FIX)
 # ============================================
 
 echo
-echo "📋 Test 8: Coverage Evidence (문서 기반 추출)..."
+echo "📋 Test 8: Coverage Evidence (문서 기반 추출 + 헌법 검증)..."
 
 # Check v2.coverage_evidence table exists
 EVIDENCE_TABLE_CHECK=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
@@ -185,6 +185,28 @@ if [ "$EVIDENCE_TABLE_CHECK" = "t" ]; then
         "SELECT COUNT(*) FROM v2.coverage_evidence;" | xargs)
 
     echo "✅ v2.coverage_evidence: $TOTAL_EVIDENCE_COUNT evidence(s) total"
+
+    # STEP NEXT-AE-FIX: Constitutional validation (source_doc_type)
+    # 허용된 source_doc_type: policy, business_rules, product_summary
+    # 금지: proposal (가입설계서는 Evidence 출처가 될 수 없음)
+    INVALID_SOURCE_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_evidence WHERE source_doc_type NOT IN ('policy', 'business_rules', 'product_summary');" | xargs)
+
+    if [ "$INVALID_SOURCE_COUNT" -eq 0 ]; then
+        echo "✅ All evidence sources are valid (policy/business_rules/product_summary)"
+    else
+        echo "❌ FAILED: Found $INVALID_SOURCE_COUNT evidence(s) with invalid source_doc_type"
+        echo "   Allowed: policy, business_rules, product_summary"
+        echo "   Forbidden: proposal (가입설계서는 Evidence 출처가 될 수 없음)"
+        psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+            "SELECT '     - ' || source_doc_type || ': ' || COUNT(*) || ' evidence(s)' FROM v2.coverage_evidence WHERE source_doc_type NOT IN ('policy', 'business_rules', 'product_summary') GROUP BY source_doc_type;"
+        exit 1
+    fi
+
+    # source_doc_type distribution
+    echo "   Source distribution:"
+    psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT '     - ' || source_doc_type || ': ' || COUNT(*) FROM v2.coverage_evidence GROUP BY source_doc_type ORDER BY source_doc_type;"
 
     # Check for "문서 기반" evidence (exclude manual_v1 from auto-extraction count)
     DOCUMENT_BASED_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \

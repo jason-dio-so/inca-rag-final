@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """
-STEP NEXT-AE: Coverage Evidence Extraction (Document-Based, Deterministic)
+STEP NEXT-AE-FIX: Coverage Evidence Extraction (Document-Based, Deterministic)
 
-Constitutional Principles:
+Constitutional Principles (STEP NEXT-AE-FIX):
 - PDF = Layout Document (not text)
 - Structure-First: 목차/헤더/섹션 파악 → Evidence 추출
 - Deterministic only (no LLM inference)
 - Evidence = excerpt + page + source_doc_type
+- **Evidence 출처 제한**: 약관 / 사업방법서 / 상품요약서만 허용
+- **가입설계서는 Evidence 출처가 될 수 없음** (Comparison Layer 전용)
+
+Evidence Definition (Constitutional):
+1. ✅ PDF 문서 기반
+2. ✅ Deterministic 추출 (Structure / Rule 기반)
+3. ✅ 출처: policy / business_rules / product_summary
+4. ✅ 메타데이터 필수: source_doc_type, source_page, excerpt
 
 Extraction Process:
 1. Load MAPPED coverages from v2.coverage_mapping
-2. Locate policy/business_rules PDFs for product
+2. Locate policy/business_rules/product_summary PDFs for product
 3. Find sections: 정의, 지급사유, 면책(또는 감액)
 4. Extract excerpts + page references
 5. Store to v2.coverage_evidence
@@ -21,11 +29,18 @@ Evidence Types:
 - exclusion: 면책 사항 (예: "다음의 경우에는 보험금을 지급하지 않습니다...")
 - partial_payment: 감액 규칙 (선택적)
 
+Allowed source_doc_type (Hard Rule):
+- 'policy' (약관)
+- 'business_rules' (사업방법서)
+- 'product_summary' (상품요약서)
+
 금지 사항:
+- ❌ 가입설계서를 Evidence 출처로 사용
 - ❌ LLM 기반 추론/매핑
 - ❌ Vector/Embedding 기반 검색
 - ❌ 임의 sample evidence INSERT
 - ❌ coverage_code 추론
+- ❌ page / source_doc_type 없는 Evidence
 """
 
 import hashlib
@@ -394,9 +409,22 @@ def insert_evidence(
     """
     Insert evidence into v2.coverage_evidence (idempotent).
 
+    Constitutional Validation (STEP NEXT-AE-FIX):
+    - source_doc_type must be: policy, business_rules, or product_summary
+    - Proposal documents are NOT allowed as evidence source
+
     Idempotency:
     - excerpt_hash로 중복 방지
     """
+    # Constitutional validation: source_doc_type
+    ALLOWED_SOURCE_DOC_TYPES = ['policy', 'business_rules', 'product_summary']
+    if source_doc_type not in ALLOWED_SOURCE_DOC_TYPES:
+        raise ValueError(
+            f"Invalid source_doc_type: '{source_doc_type}'. "
+            f"Allowed values: {ALLOWED_SOURCE_DOC_TYPES}. "
+            f"Proposal documents cannot be used as evidence source."
+        )
+
     # excerpt_hash 생성
     excerpt_hash = hashlib.sha256(excerpt.encode('utf-8')).hexdigest()[:16]
 
