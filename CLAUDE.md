@@ -760,6 +760,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AH-1: Excel Alias 강제 적용 (Query → Canonical → Universe Recall Lock)
 - ✅ STEP NEXT-AH-2: Cancer Coverage Canonical Split (4 canonical codes: GENERAL/SIMILAR/IN_SITU/BORDERLINE)
 - ✅ STEP NEXT-AH-3: Cancer Scope Evidence Extraction & Split Gatekeeping (Policy Evidence ONLY)
+- ✅ STEP NEXT-AH-4: Policy Evidence Retrieval Wiring + Evidence Typing (DEFINITION vs SEPARATE_BENEFIT)
 
 **현재 브랜치**: `main`
 
@@ -801,6 +802,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-27 | Query Interpretation | Query → DB raw name direct match | Query → Excel Alias Index → Canonical Code → Universe Recall (AH-1) | SAMSUNG "암 진단비" 등 표현 차이로 인한 리콜 누락 방지, 8개 보험사 암 담보 전수 감사 완료 |
 | 2025-12-27 | Cancer Canonical | "암진단비" 단일 코드 | 4종 분리: CA_DIAG_GENERAL/SIMILAR/IN_SITU/BORDERLINE (AH-2) | "암진단비"는 하나의 담보가 아니라 구조적으로 분해해야 할 개념, Evidence 기반 Canonical 결정 프레임워크 구축 |
 | 2025-12-27 | Canonical Split Decision | Name-based heuristic allowed for canonical code confirmation | Policy Evidence ONLY (AH-3) | Name-based patterns → hint only (debug/audit), Final canonical code requires policy evidence with doc_id+page+span_text |
+| 2025-12-27 | Evidence Interpretation | All policy spans treated equally for scope determination | Evidence Typing: DEFINITION_INCLUDED vs SEPARATE_BENEFIT vs EXCLUSION (AH-4) | "유사암 정의에 제자리암 포함" ≠ "제자리암 별도 담보", Policy evidence retrieval wiring (deterministic keyword-based) |
 
 ---
 

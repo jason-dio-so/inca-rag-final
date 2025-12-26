@@ -85,18 +85,27 @@ class CanonicalSplitMapper:
     """
     Maps coverage instances to cancer canonical codes.
 
-    AH-3 Constitutional Rule:
+    AH-3 + AH-4 Constitutional Rule:
     - ONLY policy evidence can decide canonical codes
     - Name-based patterns produce hints only (for debug)
     - If no policy evidence → split_method = "undecided"
+    - Policy evidence retrieval via PolicyEvidenceStore (AH-4)
     """
 
-    def __init__(self):
-        self.detector = CancerScopeDetector()
+    def __init__(self, policy_store=None):
+        """
+        Initialize mapper.
 
-    def split_coverage(
+        Args:
+            policy_store: Optional PolicyEvidenceStore for DB retrieval (AH-4)
+        """
+        self.detector = CancerScopeDetector()
+        self.policy_store = policy_store
+
+    async def split_coverage(
         self,
         coverage_name_raw: str,
+        insurer_code: Optional[str] = None,
         policy_documents: Optional[List[Dict[str, Any]]] = None,
         coverage_id: Optional[str] = None,
         recalled_candidates: Optional[Set[CancerCanonicalCode]] = None,
@@ -106,23 +115,40 @@ class CanonicalSplitMapper:
 
         Args:
             coverage_name_raw: Raw coverage name from proposal
-            policy_documents: Optional policy documents for evidence
+            insurer_code: Optional insurer code for DB retrieval (AH-4)
+            policy_documents: Optional policy documents for evidence (backward compat)
             coverage_id: Optional coverage ID for policy lookup
             recalled_candidates: Optional recalled candidates from AH-1 Excel Alias
 
         Returns:
             CoverageSplitResult with decided_canonical_codes (if evidence exists)
 
-        AH-3 Logic:
-        1. Try policy evidence ONLY
-        2. If no policy evidence → return undecided (with hint)
-        3. DO NOT use name-based heuristic for final decision
+        AH-3 + AH-4 Logic:
+        1. Fetch policy evidence from DB (if policy_store available)
+        2. Fall back to policy_documents parameter (backward compat)
+        3. Try policy evidence ONLY
+        4. If no policy evidence → return undecided (with hint)
+        5. DO NOT use name-based heuristic for final decision
         """
         # Extract hint from name (for debug/audit only)
         hint = self.detector.extract_hint_from_coverage_name(coverage_name_raw)
 
-        # Try policy evidence first
-        if policy_documents and coverage_id:
+        # AH-4: Fetch policy evidence from DB if available
+        if not policy_documents and self.policy_store and insurer_code:
+            try:
+                policy_documents = await self.policy_store.get_policy_spans_for_cancer(
+                    insurer_code=insurer_code,
+                    coverage_id=coverage_id,
+                    coverage_name_key=coverage_name_raw,
+                    limit=20,
+                )
+            except Exception as e:
+                # Log error but don't fail (fall back to undecided)
+                print(f"Warning: Policy evidence retrieval failed: {e}")
+                policy_documents = None
+
+        # Try policy evidence
+        if policy_documents:
             evidence = build_scope_evidence_from_policy(policy_documents, coverage_id)
             if evidence and evidence.confidence in ["evidence_strong", "evidence_weak"]:
                 # Attach hint to evidence

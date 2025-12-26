@@ -14,6 +14,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
 from .cancer_canonical import CancerScopeEvidence, NameBasedHint
+from .cancer_evidence_typer import CancerEvidenceType, CancerEvidenceTyper
 
 
 @dataclass
@@ -86,13 +87,21 @@ class CancerScopeDetector:
         Returns:
             CancerScopeEvidence with scope flags
 
-        Logic (Deterministic):
-        1. Search for inclusion patterns (일반암, 유사암, etc.)
-        2. Search for exclusion patterns (제외, 않는, etc.)
-        3. Combine to determine scope
+        Logic (Deterministic + Evidence Typing AH-4):
+        1. Classify evidence type (DEFINITION_INCLUDED / EXCLUSION / SEPARATE_BENEFIT)
+        2. Search for cancer type patterns
+        3. Apply evidence type rules:
+           - DEFINITION_INCLUDED: Set parent scope only (e.g., SIMILAR), NOT sub-types
+           - SEPARATE_BENEFIT: Allow sub-type scope (e.g., IN_SITU)
+           - EXCLUSION: Disable specified scopes
         4. Conservative: if unclear → False (don't include)
         """
         text_lower = policy_text.lower()
+
+        # AH-4: Classify evidence type first
+        typer = CancerEvidenceTyper()
+        type_result = typer.classify_evidence(policy_text)
+        evidence_type = type_result.evidence_type
 
         # Detect inclusions (initial broad detection)
         includes_general = CancerScopeDetector._detect_pattern(
@@ -108,12 +117,36 @@ class CancerScopeDetector:
             text_lower, CancerScopeDetector.BORDERLINE_PATTERNS
         )
 
-        # Filter out "별도" context
-        # If "X와 별도" appears, don't include X
-        if re.search(r"유사암.*별도", text_lower) or re.search(r"별도.*유사암", text_lower):
-            includes_similar = False
-        if re.search(r"일반암.*별도", text_lower) or re.search(r"별도.*일반암", text_lower):
-            includes_general = False
+        # AH-4: Apply evidence type rules
+        if evidence_type == CancerEvidenceType.DEFINITION_INCLUDED:
+            # "유사암은 ... 제자리암/경계성종양을 포함"
+            # → Keep SIMILAR, but suppress IN_SITU/BORDERLINE as separate canonicals
+            # (They're just part of the definition, not separate benefits)
+            if includes_similar:
+                # Keep similar, but clear sub-types
+                includes_in_situ = False
+                includes_borderline = False
+            # If not similar, allow other flags as-is
+
+        elif evidence_type == CancerEvidenceType.SEPARATE_BENEFIT:
+            # "제자리암 별도 지급/별도 담보"
+            # → Allow sub-type flags (IN_SITU, BORDERLINE)
+            # Clear parent type if mentioned in "별도" context
+            if re.search(r"유사암.*별도", text_lower) or re.search(r"별도.*유사암", text_lower):
+                includes_similar = False
+            if re.search(r"일반암.*별도", text_lower) or re.search(r"별도.*일반암", text_lower):
+                includes_general = False
+
+        elif evidence_type == CancerEvidenceType.EXCLUSION:
+            # Exclusion logic handled below
+            pass
+
+        else:  # UNKNOWN
+            # Apply conservative "별도" filter
+            if re.search(r"유사암.*별도", text_lower) or re.search(r"별도.*유사암", text_lower):
+                includes_similar = False
+            if re.search(r"일반암.*별도", text_lower) or re.search(r"별도.*일반암", text_lower):
+                includes_general = False
 
         # Detect exclusions
         has_exclusion = CancerScopeDetector._detect_pattern(
@@ -147,13 +180,16 @@ class CancerScopeDetector:
 
         confidence = "evidence_strong" if has_any_match else "unknown"
 
-        # Build evidence spans
+        # Build evidence spans (AH-4: include evidence_type)
         evidence_spans = [{
             "doc_id": policy_span.document_id,
             "doc_type": "policy",
             "page": policy_span.page,
             "span_text": policy_span.span_text,
-            "rule_id": "cancer_scope_detector_v1",
+            "rule_id": "cancer_scope_detector_v2_ah4",
+            "evidence_type": evidence_type.value,
+            "type_confidence": type_result.confidence,
+            "type_matched_pattern": type_result.matched_pattern,
         }] if has_any_match else None
 
         return CancerScopeEvidence(
@@ -211,14 +247,14 @@ class CancerScopeDetector:
 
 
 def build_scope_evidence_from_policy(
-    policy_documents: List[Dict[str, Any]], coverage_id: str
+    policy_documents: List[Dict[str, Any]], coverage_id: Optional[str] = None
 ) -> Optional[CancerScopeEvidence]:
     """
     Build CancerScopeEvidence from policy documents.
 
     Args:
         policy_documents: List of policy document chunks
-        coverage_id: Coverage ID to find evidence for
+        coverage_id: Optional coverage ID (for compatibility)
 
     Returns:
         CancerScopeEvidence if found, None otherwise
@@ -226,12 +262,12 @@ def build_scope_evidence_from_policy(
     Logic:
     1. Search for coverage definition in policy documents
     2. Extract relevant text span
-    3. Run CancerScopeDetector.detect_scope_from_text()
+    3. Run CancerScopeDetector.detect_scope_from_text() with evidence typing
     4. Return evidence with metadata
 
-    Constitutional Requirement (AH-3):
+    Constitutional Requirement (AH-3 + AH-4):
     - MUST return evidence with doc_id, page, span_text
-    - MUST use deterministic pattern matching only
+    - MUST use deterministic pattern matching + evidence typing
     - NO LLM inference allowed
     """
     if not policy_documents:
