@@ -35,6 +35,27 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-AE-FIX: Comparison/Evidence 레이어 분리 (헌법 고정)
+**Commit:** b66e1c3
+**Summary:** 문서별 역할 명확화 및 Evidence 정의 헌법 고정. Comparison vs Evidence 레이어 완전 분리.
+**DoD:** ✅ Pass
+
+**Constitutional Changes:**
+- 문서별 역할 고정 (Hard Rule): 가입설계서(Comparison) vs 약관/사업방법서/상품요약서(Evidence)
+- Evidence 정의: source_doc_type (policy/business_rules/product_summary만), 가입설계서 금지
+- System Layer: Comparison (32 rows) vs Evidence (6 rows) 분리
+
+**Code Changes:**
+- CLAUDE.md: § 문서 우선순위 원칙 확장 (문서별 역할 고정, Evidence 정의, 레이어 분리)
+- ae_extract_evidence.py: source_doc_type validation (Constitutional)
+- smoke_v2.sh Test 8: Evidence 헌법 검증 추가
+
+**Validation:**
+- ✅ All evidence sources valid (policy: 6, violations: 0)
+- ✅ smoke_v2.sh PASSED (Constitutional validation)
+
+---
+
 #### ✅ STEP NEXT-AE: Coverage 조건/정의 Evidence 연결 (문서 기반 추출)
 **Commit:** a2b72c0
 **Summary:** Structure-First 약관 추출 파이프라인 구현. Universe → Mapping → Evidence E2E 연결 검증 완료.
