@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-3 Complete (UI Output Format Schema)
-**Project Health:** ✅ ACTIVE - Presentation Layer Standardized
+**Current Phase:** STEP NEXT-3 Complete (UI Layout Specification)
+**Project Health:** ✅ ACTIVE - ChatGPT-Style UI Structure Fixed
 
 ---
 
@@ -25,87 +25,141 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP NEXT-3: UI Output Format Schema (Fixed Presentation Layer)
-**Commit:** 1270a87 | **Date:** 2025-12-26
+### ✅ STEP NEXT-3: UI Layout Specification (ChatGPT-Style MVP)
+**Commit:** [pending] | **Date:** 2025-12-26
 
 **Summary:**
-- Defined fixed 4-block output format for ChatGPT-style insurance comparison MVP
-- JSON Schema for frontend-ready presentation layer (view model only)
-- Fact-based comparison output (no inference, no judgment, no recommendations)
-- A2 user selection format for label disambiguation (표기 차이 해결)
+- Fixed 3-Block ChatGPT-style UI layout specification for insurance comparison MVP
+- Fact-only presentation layer (absolutely no inference, judgment, or recommendations)
+- Constitutional compliance enforced (prohibited phrases, canonical coverage rule)
+- 8 concrete examples covering standard/edge/special cases
 
-**4-Block Structure:**
-1. **summary_block**: Comparison status (full/limited/confirmation_required) + summary text
-2. **comparison_table_block**: Insurer × Coverage × Amount/Conditions table
-3. **insurer_explanation_block[]**: Per-insurer coverage explanations with source hints
-4. **user_action_block**: User selection UI for disambiguation (A2)
+**3-Block Structure (Fixed):**
+```
+[BLOCK 0] User Query (Chat Header)
+[BLOCK 1] Coverage Snapshot
+[BLOCK 2] Fact Table (Coverage Comparison)
+[BLOCK 3] Evidence Panels (Accordion)
+```
 
-**A2 User Selection (Label Disambiguation):**
-- Trigger: "암 진단비" vs "암진단비" (표기 차이)
-- Effect: `subsequent_query_refinement_only` (no PRIME state changes)
-- Selection scope: `current_session_only` (no permanent mapping changes)
-- System does NOT judge "same coverage" - user chooses for query refinement only
+**Constitutional Principles (Hard Enforced):**
+1. **Fact-only**: All data from document evidence, no inference
+2. **No Recommendation**: Absolutely no "better/recommended" language
+3. **Presentation Layer Only**: No business logic in UI
+4. **Canonical Coverage Rule**: Normalized coverage names in tables
 
-**comparison_status Values:**
-| Status | Meaning |
-|--------|---------|
-| `full` | All coverages comparable |
-| `limited` | Some UNMAPPED/STRUCTURAL cases |
-| `confirmation_required` | User selection needed (A2) |
+**Block Definitions:**
 
-**Cell Status in Comparison Table:**
-| Status | Display |
-|--------|---------|
-| `mapped` | Normal display (amount + conditions) |
-| `unmapped` | Grey + "매핑 정보 없음" |
-| `structural` | Grey + "해당 담보 없음" (Universe Lock) |
+**BLOCK 0 (User Query):**
+- User question displayed exactly as asked (1 line)
+- No rephrasing, no internal processing info
 
-**source_hints (Evidence Transparency):**
-- `proposal`: 가입설계서 (Universe Lock SSOT)
-- `summary`: 상품요약서 (customer-friendly)
-- `business_rules`: 사업방법서 (operational rules)
-- `policy`: 약관 (legal interpretation)
+**BLOCK 1 (Coverage Snapshot):**
+- Normalized coverage name (canonical)
+- Insurer list + amounts
+- NO comparative judgments ("동일함", "차이 없음" prohibited)
 
-**Constitutional Compliance:**
-- ✅ PRIME results IMMUTABLE (presentation only)
-- ✅ No coverage integration/judgment
-- ✅ No canonical code exposure to customers
-- ✅ No recommendations/優劣 comparison
-- ✅ Fact-based description only
-- ✅ Deterministic output (same input → same structure)
+**BLOCK 2 (Fact Table):**
+| 보험사 | 담보명(정규화) | 보장금액 | 지급 조건 요약 | 보험기간 | 비고 |
 
-**Forbidden Expressions (Hard Ban):**
-- ❌ "사실상 같은 담보" / "유사한 담보"
-- ❌ "추천합니다" / "선택하세요"
-- ❌ "더 유리함" / "더 나은"
-- ❌ Shinjeongwon code mentions in customer output
+- Slot-based conditions only (waiting_period, payment_frequency, etc.)
+- NO sentence rewriting or interpretation
+- UNMAPPED/AMBIGUOUS tags in 비고 column
 
-**Allowed Expressions:**
-- ✅ "5,000만원 (최초 1회)"
-- ✅ "가입설계서 기준"
-- ✅ "약관 확인 필요"
-- ✅ Status labels (mapped/unmapped/structural)
+**BLOCK 3 (Evidence Panels):**
+- Collapsible per-insurer accordion
+- Document type + page + original text span (max 200 chars)
+- NO rewriting, NO summarization, NO interpretation
+
+**Special Comparison Cases:**
+
+1. **경계성종양/제자리암/유사암** (Definition-based):
+   | 보험사 | 질병 유형 | 보장 여부 | 지급 비율 | 정의 근거 |
+
+2. **다빈치/로봇 수술비** (Method-based):
+   | 보험사 | 수술 방식 | 보장 담보 | 금액 | 제한 조건 |
+
+**Edge Cases Handled:**
+- UNMAPPED coverage: Tag + "(UNMAPPED)" in 비고
+- AMBIGUOUS mapping: Tag + "(AMBIGUOUS - 수동 매핑 필요)"
+- Out of Universe: Separate message (no 3-Block rendering)
+- Missing evidence: "(근거 없음)" in evidence panel
+
+**Prohibited Expressions (Hard Ban):**
+- ❌ "더 좋다", "유리하다", "불리하다"
+- ❌ "추천", "권장"
+- ❌ "우수", "뛰어남"
+- ❌ "동일함", "차이 없음"
+- ❌ "A사가 B사보다..."
+- ❌ "종합적으로 볼 때..."
+
+**Allowed Expressions (Fact-based):**
+- ✅ "대기기간: 90일"
+- ✅ "지급 횟수: 최초 1회"
+- ✅ "제외 범위: 유사암, 갑상선암"
+- ✅ "(약관 확인 필요)"
+- ✅ "(UNMAPPED)", "(AMBIGUOUS)"
 
 **Generated Files:**
-- `docs/ui/STEP_NEXT3_OUTPUT_SCHEMA.md` (full specification + JSON examples)
+- `docs/ui/STEP_NEXT3_UI_LAYOUT.md` (full specification with 11 sections)
+- `docs/ui/STEP_NEXT3_UI_EXAMPLES.md` (8 concrete examples)
+
+**Examples (8 scenarios):**
+1. Standard cancer diagnosis (암 진단비)
+2. Borderline tumor (경계성종양) - definition-based table
+3. Robotic surgery (다빈치 수술비) - method-based table
+4. UNMAPPED coverage (edge case)
+5. Out of Universe (edge case)
+6. AMBIGUOUS mapping (edge case)
+7. Missing evidence (slot unknown)
+8. Multiple coverage variants (same canonical)
+
+**Data Flow:**
+```
+Backend (View Model JSON)
+  ↓
+Frontend (3-Block Renderer)
+  ↓
+User Display
+```
+
+**Frontend/Backend Separation:**
+- Backend: Comparison logic, slot extraction, evidence retrieval, View Model assembly
+- Frontend: Rendering only, accordion interaction, NO data processing
+
+**Validation Checklist:**
+- ✅ No judgment/recommendation phrases
+- ✅ All amounts have evidence
+- ✅ No rewriting of original text
+- ✅ Canonical coverage names used
+- ✅ Prohibited elements (opinion, icon, color) absent
+- ✅ 3-Block structure strictly followed
+
+**Constitutional Compliance:**
+- ✅ Coverage Universe Lock: BLOCK 2 uses normalized names
+- ✅ Document Priority: Evidence panels show doc_type hierarchy
+- ✅ Deterministic Output: Same input → same structure
+- ✅ No LLM Inference: All text from evidence or slots
+- ✅ Presentation Layer Only: Zero business logic in UI
 
 **DoD Achievement:**
-- ✅ Fixed 4-block structure defined
-- ✅ JSON Schema with complete examples
-- ✅ A2 user selection format specified
-- ✅ Frontend-ready (no ambiguity in structure)
-- ✅ PRIME/STEP 3.x results untouched
-- ✅ Constitutional compliance verified
+- ✅ Fixed 3-Block structure defined
+- ✅ 11-section specification document
+- ✅ 8 concrete examples (standard + edge + special)
+- ✅ Prohibited phrases list (hard ban)
+- ✅ Frontend-ready (no ambiguity)
+- ✅ Constitutional compliance matrix
+- ✅ Ready for STEP NEXT-4 (JSON Schema definition)
 
-**Integration:**
-- Output format ready for frontend implementation
-- Backend generates JSON matching this schema
-- Frontend renders blocks in fixed order
+**Next Steps:**
+1. STEP NEXT-4: JSON Schema Definition (formalize View Model)
+2. Backend API Implementation (/api/compare View Model assembly)
+3. Frontend Component Development (React/Vue 3-block renderer)
 
 **Key Principle:**
-- **Presentation Layer ONLY**: No business logic, no state changes, no inference
-- **View Model**: Transforms PRIME results → customer-readable format
-- **Fixed Structure**: Same input → same output structure guaranteed
+- **UI = View Model = Presentation Layer ONLY**
+- **No inference, no judgment, no recommendation, ever.**
+- **Same input → same output structure guaranteed.**
 
 ---
 
