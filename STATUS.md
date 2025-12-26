@@ -35,6 +35,23 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-Z: New Schema v2 Bootstrap
+**Commit:** (pending)
+**Summary:** SSOT 기반 v2 schema 설계 완료 (insurer enum + product_id + template_id)
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- docs/db/schema_v2.sql (실행 가능 DDL, v2 schema 분리)
+- docs/db/V2_TABLE_MAP_PROPOSAL.md (추출→테이블 매핑 규칙)
+- docs/db/LEGACY_FREEZE_PLAN.md (public schema READ-ONLY 동결 계획)
+
+**Key Changes:**
+- DB 분리 전략: A안 (같은 DB 내 schema 분리, public vs v2)
+- Legacy public schema: READ-ONLY audit trail 동결 (DROP 금지)
+- v2 schema: insurer 8-enum, product_id (insurer+code), template_id (product+version+fingerprint)
+
+---
+
 #### ✅ STEP NEXT-Y: Provenance Audit + Route Alignment
 **Commit:** (pending)
 **Summary:** DB/Container/Repo 완전 provenance 분석 + SSOT 정합 결론
