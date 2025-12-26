@@ -762,6 +762,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AH-3: Cancer Scope Evidence Extraction & Split Gatekeeping (Policy Evidence ONLY)
 - ✅ STEP NEXT-AH-4: Policy Evidence Retrieval Wiring + Evidence Typing (DEFINITION vs SEPARATE_BENEFIT)
 - ✅ STEP NEXT-AH-5: Cancer Canonical Decision → Compare Pipeline Hard Wiring (recalled vs decided, meta row filter)
+- ✅ STEP NEXT-AH-6: Compare Pipeline End-to-End Integration (CancerCompareIntegration → /compare, meta filter → ingestion, legacy pattern removal)
 
 **현재 브랜치**: `main`
 
