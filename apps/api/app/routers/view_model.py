@@ -74,10 +74,18 @@ async def compare_view_model(
                 schema = load_schema()
                 validate_view_model(view_model_dict, schema)
             except Exception as validation_error:
-                # Fail-fast: Schema validation failure is a critical error
+                # Schema validation failed → DATA_INSUFFICIENT
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"ViewModel schema validation failed: {str(validation_error)}"
+                    status_code=424,  # Failed Dependency
+                    detail={
+                        "error_code": "DATA_INSUFFICIENT",
+                        "message": "ViewModel 생성에 필요한 근거/매핑 데이터가 부족합니다.",
+                        "hints": [
+                            "비교 가능한 데이터가 없거나 매핑되지 않았습니다.",
+                            "docs/testing/TEST_DATA_SETUP.md를 확인하세요.",
+                            f"Schema error: {str(validation_error)[:200]}"
+                        ]
+                    }
                 )
 
         return view_model_dict
@@ -88,18 +96,21 @@ async def compare_view_model(
     except Exception as e:
         import psycopg2
         import logging
+        import jsonschema
 
         logger = logging.getLogger(__name__)
         logger.error(f"ViewModel assembly error: {e}", exc_info=True)
 
-        # Provide specific error codes for common failures
+        # Classify error type
         error_detail = str(e)
-        error_code = "VIEWMODEL_ASSEMBLY_ERROR"
+        error_code = "INTERNAL_ERROR"
+        status_code = 500
         hints = []
 
-        # Check for DB connection errors
+        # 1. DB Connection Errors
         if isinstance(e, psycopg2.OperationalError):
             error_code = "DB_CONN_FAILED"
+            status_code = 500
             if "password authentication failed" in error_detail:
                 hints.append("DB_PASSWORD mismatch")
                 hints.append("Run: python apps/api/scripts/db_doctor.py")
@@ -110,15 +121,31 @@ async def compare_view_model(
                 hints.append("Database name mismatch")
                 hints.append("Expected: DB_NAME=inca_rag_final")
 
+        # 2. Schema Validation Errors (Data Insufficient)
+        elif isinstance(e, (jsonschema.ValidationError, ValueError)):
+            error_code = "DATA_INSUFFICIENT"
+            status_code = 424  # Failed Dependency
+            error_detail = "ViewModel 생성에 필요한 근거/매핑 데이터가 부족합니다."
+            hints.append("docs/testing/TEST_DATA_SETUP.md를 따라 최소 데이터셋을 준비하세요.")
+            hints.append(f"Original error: {str(e)[:200]}")
+
+        # 3. ViewModel Assembly Errors (likely data issue)
+        elif "should be non-empty" in error_detail or "minItems" in error_detail:
+            error_code = "DATA_INSUFFICIENT"
+            status_code = 424
+            error_detail = "ViewModel 생성에 필요한 근거/매핑 데이터가 부족합니다."
+            hints.append("비교 가능한 데이터가 없거나 매핑되지 않았습니다.")
+            hints.append("docs/testing/TEST_DATA_SETUP.md를 확인하세요.")
+
         # Build structured error response
         error_response = {
             "error_code": error_code,
-            "detail": error_detail,
+            "message": error_detail,
         }
         if hints:
             error_response["hints"] = hints
 
         raise HTTPException(
-            status_code=500,
+            status_code=status_code,
             detail=error_response
         )

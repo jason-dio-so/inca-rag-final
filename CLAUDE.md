@@ -481,6 +481,44 @@ python apps/api/scripts/db_doctor.py
 
 ---
 
+## API Error Contract (error_code)
+
+### 절대 원칙
+**API 에러는 명시적 error_code로만 반환하며, 500은 진짜 코드 버그만 허용한다.**
+
+### Error Code 목록
+
+| error_code | HTTP Status | 의미 | Hints 예시 |
+|------------|-------------|------|-----------|
+| `DB_CONN_FAILED` | 500 | DB 접속 실패 | "Run: python apps/api/scripts/db_doctor.py" |
+| `DATA_INSUFFICIENT` | 424 | 데이터 부족 (ViewModel 생성 불가) | "docs/testing/TEST_DATA_SETUP.md를 확인하세요." |
+| `INTERNAL_ERROR` | 500 | 진짜 코드 버그 | 스택 트레이스 포함 |
+
+### 응답 구조
+```json
+{
+  "error_code": "DATA_INSUFFICIENT",
+  "message": "ViewModel 생성에 필요한 근거/매핑 데이터가 부족합니다.",
+  "hints": [
+    "비교 가능한 데이터가 없거나 매핑되지 않았습니다.",
+    "docs/testing/TEST_DATA_SETUP.md를 확인하세요."
+  ]
+}
+```
+
+### 금지 사항
+- ❌ 500에 일반 에러 메시지만 (error_code 없이)
+- ❌ hints에 추천/우열/해석 문구
+- ❌ 데이터 부족을 500으로 처리
+
+### Smoke Test
+```bash
+apps/api/scripts/smoke_compare_view_model.sh
+```
+422가 나오면 안 된다. 424(DATA_INSUFFICIENT) 또는 200만 허용.
+
+---
+
 ## Git 반영 원칙
 
 - 모든 작업은 반드시 git에 반영

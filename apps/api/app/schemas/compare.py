@@ -116,10 +116,17 @@ class ProposalCompareRequest(BaseModel):
     Enforces Universe Lock principle:
     - Only coverages in proposal_coverage_universe can be compared
     - Query resolved via deterministic rules (not LLM)
+
+    Request Formats (both supported):
+    1. Legacy: insurer_a + insurer_b (pairwise comparison)
+    2. New: insurers (list comparison, for ViewModel)
+
+    If both provided, insurers takes precedence.
     """
     query: str = Field(..., description="Coverage query (e.g., '일반암진단비', '유사암진단금', '매핑안된담보')")
-    insurer_a: Optional[str] = Field(None, description="First insurer (e.g., 'SAMSUNG')")
-    insurer_b: Optional[str] = Field(None, description="Second insurer (e.g., 'MERITZ')")
+    insurer_a: Optional[str] = Field(None, description="First insurer (e.g., 'SAMSUNG') [legacy]")
+    insurer_b: Optional[str] = Field(None, description="Second insurer (e.g., 'MERITZ') [legacy]")
+    insurers: Optional[List[str]] = Field(None, description="List of insurers (e.g., ['SAMSUNG', 'MERITZ', 'HANWHA']) [new]")
     include_policy_evidence: bool = Field(True, description="Include policy evidence for disease_scope")
 
     class Config:
