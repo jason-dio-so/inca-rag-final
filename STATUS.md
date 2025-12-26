@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-AD-FIX (신정원 통일코드 강제 검증)
+**Current Phase:** STEP NEXT-AE-0 (신정원 통일코드 SSOT 로드 완료)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -35,8 +35,24 @@
 
 ### 2025-12-26
 
-#### ✅ STEP NEXT-AD-FIX: 신정원 통일코드 강제 검증
+#### ✅ STEP NEXT-AE-0: 신정원 통일코드 SSOT 로드 (Gate)
 **Commit:** (pending)
+**Summary:** 신정원 통일코드 28개 로드 완료. v2.coverage_standard = SSOT 고정. AE 본단계 진입 가능.
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- apps/api/scripts/ae0_load_coverage_standard.py (Excel → DB loader + FK validator)
+- v2.coverage_standard: 31 rows (28신정원 codes from Excel + 3 existing)
+
+**Validation:**
+- ✅ v2.coverage_standard: 31 unique coverage codes
+- ✅ FK integrity: all coverage_mapping.canonical_coverage_code ⊆ coverage_standard
+- ✅ smoke_v2.sh PASSED
+
+---
+
+#### ✅ STEP NEXT-AD-FIX: 신정원 통일코드 강제 검증
+**Commit:** 946e9c6
 **Summary:** Universe → Coverage mapping은 반드시 신정원 통일코드로만 이루어진다. 임의 코드 제거 완료.
 **DoD:** ✅ Pass
 
@@ -44,11 +60,6 @@
 - import_universe_mapping_xlsx.py: Rule 6 추가 (신정원 코드 검증 필수)
 - smoke_v2.sh Test 7: 신정원 코드 기준 검증 (arbitrary code 감지)
 - v2.coverage_mapping: 3 valid신정원 mappings (CA_DIAG_GENERAL, CA_DIAG_SIMILAR)
-
-**Validation:**
-- ✅ v2.coverage_mapping: 3 rows (all valid신정원 codes, 0 arbitrary)
-- ✅ Import validation: 신정원 SSOT 검증 (v2.coverage_standard FK)
-- ✅ smoke_v2.sh PASSED (Test 7: Valid >= 3, Invalid = 0)
 
 ---
 
