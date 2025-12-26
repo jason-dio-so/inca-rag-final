@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-8A Complete (SSOT Entry Point Lock)
-**Project Health:** ✅ ACTIVE - Constitutional Guardrails Hardened
+**Current Phase:** STEP NEXT-8B Complete (CLAUDE.md Consistency Recovery)
+**Project Health:** ✅ ACTIVE - Constitutional Integrity Verified
 
 ---
 
@@ -25,8 +25,92 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP NEXT-8A: CLAUDE.md SSOT Entry Point Lock (Complete)
+### ✅ STEP NEXT-8B: CLAUDE.md Consistency Recovery (Complete)
 **Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- CLAUDE.md 전체 정합성 회복 (본문 규칙 ↔ Decision Change Log 일치)
+- 금지 사항 확장 (코드/데이터 + 매핑/추출 + UI/응답 레벨 분리)
+- Deterministic Compiler 적용 범위 명확화 (전 구간: 데이터 추출 ~ UI 응답)
+- Decision Change Log 추가 (변경 이력 명시적 기록)
+- 현행 시스템 상태 업데이트 (2025-12-26, main branch)
+
+**목적:**
+- 기존 문서 간 충돌 제거
+- 최신 결정 사항을 본문 규칙에 완전히 반영
+- 헌법 신뢰성 회복 (암묵적 추론 방지)
+
+**변경 성격:**
+- **규칙 수정 / 충돌 제거** (기능 추가 없음)
+- 문서 정합성 작업만 수행
+
+**주요 변경 사항:**
+
+1. **금지 사항 재구조화 (10개 → 15개)**
+   - 코드/데이터 레벨: 1~6번 (기존)
+   - 매핑/추출 레벨: 7~10번 (기존)
+   - **UI/응답 레벨: 11~15번 (신규 추가)**
+     - 추천 문구 생성 금지
+     - 우열 판단 표현 금지
+     - 해석 문구 금지
+     - 추론 기반 응답 금지
+     - LLM 생성 응답 문구 금지 (템플릿만 허용)
+
+2. **Deterministic Compiler 적용 범위 확장**
+   - Before: 데이터 추출만
+   - After: 데이터 추출 / 매핑 / **UI 응답** / **비교 결과 생성** 전 구간
+   - UI 응답 문구 생성 금지 추가
+   - 비교 결과 해석/추론 금지 추가
+   - 고정 템플릿 기반 응답 생성만 허용
+
+3. **Decision Change Log 추가**
+   - 2025-12-26 변경 사항 7건 기록
+   - "After" 내용이 본문 규칙보다 우선함을 명시
+   - 암묵적 추론 방지 목적
+
+4. **현행 시스템 상태 업데이트**
+   - 날짜: 2025-12-24 → 2025-12-26
+   - 브랜치: feature/proposal-universe-lock-v1 → main
+   - 완료 단계: NEXT-8A 포함
+   - 핵심 모듈: 최신 구조 반영
+
+**정합성 검증 체크리스트:**
+- ✅ 고객 요구사항 SSOT (data/inca-dio.pdf) 명확히 고정
+- ✅ data/호출_api/ 보류 명시
+- ✅ ChatGPT UI 목표 구체화 (좌: 질의 / 우: 근거 패널)
+- ✅ 추천/우열/해석 금지 전 구간 적용 (UI/응답 레벨 추가)
+- ✅ Deterministic compiler UI/응답 단계까지 확장
+- ✅ Decision Change Log 본문 규칙보다 우선함 명시
+- ✅ 본문 규칙 ↔ Decision Change Log 충돌 0건
+
+**DoD Achievement:**
+- ✅ Decision Change Log ↔ 본문 규칙 충돌 제거
+- ✅ 금지 사항 UI/응답 레벨 확장 (11~15번)
+- ✅ Deterministic Compiler 전 구간 적용
+- ✅ 현행 시스템 상태 최신화
+- ✅ 새 설계·구현 추가 없음 (문서 정합성만)
+- ✅ STATUS.md NEXT-8B 기록
+- ⏳ git commit + push (pending)
+
+**Constitutional Compliance:**
+- ✅ 구현이 아닌 헌법 정비 (documentation only)
+- ✅ 추론/설계 확장/기능 추가 없음
+- ✅ 기존 결정 사항의 본문 반영만 수행
+
+**영향 범위:**
+- 문서만 (CLAUDE.md)
+- 코드 변경 없음
+- 데이터 변경 없음
+
+**다음 단계로 넘어갈 수 있는 조건:**
+- ✅ CLAUDE.md + data/inca-dio.pdf = 단일 작업 기준 확립
+- ✅ 헌법 내부 충돌 0건
+- ✅ Decision Change Log 유지보수 프로세스 확립
+
+---
+
+### ✅ STEP NEXT-8A: CLAUDE.md SSOT Entry Point Lock (Complete)
+**Commit:** ba019e2 | **Date:** 2025-12-26
 
 **Summary:**
 - CLAUDE.md 최상단에 SSOT 배너 섹션 추가 (🔴 SSOT ENTRY POINT)

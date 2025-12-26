@@ -339,16 +339,26 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ## 금지 사항 (절대)
 
+### 코드/데이터 레벨
 1. ❌ 기존 inca-rag 코드 복붙 구현
 2. ❌ 임시 로직으로 문제 회피
 3. ❌ 신정원 코드 우회
 4. ❌ synthetic chunk를 비교 결과에 노출
 5. ❌ 문서 없는 구현
-6. ❌ LLM 기반 coverage_code 추론/매핑
-7. ❌ 의미 규칙 코드 하드코딩 (YAML/테이블로 외부화)
+6. ❌ 의미 규칙 코드 하드코딩 (YAML/테이블로 외부화)
+
+### 매핑/추출 레벨
+7. ❌ LLM 기반 coverage_code 추론/매핑
 8. ❌ 가입설계서에 없는 담보 비교 (Universe Lock 위반)
 9. ❌ KCD-7 코드를 보험사 문서에서 생성
 10. ❌ disease_scope_norm 추정/자동생성 (약관 근거 필수)
+
+### UI/응답 레벨
+11. ❌ 추천 문구 생성 ("선택하세요", "권장합니다" 등)
+12. ❌ 우열 판단 표현 ("더 좋다", "유리하다", "불리하다" 등)
+13. ❌ 해석 문구 ("사실상 같은 담보", "유사한 담보" 등)
+14. ❌ 추론 기반 응답 (근거 없는 설명)
+15. ❌ LLM 생성 응답 문구 (템플릿 외 사용 금지)
 
 ---
 
@@ -410,17 +420,23 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 - 이 우선순위도 설정으로 관리
 
 ### 결정론적 추출 원칙 (Deterministic Compiler)
+
+**적용 범위**: 데이터 추출 / 매핑 / UI 응답 / 비교 결과 생성 전 구간
+
 **LLM/확률적 방법 금지 영역**:
 - ❌ coverage_code 매핑 (Excel만)
 - ❌ disease_scope_norm 생성 (약관 + 그룹 참조만)
 - ❌ KCD-7 코드 생성 (공식 배포본만)
 - ❌ canonical code 추론
+- ❌ UI 응답 문구 생성 (템플릿만 허용)
+- ❌ 비교 결과 해석/추론
 
 **규칙 기반 추출만 허용**:
 - ✅ 정규식(regex) 패턴 매칭
 - ✅ 결정론적 파싱 로직
 - ✅ 테이블/YAML 기반 룰
 - ✅ Evidence 기반 추출 (document span 참조)
+- ✅ 고정 템플릿 기반 응답 생성
 
 ---
 
@@ -486,27 +502,49 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ---
 
-## 현행 시스템 상태 (2025-12-24)
+## 현행 시스템 상태 (2025-12-26)
 
 **완료된 단계**:
 - ✅ STEP 5-A/B/C: FastAPI + Read-Only + Conditions Summary
 - ✅ STEP 6-A/B: LLM Ingestion Design + Implementation
 - ✅ STEP 6-C: Proposal Universe Lock (E2E Functional)
+- ✅ STEP NEXT-3~7: UI Layout + ViewModel + Clarify Panel + Admin Mapping Workbench
+- ✅ STEP NEXT-8A: SSOT Entry Point Lock
 
-**현재 브랜치**: `feature/proposal-universe-lock-v1`
+**현재 브랜치**: `main`
 
 **핵심 모듈**:
-- `src/proposal_universe/` (parser, mapper, extractor, compare, pipeline)
-- `migrations/step6c/` (3-tier disease code schema + universe tables)
-- `tests/test_proposal_universe_e2e.py` (Scenarios A/B/C/D)
+- `apps/api/app/` (FastAPI backend, /compare endpoint)
+- `apps/web/src/` (Next.js frontend, ChatGPT-style UI)
+- `apps/api/app/compiler/` (Deterministic compiler, rule-based)
+- `apps/api/app/view_model/` (ViewModel assembler)
+- `apps/api/app/admin_mapping/` (Admin mapping workbench)
 
-**다음 작업 예정**:
-1. 약관 파이프라인 (disease_scope_norm 채우기)
-2. Admin UI (AMBIGUOUS 매핑 수동 해결)
-3. Disease code group 관리 인터페이스
+**다음 작업**:
+- data/inca-dio.pdf 기반 요구사항 정합성 확인
+- UI/비교 구조 고정 후 보험료 기능 설계
+
+---
+
+## Decision Change Log (변경 이력)
+
+**목적**: 헌법 규칙의 변경 사항을 명시적으로 기록하여 암묵적 추론을 방지
+
+**우선순위**: 본 로그에 기록된 "After" 내용이 본문과 충돌하면, 본문을 수정해야 한다
+
+| Date | Section | Before | After | Reason |
+|------|---------|--------|-------|--------|
+| 2025-12-26 | SSOT Entry Point | (섹션 없음) | 🔴 SSOT ENTRY POINT 섹션 추가 | 대화 기억/추론 의존 차단, CLAUDE.md = 유일한 실행 헌법 |
+| 2025-12-26 | 고객 요구사항 | 암묵적 | data/inca-dio.pdf = 단일 출처 명시 | 요구사항 범위 고정 (FAQ ①⑦, 예제 14 = 기능 요구사항) |
+| 2025-12-26 | 보험료 기능 | 암묵적 보류 | data/호출_api/ 명시적 보류 (읽기/구현/연결 금지) | 현 단계 범위 명확화 |
+| 2025-12-26 | UI 목표 | 추상적 설명 | ChatGPT 스타일 고정 (좌: 질의 / 우: 근거 패널) | 목표 UI 구조 구체화 |
+| 2025-12-26 | 금지 사항 | 10개 항목 | 15개 항목 (UI/응답 레벨 5개 추가) | UI/응답 단계까지 추천/우열/해석/추론 금지 확장 |
+| 2025-12-26 | Deterministic Compiler | 데이터 추출만 | 전 구간 (데이터 추출 / 매핑 / UI 응답 / 비교 결과) | UI/응답 생성도 규칙 기반으로 제한 |
+| 2025-12-26 | 현행 시스템 상태 | 2025-12-24, branch: feature/* | 2025-12-26, branch: main, NEXT-8A 포함 | 최신 완료 단계 반영 |
 
 ---
 
 ## 본 문서는 프로젝트 헌법(Constitution)으로 간주한다
 ## 본 문서에 위배되는 구현은 허용되지 않는다
+## Decision Change Log의 "After" 내용이 본문 규칙보다 우선한다
 
