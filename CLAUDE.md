@@ -35,6 +35,34 @@
 
 ---
 
+## RAG 시스템 정의 (Constitutional)
+
+### 절대 원칙
+본 시스템은 Vector DB / Embedding 사용 여부와 무관하게 **Retrieval-Augmented Generation 시스템**으로 정의한다.
+
+### Retrieval 정의 (확장)
+- **Retrieval**: SQL / 규칙 / 인덱스 / API 호출을 포함한다
+- **Vector/Embedding**: 선택적이며 보조적이다 (1차 방법 아님)
+
+### Retrieval 우선순위 (Hard Rule)
+1. **Deterministic Evidence Retrieval** (1차 원칙)
+   - SQL 기반 조회 (proposal_coverage_universe, coverage_standard)
+   - Excel 기반 매핑 (data/담보명mapping자료.xlsx)
+   - 규칙 기반 파싱 (regex, table lookup)
+   - Document span reference (page, span_text)
+
+2. **Vector-based Retrieval** (2차 보조 수단)
+   - Deterministic 방법으로 해결 불가 시에만 사용
+   - Vector 결과는 반드시 Evidence로 검증
+   - Vector 결과만으로 응답 생성 절대 금지
+
+### 절대 금지
+- ❌ Vector 결과만으로 응답 생성
+- ❌ Embedding similarity만으로 coverage_code 매핑
+- ❌ Deterministic 방법 우회하고 Vector 사용
+
+---
+
 ## 고객 요구사항 범위 선언 (Customer Intent Lock)
 
 ### 고객의 1차 목표
