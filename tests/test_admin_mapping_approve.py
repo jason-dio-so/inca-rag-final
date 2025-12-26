@@ -1,0 +1,286 @@
+"""
+Test: Admin Mapping Approval Flow
+Constitutional: Canonical Coverage Rule enforcement
+"""
+
+import pytest
+import asyncpg
+import uuid
+from src.admin_mapping.service import AdminMappingService, ValidationError
+from src.admin_mapping.models import (
+    CreateMappingEventRequest,
+    ApproveEventRequest,
+    DetectedStatus,
+    ResolutionType,
+    EventState,
+)
+
+
+@pytest.fixture
+async def db_pool():
+    """Create test database pool"""
+    pool = await asyncpg.create_pool(
+        host="localhost",
+        port=5432,
+        user="postgres",
+        password="postgres",
+        database="inca_test",
+    )
+    yield pool
+    await pool.close()
+
+
+@pytest.fixture
+async def admin_service(db_pool):
+    """Create admin service instance"""
+    return AdminMappingService(db_pool)
+
+
+@pytest.fixture
+async def sample_event(admin_service: AdminMappingService):
+    """Create sample UNMAPPED event for testing"""
+    request = CreateMappingEventRequest(
+        insurer="SAMSUNG",
+        query_text="일반암진단비",
+        normalized_query="일반암진단비",
+        raw_coverage_title="일반암 진단비",
+        detected_status=DetectedStatus.UNMAPPED,
+        candidate_coverage_codes=["CA_DIAG_GENERAL"],
+        evidence_ref_ids=None,
+    )
+    event_id = await admin_service.create_or_update_event(request)
+    return event_id
+
+
+@pytest.fixture
+async def canonical_code_exists(db_pool):
+    """Ensure canonical code exists in coverage_standard"""
+    async with db_pool.acquire() as conn:
+        # Insert test canonical code if not exists
+        await conn.execute(
+            """
+            INSERT INTO coverage_standard (coverage_code, coverage_name)
+            VALUES ($1, $2)
+            ON CONFLICT (coverage_code) DO NOTHING
+            """,
+            "CA_DIAG_GENERAL",
+            "일반암진단비",
+        )
+
+
+@pytest.mark.asyncio
+async def test_approve_event_success(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+    canonical_code_exists,
+):
+    """
+    Test: Successful approval creates NAME_MAP and updates event state
+    Constitutional: Canonical Coverage Rule - code must exist
+    """
+    # Approve event
+    request = ApproveEventRequest(
+        event_id=sample_event,
+        coverage_code="CA_DIAG_GENERAL",
+        resolution_type=ResolutionType.NAME_MAP,
+        note="Test approval",
+        actor="test_admin",
+    )
+
+    result = await admin_service.approve_event(request)
+
+    # Assertions
+    assert result.success is True
+    assert result.resolved_coverage_code == "CA_DIAG_GENERAL"
+    assert result.resolution_type == ResolutionType.NAME_MAP
+    assert result.audit_log_id is not None
+
+    # Verify event state updated
+    event = await admin_service.get_event_detail(sample_event)
+    assert event is not None
+    assert event.state == EventState.APPROVED
+    assert event.resolved_coverage_code == "CA_DIAG_GENERAL"
+    assert event.resolved_by == "test_admin"
+
+    # Verify NAME_MAP created
+    async with admin_service.db_pool.acquire() as conn:
+        name_map = await conn.fetchrow(
+            """
+            SELECT * FROM coverage_name_map
+            WHERE insurer = 'SAMSUNG' AND raw_name = '일반암 진단비'
+            """
+        )
+        assert name_map is not None
+        assert name_map["coverage_code"] == "CA_DIAG_GENERAL"
+        assert name_map["created_by"] == "test_admin"
+
+
+@pytest.mark.asyncio
+async def test_approve_event_invalid_code(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+):
+    """
+    Test: Approval fails if coverage_code does not exist in canonical source
+    Constitutional: Canonical Coverage Rule violation
+    """
+    request = ApproveEventRequest(
+        event_id=sample_event,
+        coverage_code="INVALID_CODE_12345",
+        resolution_type=ResolutionType.NAME_MAP,
+        note="Test invalid code",
+        actor="test_admin",
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await admin_service.approve_event(request)
+
+    assert "does not exist in canonical source" in str(exc_info.value)
+    assert "Constitutional violation" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_approve_event_conflict(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+    canonical_code_exists,
+    db_pool: asyncpg.Pool,
+):
+    """
+    Test: Approval fails if alias already exists with different code
+    Constitutional: Safe defaults - no auto-overwrite
+    """
+    # Pre-populate conflicting alias
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO coverage_code_alias (insurer, alias_text, coverage_code)
+            VALUES ('SAMSUNG', '일반암진단비', 'DIFFERENT_CODE')
+            ON CONFLICT DO NOTHING
+            """
+        )
+
+    request = ApproveEventRequest(
+        event_id=sample_event,
+        coverage_code="CA_DIAG_GENERAL",
+        resolution_type=ResolutionType.ALIAS,
+        note="Test conflict",
+        actor="test_admin",
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await admin_service.approve_event(request)
+
+    assert "already mapped to different code" in str(exc_info.value)
+    assert "Safe defaults" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_audit_log_created(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+    canonical_code_exists,
+):
+    """
+    Test: Audit log is created on approval
+    Constitutional: Auditable requirement
+    """
+    request = ApproveEventRequest(
+        event_id=sample_event,
+        coverage_code="CA_DIAG_GENERAL",
+        resolution_type=ResolutionType.NAME_MAP,
+        note="Test audit",
+        actor="test_admin",
+    )
+
+    result = await admin_service.approve_event(request)
+
+    # Verify audit log
+    logs = await admin_service.get_audit_logs(
+        target_id=str(sample_event), limit=10
+    )
+
+    assert len(logs) > 0
+    audit_log = logs[0]
+    assert audit_log.actor == "test_admin"
+    assert audit_log.action.value == "APPROVE"
+    assert audit_log.before is not None
+    assert audit_log.after is not None
+    assert audit_log.after["resolved_coverage_code"] == "CA_DIAG_GENERAL"
+
+
+@pytest.mark.asyncio
+async def test_reject_event(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+):
+    """
+    Test: Reject event updates state and creates audit log
+    """
+    from src.admin_mapping.models import RejectEventRequest
+
+    request = RejectEventRequest(
+        event_id=sample_event,
+        note="Test rejection",
+        actor="test_admin",
+    )
+
+    audit_id = await admin_service.reject_event(request)
+    assert audit_id is not None
+
+    # Verify state
+    event = await admin_service.get_event_detail(sample_event)
+    assert event.state == EventState.REJECTED
+    assert event.resolution_note == "Test rejection"
+
+
+@pytest.mark.asyncio
+async def test_snooze_event(
+    admin_service: AdminMappingService,
+    sample_event: uuid.UUID,
+):
+    """
+    Test: Snooze event updates state and creates audit log
+    """
+    from src.admin_mapping.models import SnoozeEventRequest
+
+    request = SnoozeEventRequest(
+        event_id=sample_event,
+        note="Test snooze",
+        actor="test_admin",
+    )
+
+    audit_id = await admin_service.snooze_event(request)
+    assert audit_id is not None
+
+    # Verify state
+    event = await admin_service.get_event_detail(sample_event)
+    assert event.state == EventState.SNOOZED
+    assert event.resolution_note == "Test snooze"
+
+
+@pytest.mark.asyncio
+async def test_deduplication(admin_service: AdminMappingService):
+    """
+    Test: Only one OPEN event per (insurer, raw_coverage_title, detected_status)
+    Constitutional: Deduplication requirement
+    """
+    request = CreateMappingEventRequest(
+        insurer="MERITZ",
+        query_text="유사암진단금",
+        raw_coverage_title="유사암 진단금",
+        detected_status=DetectedStatus.UNMAPPED,
+    )
+
+    # Create first event
+    event_id_1 = await admin_service.create_or_update_event(request)
+
+    # Create duplicate event (should update, not create)
+    event_id_2 = await admin_service.create_or_update_event(request)
+
+    assert event_id_1 == event_id_2
+
+    # Verify only one OPEN event exists
+    events, total = await admin_service.get_queue(state=EventState.OPEN)
+    meritz_events = [e for e in events if e.insurer == "MERITZ"]
+    assert len(meritz_events) == 1

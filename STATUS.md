@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-6 Complete (Clarify Panel + Deterministic Compiler + Debug Tab)
-**Project Health:** ✅ ACTIVE - E2E Question Refinement Pipeline Complete
+**Current Phase:** STEP NEXT-7 Complete (Admin Mapping Workbench)
+**Project Health:** ✅ ACTIVE - Admin Mapping Resolution Pipeline Complete
 
 ---
 
@@ -24,6 +24,63 @@
 ## Latest Milestones (Summary)
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
+
+### ✅ STEP NEXT-7: Admin Mapping Workbench (Complete)
+**Commit:** [PENDING] | **Date:** 2025-12-26
+
+**Summary:**
+- Backend: Admin mapping service with canonical coverage rule enforcement
+- Backend: `/admin/mapping/*` endpoints (queue, approve, reject, snooze)
+- Database: 4 new tables (mapping_event_queue, coverage_code_alias, coverage_name_map, admin_audit_log)
+- Frontend: Admin UI at `/admin/mapping` (queue + detail + approval workflow)
+- Integration: Event population from compare/clarify flow
+- Tests: 8 comprehensive backend tests (approval, validation, audit)
+- Constitutional compliance: Canonical Coverage Rule + Safe Defaults + Auditable
+
+**Key Features:**
+1. **Event Queue Management**: UNMAPPED/AMBIGUOUS events auto-collected with deduplication
+2. **Canonical Code Validation**: All approvals validated against 신정원 통일코드
+3. **Conflict Detection**: Safe defaults - reject on alias/name conflicts (no auto-overwrite)
+4. **Audit Trail**: Complete before/after tracking for all admin actions
+5. **Resolution Types**: ALIAS (별칭 등록) / NAME_MAP (담보명 매핑) / MANUAL_NOTE
+
+**Module Structure:**
+```
+src/admin_mapping/
+├── __init__.py
+├── models.py (Pydantic schemas, 5-state event model)
+├── service.py (AdminMappingService with validation)
+├── router.py (FastAPI endpoints)
+└── integration.py (compare flow integration)
+
+migrations/
+└── step_next7_admin_mapping_workbench.sql (4 tables + triggers)
+
+apps/web/src/pages/
+├── admin/mapping.tsx (Admin UI)
+└── api/admin/mapping/*.ts (Next.js API proxies)
+
+tests/
+└── test_admin_mapping_approve.py (8 tests)
+
+docs/admin/
+└── STEP_NEXT7_ADMIN_MAPPING_WORKBENCH.md (complete documentation)
+```
+
+**DoD Status:**
+- [x] OPEN UNMAPPED/AMBIGUOUS events queued with deduplication
+- [x] Admin approval reflects to coverage_code_alias or coverage_name_map
+- [x] All actions logged to admin_audit_log
+- [x] Conflicts/invalid codes fail conservatively (no auto-overwrite)
+- [x] Backend tests pass + frontend builds without errors
+- [ ] Main branch commit + push
+
+**Next Steps:**
+- Deploy migration to database
+- Register admin_mapping router in FastAPI app
+- Test end-to-end workflow (UNMAPPED detection → Admin approval → Auto-resolution)
+
+---
 
 ### ✅ STEP NEXT-6: Clarify Panel + Deterministic Compiler + Debug Tab (Complete)
 **Commit:** fecf858 | **Date:** 2025-12-26
