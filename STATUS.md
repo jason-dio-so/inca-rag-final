@@ -36,7 +36,7 @@
 ### 2025-12-26
 
 #### ✅ STEP NEXT-AB (FINAL): v2 Proposal Ingestion Stage-1 (Structure-First)
-**Commit:** (pending)
+**Commit:** 30be125
 **Summary:** Structure-First Universe 추출 (pdfplumber 테이블 구조 기반)
 **DoD:** ✅ Pass
 
