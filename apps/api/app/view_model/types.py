@@ -47,10 +47,19 @@ class InsurerSnapshot(BaseModel):
     status: StatusCode
 
 
+class FilterCriteria(BaseModel):
+    """v2: Optional filter criteria (fact-only)"""
+    insurer_filter: Optional[List[str]] = None
+    disease_scope: Optional[List[str]] = None
+    slot_key: Optional[str] = None
+    difference_detected: Optional[bool] = None
+
+
 class Snapshot(BaseModel):
     """BLOCK 1: Coverage Snapshot"""
     comparison_basis: str
     insurers: List[InsurerSnapshot]
+    filter_criteria: Optional[FilterCriteria] = None
 
 
 class PayoutCondition(BaseModel):
@@ -69,6 +78,20 @@ class FactTableRow(BaseModel):
     term_text: Optional[str] = None
     note_text: Optional[str] = None
     row_status: StatusCode
+    highlight: Optional[List[str]] = None  # v2: Cell keys to emphasize
+
+
+class SortMetadata(BaseModel):
+    """v2: Optional sorting configuration (UI hint)"""
+    sort_by: Optional[str] = None
+    sort_order: Optional[Literal["asc", "desc"]] = None
+    limit: Optional[int] = None
+
+
+class VisualEmphasis(BaseModel):
+    """v2: Optional visual styling for min/max values (UI hint only)"""
+    min_value_style: Optional[Literal["blue", "green", "default"]] = None
+    max_value_style: Optional[Literal["red", "orange", "default"]] = None
 
 
 class FactTable(BaseModel):
@@ -77,6 +100,9 @@ class FactTable(BaseModel):
         default=["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"]
     )
     rows: List[FactTableRow]
+    table_type: Literal["default", "ox_matrix"] = "default"  # v2: Table display mode
+    sort_metadata: Optional[SortMetadata] = None  # v2: Sorting configuration
+    visual_emphasis: Optional[VisualEmphasis] = None  # v2: Visual styling
 
 
 class BBox(BaseModel):

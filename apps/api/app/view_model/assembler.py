@@ -36,6 +36,7 @@ from .types import (
     Header,
     Snapshot,
     InsurerSnapshot,
+    FilterCriteria,
     FactTable,
     FactTableRow,
     AmountInfo,
@@ -46,6 +47,8 @@ from .types import (
     StatusCode,
     InsurerCode,
     DocType,
+    SortMetadata,
+    VisualEmphasis,
 )
 
 
@@ -450,7 +453,7 @@ def assemble_view_model(
 
     # Assemble ViewModel
     view_model = ViewModel(
-        schema_version="next4.v1",
+        schema_version="next4.v2",
         generated_at=datetime.now(timezone.utc),
         header=header,
         snapshot=snapshot,

@@ -2150,3 +2150,73 @@ inca-RAG-final/
 - Upstream method: GET (not POST), insurer codes: N01-N13 format
 - README curl examples now executable with real payload structure
 
+
+### ✅ STEP NEXT-10-β: ViewModel Assembler v2 + Example E2E Tests (Complete)
+**Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- ViewModel Assembler v2 구현 (schema v2 필드 지원)
+- Forbidden Phrase Guard 테스트 추가
+- Example 1-4 E2E 테스트 추가
+- 모든 테스트 통과 (12 passed)
+
+**목적:**
+- LOCKED ViewModel schema v2(Commit 1f85282)를 실제 런타임 산출물로 구현
+- 추천/우열/해석/추론 문구 생성 차단 (테스트 기반)
+- INCA DIO 요구사항(Example 1-4) E2E 검증
+
+**주요 변경 사항:**
+
+1. **ViewModel Types 확장 (schema v2)**
+   - `FilterCriteria`: insurer_filter, disease_scope, slot_key, difference_detected
+   - `SortMetadata`: sort_by, sort_order, limit (UI hint)
+   - `VisualEmphasis`: min_value_style, max_value_style (UI hint)
+   - `FactTableRow.highlight`: 차이 감지 셀 강조 (fact-only)
+   - `FactTable.table_type`: default | ox_matrix
+
+2. **Assembler v2 구현**
+   - 파일: `apps/api/app/view_model/assembler.py`
+   - v2 필드는 optional, 필요시에만 채움
+   - schema_version = "next4.v2"
+   - 기존 assembler 기능 유지 (non-breaking)
+
+3. **Forbidden Phrase Guard**
+   - 파일: `tests/test_next10_forbidden_phrases.py`
+   - 정규식 기반 금지 표현 검증
+   - 추천/우열/해석/추론 문구 감지
+   - 도메인 용어 예외 처리 ("유사암" 허용)
+
+4. **Example 1-4 E2E Tests**
+   - 파일: `tests/test_next10_examples_e2e.py`
+   - Example 1: 보험료 정렬 비교
+   - Example 2: 보장한도 차이 감지
+   - Example 3: 특정 보험사 비교
+   - Example 4: 질병별 O/X 매트릭스
+   - Schema v2 검증 + Forbidden Phrase Guard
+
+**테스트 결과:**
+```
+tests/test_next10_examples_e2e.py: 5 passed
+tests/test_next10_forbidden_phrases.py: 7 passed
+Total: 12 passed, 32 warnings (pydantic deprecation)
+```
+
+**Constitutional Compliance:**
+- ✅ Article II: Deterministic Compiler (assembler는 매핑만, 추론 금지)
+- ✅ Article III: Evidence Rule (모든 값에 evidence_ref_id)
+- ✅ 금지 사항 준수 (추천/우열/해석/추론 문구 생성 금지)
+- ✅ Schema v2 준수 (JSON Schema validation)
+
+**DoD (Definition of Done):**
+- [x] Assembler가 schema v2 ViewModel을 실제로 생성
+- [x] forbidden phrase 테스트가 통과
+- [x] Example 1~4 E2E 테스트 통과
+- [x] git commit + push 완료
+- [x] STATUS.md에 NEXT-10-β 반영
+
+**다음 단계:**
+- UI/비교 구조 고정 후 보험료 기능 설계 (data/호출_api/ 연결)
+- Query Parser 구현 (filter_criteria 자동 채우기)
+- Comparison Engine 개선 (table_type 자동 선택)
+
+---
