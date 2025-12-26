@@ -10,7 +10,7 @@
       "type": "string",
       "description": "Schema version identifier",
       "pattern": "^next4\\.v[0-9]+(\\..[0-9]+)?$",
-      "examples": ["next4.v1", "next4.v1.1"]
+      "examples": ["next4.v2", "next4.v2.1"]
     },
     "generated_at": {
       "type": "string",
@@ -84,6 +84,30 @@
                 "enum": ["OK", "MISSING_EVIDENCE", "UNMAPPED", "AMBIGUOUS", "OUT_OF_UNIVERSE"],
                 "description": "Insurer data status"
               }
+            }
+          }
+        },
+        "filter_criteria": {
+          "type": ["object", "null"],
+          "description": "v2: Optional filter criteria applied to this comparison (fact-only)",
+          "properties": {
+            "insurer_filter": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "List of insurers explicitly requested"
+            },
+            "disease_scope": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "List of diseases/conditions in scope"
+            },
+            "slot_key": {
+              "type": "string",
+              "description": "Specific slot being compared (e.g., 'payout_limit')"
+            },
+            "difference_detected": {
+              "type": "boolean",
+              "description": "Whether differences were detected in the compared slot"
             }
           }
         }
@@ -178,7 +202,53 @@
                 "type": "string",
                 "enum": ["OK", "MISSING_EVIDENCE", "UNMAPPED", "AMBIGUOUS", "OUT_OF_UNIVERSE"],
                 "description": "Row data status"
+              },
+              "highlight": {
+                "type": ["array", "null"],
+                "items": {"type": "string"},
+                "description": "v2: Cell keys to visually emphasize (difference detection, NO judgment)"
               }
+            }
+          }
+        },
+        "table_type": {
+          "type": "string",
+          "enum": ["default", "ox_matrix"],
+          "default": "default",
+          "description": "v2: Table display mode (default: standard comparison, ox_matrix: O/X coverage availability)"
+        },
+        "sort_metadata": {
+          "type": ["object", "null"],
+          "description": "v2: Optional sorting configuration (UI hint, NOT business logic)",
+          "properties": {
+            "sort_by": {
+              "type": "string",
+              "description": "Column name to sort by (e.g., '총납입보험료_일반')"
+            },
+            "sort_order": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "description": "Sort direction (ascending or descending)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of rows to display"
+            }
+          }
+        },
+        "visual_emphasis": {
+          "type": ["object", "null"],
+          "description": "v2: Optional visual styling for min/max values (NO judgment, UI hint only)",
+          "properties": {
+            "min_value_style": {
+              "type": "string",
+              "enum": ["blue", "green", "default"],
+              "description": "Style for minimum value cells"
+            },
+            "max_value_style": {
+              "type": "string",
+              "enum": ["red", "orange", "default"],
+              "description": "Style for maximum value cells"
             }
           }
         }
