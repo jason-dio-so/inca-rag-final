@@ -1,0 +1,575 @@
+{
+  "examples": [
+    {
+      "name": "Example 1: Standard Cancer Diagnosis (암 진단비)",
+      "description": "Standard comparison of cancer diagnosis coverage between 2 insurers",
+      "view_model": {
+        "schema_version": "next4.v1",
+        "generated_at": "2025-12-26T10:30:00Z",
+        "header": {
+          "user_query": "암 진단비 기준으로 삼성화재와 메리츠화재를 비교해줘",
+          "normalized_query": "암 진단비 삼성화재 메리츠화재"
+        },
+        "snapshot": {
+          "comparison_basis": "암 진단비 (유사암 제외)",
+          "insurers": [
+            {
+              "insurer": "SAMSUNG",
+              "headline_amount": {
+                "amount_value": 3000,
+                "amount_unit": "만원",
+                "display_text": "3,000만원",
+                "evidence_ref_id": "ev_samsung_001"
+              },
+              "status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "headline_amount": {
+                "amount_value": 3000,
+                "amount_unit": "만원",
+                "display_text": "3,000만원",
+                "evidence_ref_id": "ev_meritz_001"
+              },
+              "status": "OK"
+            }
+          ]
+        },
+        "fact_table": {
+          "columns": ["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"],
+          "rows": [
+            {
+              "insurer": "SAMSUNG",
+              "coverage_title_normalized": "암 진단비",
+              "benefit_amount": {
+                "amount_value": 3000,
+                "amount_unit": "만원",
+                "display_text": "3,000만원",
+                "evidence_ref_id": "ev_samsung_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "waiting_period",
+                  "value_text": "90일",
+                  "evidence_ref_id": "ev_samsung_002"
+                },
+                {
+                  "slot_key": "payment_frequency",
+                  "value_text": "최초 1회",
+                  "evidence_ref_id": "ev_samsung_002"
+                },
+                {
+                  "slot_key": "exclusion_scope",
+                  "value_text": "유사암, 갑상선암, 경계성종양, 제자리암",
+                  "evidence_ref_id": "ev_samsung_002"
+                }
+              ],
+              "term_text": "80세 만기",
+              "note_text": null,
+              "row_status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "coverage_title_normalized": "암 진단비",
+              "benefit_amount": {
+                "amount_value": 3000,
+                "amount_unit": "만원",
+                "display_text": "3,000만원",
+                "evidence_ref_id": "ev_meritz_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "waiting_period",
+                  "value_text": "90일",
+                  "evidence_ref_id": "ev_meritz_002"
+                },
+                {
+                  "slot_key": "payment_frequency",
+                  "value_text": "최초 1회",
+                  "evidence_ref_id": "ev_meritz_002"
+                },
+                {
+                  "slot_key": "exclusion_scope",
+                  "value_text": "유사암, 갑상선암",
+                  "evidence_ref_id": "ev_meritz_002"
+                }
+              ],
+              "term_text": "100세 만기",
+              "note_text": null,
+              "row_status": "OK"
+            }
+          ]
+        },
+        "evidence_panels": [
+          {
+            "id": "ev_samsung_001",
+            "insurer": "SAMSUNG",
+            "doc_type": "가입설계서",
+            "doc_title": "삼성화재 건강보험 가입설계서",
+            "page": "p.3",
+            "excerpt": "암 진단비: 3,000만원 (유사암, 갑상선암, 경계성종양, 제자리암 제외)"
+          },
+          {
+            "id": "ev_samsung_002",
+            "insurer": "SAMSUNG",
+            "doc_type": "약관",
+            "doc_title": "삼성화재 건강보험 약관",
+            "page": "p.45",
+            "excerpt": "이 특약에서 '암'이라 함은 한국표준질병·사인분류(KCD-7) 중 C00-C97로 분류되는 악성신생물(다만, 제4조에서 정한 갑상선암, 유사암, 제자리암, 경계성종양은 제외)을 말합니다. 대기기간은 계약일로부터 90일이며, 최초 1회에 한해 진단비를 지급합니다."
+          },
+          {
+            "id": "ev_meritz_001",
+            "insurer": "MERITZ",
+            "doc_type": "가입설계서",
+            "doc_title": "메리츠화재 건강보험 가입설계서",
+            "page": "p.2",
+            "excerpt": "암 진단비: 3,000만원 (유사암, 갑상선암 제외)"
+          },
+          {
+            "id": "ev_meritz_002",
+            "insurer": "MERITZ",
+            "doc_type": "약관",
+            "doc_title": "메리츠화재 건강보험 약관",
+            "page": "p.38",
+            "excerpt": "암이라 함은 한국표준질병·사인분류(KCD-7) 중 C00-C97에 해당하는 악성신생물을 말하며, 갑상선암(C73) 및 기타피부암(C44)은 제외합니다. 대기기간 90일 경과 후 진단 확정 시 최초 1회 지급합니다."
+          }
+        ],
+        "debug": {
+          "resolved_coverage_codes": ["CVR_CANCER_DIAG_001"],
+          "retrieval": {
+            "topk": 5,
+            "strategy": "coverage_universe_lock",
+            "doc_priority": ["가입설계서", "약관", "상품요약서", "사업방법서"]
+          },
+          "warnings": [],
+          "execution_time_ms": 145
+        }
+      }
+    },
+    {
+      "name": "Example 2: Borderline Tumor (경계성종양)",
+      "description": "Definition-based comparison for borderline tumor coverage",
+      "view_model": {
+        "schema_version": "next4.v1",
+        "generated_at": "2025-12-26T10:35:00Z",
+        "header": {
+          "user_query": "경계성종양 보장 여부를 삼성화재와 메리츠화재 비교해줘",
+          "normalized_query": "경계성종양 삼성화재 메리츠화재"
+        },
+        "snapshot": {
+          "comparison_basis": "경계성종양",
+          "insurers": [
+            {
+              "insurer": "SAMSUNG",
+              "headline_amount": null,
+              "status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "headline_amount": {
+                "amount_value": 300,
+                "amount_unit": "만원",
+                "display_text": "300만원",
+                "evidence_ref_id": "ev_meritz_border_001"
+              },
+              "status": "OK"
+            }
+          ]
+        },
+        "fact_table": {
+          "columns": ["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"],
+          "rows": [
+            {
+              "insurer": "SAMSUNG",
+              "coverage_title_normalized": "경계성종양",
+              "benefit_amount": null,
+              "payout_conditions": [
+                {
+                  "slot_key": "disease_scope",
+                  "value_text": "D37-D48 (약관 명시: 제외)",
+                  "evidence_ref_id": "ev_samsung_border_001"
+                }
+              ],
+              "term_text": "80세 만기",
+              "note_text": "보장 제외",
+              "row_status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "coverage_title_normalized": "경계성종양",
+              "benefit_amount": {
+                "amount_value": 300,
+                "amount_unit": "만원",
+                "display_text": "300만원",
+                "evidence_ref_id": "ev_meritz_border_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "disease_scope",
+                  "value_text": "D37-D48 (약관 명시)",
+                  "evidence_ref_id": "ev_meritz_border_002"
+                }
+              ],
+              "term_text": "100세 만기",
+              "note_text": null,
+              "row_status": "OK"
+            }
+          ]
+        },
+        "evidence_panels": [
+          {
+            "id": "ev_samsung_border_001",
+            "insurer": "SAMSUNG",
+            "doc_type": "약관",
+            "page": "p.46",
+            "excerpt": "경계성종양(D37-D48)은 일반암 보장 대상에서 제외합니다."
+          },
+          {
+            "id": "ev_meritz_border_001",
+            "insurer": "MERITZ",
+            "doc_type": "가입설계서",
+            "page": "p.4",
+            "excerpt": "경계성종양 진단비: 300만원 (한국표준질병·사인분류 기준)"
+          },
+          {
+            "id": "ev_meritz_border_002",
+            "insurer": "MERITZ",
+            "doc_type": "약관",
+            "page": "p.40",
+            "excerpt": "경계성종양이라 함은 한국표준질병·사인분류(KCD-7) 중 D37-D48에 해당하는 종양을 말합니다."
+          }
+        ],
+        "debug": {
+          "resolved_coverage_codes": ["CVR_BORDERLINE_TUMOR_001"],
+          "retrieval": {
+            "topk": 5,
+            "strategy": "coverage_universe_lock",
+            "doc_priority": ["가입설계서", "약관"]
+          },
+          "warnings": ["SAMSUNG: Coverage excluded (not a comparison issue)"],
+          "execution_time_ms": 132
+        }
+      }
+    },
+    {
+      "name": "Example 3: Robotic Surgery (다빈치 수술비)",
+      "description": "Method-based comparison for robotic surgery coverage",
+      "view_model": {
+        "schema_version": "next4.v1",
+        "generated_at": "2025-12-26T10:40:00Z",
+        "header": {
+          "user_query": "다빈치 수술비를 삼성화재와 메리츠화재 비교해줘",
+          "normalized_query": "다빈치 수술비 삼성화재 메리츠화재"
+        },
+        "snapshot": {
+          "comparison_basis": "암 수술비 (로봇수술 포함)",
+          "insurers": [
+            {
+              "insurer": "SAMSUNG",
+              "headline_amount": {
+                "amount_value": 500,
+                "amount_unit": "만원",
+                "display_text": "500만원",
+                "evidence_ref_id": "ev_samsung_robot_001"
+              },
+              "status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "headline_amount": {
+                "amount_value": 500,
+                "amount_unit": "만원",
+                "display_text": "500만원",
+                "evidence_ref_id": "ev_meritz_robot_001"
+              },
+              "status": "OK"
+            }
+          ]
+        },
+        "fact_table": {
+          "columns": ["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"],
+          "rows": [
+            {
+              "insurer": "SAMSUNG",
+              "coverage_title_normalized": "암 수술비",
+              "benefit_amount": {
+                "amount_value": 500,
+                "amount_unit": "만원",
+                "display_text": "500만원",
+                "evidence_ref_id": "ev_samsung_robot_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "method_condition",
+                  "value_text": "수술 방법 불문 (개복수술, 복강경수술, 로봇수술 포함)",
+                  "evidence_ref_id": "ev_samsung_robot_002"
+                }
+              ],
+              "term_text": "80세 만기",
+              "note_text": null,
+              "row_status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "coverage_title_normalized": "암 수술비",
+              "benefit_amount": {
+                "amount_value": 500,
+                "amount_unit": "만원",
+                "display_text": "500만원",
+                "evidence_ref_id": "ev_meritz_robot_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "method_condition",
+                  "value_text": "로봇수술(다빈치수술 포함) 지급",
+                  "evidence_ref_id": "ev_meritz_robot_002"
+                }
+              ],
+              "term_text": "100세 만기",
+              "note_text": "갱신형 3년",
+              "row_status": "OK"
+            }
+          ]
+        },
+        "evidence_panels": [
+          {
+            "id": "ev_samsung_robot_001",
+            "insurer": "SAMSUNG",
+            "doc_type": "가입설계서",
+            "page": "p.5",
+            "excerpt": "암 수술비: 500만원 (수술 1회당, 수술 방법 불문)"
+          },
+          {
+            "id": "ev_samsung_robot_002",
+            "insurer": "SAMSUNG",
+            "doc_type": "약관",
+            "page": "p.52",
+            "excerpt": "암 수술비는 수술 방법에 관계없이 지급하며, 개복수술, 복강경수술, 로봇수술을 모두 포함합니다."
+          },
+          {
+            "id": "ev_meritz_robot_001",
+            "insurer": "MERITZ",
+            "doc_type": "가입설계서",
+            "page": "p.3",
+            "excerpt": "암 수술비 (로봇수술 포함): 500만원 (갱신형 3년, 수술 방법에 따라)"
+          },
+          {
+            "id": "ev_meritz_robot_002",
+            "insurer": "MERITZ",
+            "doc_type": "약관",
+            "page": "p.44",
+            "excerpt": "로봇수술(다빈치수술 포함)을 받은 경우에도 수술비를 지급합니다. 단, 본 특약은 3년 갱신형입니다."
+          }
+        ],
+        "debug": {
+          "resolved_coverage_codes": ["CVR_CANCER_SURGERY_001"],
+          "retrieval": {
+            "topk": 5,
+            "strategy": "method_condition_match",
+            "doc_priority": ["가입설계서", "약관"]
+          },
+          "warnings": [],
+          "execution_time_ms": 158
+        }
+      }
+    },
+    {
+      "name": "Example 4: UNMAPPED Coverage (Edge Case)",
+      "description": "UNMAPPED coverage with missing canonical code mapping",
+      "view_model": {
+        "schema_version": "next4.v1",
+        "generated_at": "2025-12-26T10:45:00Z",
+        "header": {
+          "user_query": "신종수술비를 삼성화재와 메리츠화재 비교해줘",
+          "normalized_query": "신종수술비 삼성화재 메리츠화재"
+        },
+        "snapshot": {
+          "comparison_basis": "신종수술비",
+          "insurers": [
+            {
+              "insurer": "SAMSUNG",
+              "headline_amount": {
+                "amount_value": 200,
+                "amount_unit": "만원",
+                "display_text": "200만원",
+                "evidence_ref_id": "ev_samsung_new_001"
+              },
+              "status": "UNMAPPED"
+            },
+            {
+              "insurer": "MERITZ",
+              "headline_amount": null,
+              "status": "OUT_OF_UNIVERSE"
+            }
+          ]
+        },
+        "fact_table": {
+          "columns": ["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"],
+          "rows": [
+            {
+              "insurer": "SAMSUNG",
+              "coverage_title_normalized": "신종수술비",
+              "benefit_amount": {
+                "amount_value": 200,
+                "amount_unit": "만원",
+                "display_text": "200만원",
+                "evidence_ref_id": "ev_samsung_new_001"
+              },
+              "payout_conditions": [],
+              "term_text": "80세 만기",
+              "note_text": "(UNMAPPED)",
+              "row_status": "UNMAPPED"
+            },
+            {
+              "insurer": "MERITZ",
+              "coverage_title_normalized": "신종수술비",
+              "benefit_amount": null,
+              "payout_conditions": [],
+              "term_text": null,
+              "note_text": "(가입설계서 미포함)",
+              "row_status": "OUT_OF_UNIVERSE"
+            }
+          ]
+        },
+        "evidence_panels": [
+          {
+            "id": "ev_samsung_new_001",
+            "insurer": "SAMSUNG",
+            "doc_type": "가입설계서",
+            "page": "p.7",
+            "excerpt": "신종수술비: 200만원 (보장 내용은 약관 참조, 수술 1회당 지급)"
+          }
+        ],
+        "debug": {
+          "resolved_coverage_codes": [],
+          "retrieval": {
+            "topk": 5,
+            "strategy": "coverage_universe_lock",
+            "doc_priority": ["가입설계서"]
+          },
+          "warnings": [
+            "SAMSUNG: Coverage 'zzong수술비' UNMAPPED (no canonical code)",
+            "MERITZ: Coverage not found in proposal (OUT_OF_UNIVERSE)"
+          ],
+          "execution_time_ms": 95
+        }
+      }
+    },
+    {
+      "name": "Example 5: Missing Evidence (Slot Unknown)",
+      "description": "Coverage with incomplete slot data requiring policy confirmation",
+      "view_model": {
+        "schema_version": "next4.v1",
+        "generated_at": "2025-12-26T10:50:00Z",
+        "header": {
+          "user_query": "심근경색증 진단비를 삼성화재와 메리츠화재 비교해줘",
+          "normalized_query": "심근경색증 진단비 삼성화재 메리츠화재"
+        },
+        "snapshot": {
+          "comparison_basis": "심근경색증 진단비",
+          "insurers": [
+            {
+              "insurer": "SAMSUNG",
+              "headline_amount": {
+                "amount_value": 2000,
+                "amount_unit": "만원",
+                "display_text": "2,000만원",
+                "evidence_ref_id": "ev_samsung_heart_001"
+              },
+              "status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "headline_amount": {
+                "amount_value": 2000,
+                "amount_unit": "만원",
+                "display_text": "2,000만원",
+                "evidence_ref_id": "ev_meritz_heart_001"
+              },
+              "status": "MISSING_EVIDENCE"
+            }
+          ]
+        },
+        "fact_table": {
+          "columns": ["보험사", "담보명(정규화)", "보장금액", "지급 조건 요약", "보험기간", "비고"],
+          "rows": [
+            {
+              "insurer": "SAMSUNG",
+              "coverage_title_normalized": "심근경색증 진단비",
+              "benefit_amount": {
+                "amount_value": 2000,
+                "amount_unit": "만원",
+                "display_text": "2,000만원",
+                "evidence_ref_id": "ev_samsung_heart_001"
+              },
+              "payout_conditions": [
+                {
+                  "slot_key": "waiting_period",
+                  "value_text": "90일",
+                  "evidence_ref_id": "ev_samsung_heart_002"
+                },
+                {
+                  "slot_key": "payment_frequency",
+                  "value_text": "최초 1회",
+                  "evidence_ref_id": "ev_samsung_heart_002"
+                }
+              ],
+              "term_text": "80세 만기",
+              "note_text": null,
+              "row_status": "OK"
+            },
+            {
+              "insurer": "MERITZ",
+              "coverage_title_normalized": "심근경색증 진단비",
+              "benefit_amount": {
+                "amount_value": 2000,
+                "amount_unit": "만원",
+                "display_text": "2,000만원",
+                "evidence_ref_id": "ev_meritz_heart_001"
+              },
+              "payout_conditions": [],
+              "term_text": "100세 만기",
+              "note_text": "(약관 확인 필요)",
+              "row_status": "MISSING_EVIDENCE"
+            }
+          ]
+        },
+        "evidence_panels": [
+          {
+            "id": "ev_samsung_heart_001",
+            "insurer": "SAMSUNG",
+            "doc_type": "가입설계서",
+            "page": "p.4",
+            "excerpt": "심근경색증 진단비: 2,000만원 (최초 1회, 대기기간 90일, 진단 확정 시)"
+          },
+          {
+            "id": "ev_samsung_heart_002",
+            "insurer": "SAMSUNG",
+            "doc_type": "약관",
+            "page": "p.58",
+            "excerpt": "심근경색증으로 진단 확정된 경우 최초 1회에 한해 진단비를 지급합니다. 대기기간은 계약일로부터 90일입니다."
+          },
+          {
+            "id": "ev_meritz_heart_001",
+            "insurer": "MERITZ",
+            "doc_type": "가입설계서",
+            "page": "p.4",
+            "excerpt": "심근경색증 진단비: 2,000만원 (보장 내용 상세는 약관 참조)"
+          }
+        ],
+        "debug": {
+          "resolved_coverage_codes": ["CVR_MYOCARDIAL_INFARCTION_001"],
+          "retrieval": {
+            "topk": 5,
+            "strategy": "coverage_universe_lock",
+            "doc_priority": ["가입설계서", "약관"]
+          },
+          "warnings": [
+            "MERITZ: Payout conditions not found in proposal, policy review required"
+          ],
+          "execution_time_ms": 128
+        }
+      }
+    }
+  ]
+}

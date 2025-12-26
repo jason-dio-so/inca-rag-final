@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-3 Complete (UI Layout Specification)
-**Project Health:** ✅ ACTIVE - ChatGPT-Style UI Structure Fixed
+**Current Phase:** STEP NEXT-4 Complete (ViewModel JSON Schema Contract)
+**Project Health:** ✅ ACTIVE - UI Contract Locked with Validation
 
 ---
 
@@ -25,8 +25,127 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP NEXT-3: UI Layout Specification (ChatGPT-Style MVP)
+### ✅ STEP NEXT-4: ViewModel JSON Schema Contract
 **Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- JSON Schema Draft 2020-12 for UI ViewModel (presentation layer contract)
+- 5 validated examples (cancer diagnosis, borderline tumor, robotic surgery, UNMAPPED, missing evidence)
+- 16 automated tests enforcing constitutional compliance
+- Forbidden phrase detection (hard ban on recommendations/judgments)
+- Reference integrity validation (evidence_ref_id → evidence_panels[].id)
+
+**Deliverables:**
+1. `docs/ui/STEP_NEXT4_VIEWMODEL_SCHEMA.md` (19-section specification)
+2. `docs/ui/compare_view_model.schema.json` (JSON Schema Draft 2020-12)
+3. `docs/ui/compare_view_model.examples.json` (5 examples)
+4. `tests/test_ui_viewmodel_schema.py` (16 validation tests)
+
+**Schema Structure:**
+```json
+{
+  "schema_version": "next4.v1",
+  "generated_at": "ISO8601",
+  "header": {...},          // BLOCK 0: User Query
+  "snapshot": {...},        // BLOCK 1: Coverage Snapshot
+  "fact_table": {...},      // BLOCK 2: Fact Table
+  "evidence_panels": [...], // BLOCK 3: Evidence Accordion
+  "debug": {...}            // Non-UI: Reproducibility
+}
+```
+
+**Top-Level Fields:**
+- `schema_version`: "next4.v1" (version strategy defined)
+- `generated_at`: ISO 8601 timestamp
+- `header`: User query (original + normalized)
+- `snapshot`: Comparison basis + per-insurer headline amounts
+- `fact_table`: Fixed 6 columns (보험사/담보명/보장금액/지급조건/보험기간/비고)
+- `evidence_panels`: Document type + page + excerpt (25-400 chars)
+- `debug`: Coverage codes, retrieval params (optional, MUST NOT display in UI)
+
+**Enum Definitions:**
+- Insurers: `SAMSUNG, HANWHA, LOTTE, MERITZ, KB, HYUNDAI, HEUNGKUK, DB`
+- Status: `OK, MISSING_EVIDENCE, UNMAPPED, AMBIGUOUS, OUT_OF_UNIVERSE`
+- Doc Types: `가입설계서, 약관, 상품요약서, 사업방법서`
+- Slot Keys: `waiting_period, payment_frequency, diagnosis_definition, method_condition, exclusion_scope, payout_limit, disease_scope`
+
+**Validation Tests (16 total, all passing):**
+1. Schema is valid JSON Schema Draft 2020-12
+2. All examples validate against schema
+3. No forbidden phrases in examples (hard ban enforced)
+4. Required top-level fields present
+5. Schema version format compliance
+6. Insurer enum compliance (snapshot + fact_table + evidence_panels)
+7. Fact table columns fixed and ordered
+8. Evidence reference integrity (all ref_ids resolve)
+9. Slot key enum compliance
+10. Status enum compliance (snapshot + fact_table)
+11. Doc type enum compliance
+12. Excerpt length constraints (25-400 chars)
+13. Debug section optional
+14. Constitutional compliance matrix
+15. Minimum example count (≥4)
+16. Required scenario coverage (cancer, borderline, robotic, unmapped)
+
+**Example Scenarios:**
+1. **Standard Cancer Diagnosis** (암 진단비): 2 insurers, normal flow
+2. **Borderline Tumor** (경계성종양): Definition-based, disease_scope slot
+3. **Robotic Surgery** (다빈치 수술비): Method-based, method_condition slot
+4. **UNMAPPED Coverage** (신종수술비): Missing canonical code, edge case
+5. **Missing Evidence** (심근경색증): Incomplete slot data, policy review needed
+
+**Constitutional Compliance:**
+- ✅ Fact-only: All amounts require evidence_ref_id
+- ✅ No Recommendation: Forbidden phrases validated (hard ban)
+- ✅ Presentation Only: No logic fields (score/rank/judgment)
+- ✅ Canonical Coverage: coverage_title_normalized from coverage_standard
+- ✅ Coverage Universe Lock: OUT_OF_UNIVERSE status for non-proposal coverages
+- ✅ Evidence Rule: evidence_panels required, excerpt minLength=25
+- ✅ Deterministic Output: Same input → same JSON structure
+
+**Forbidden Expressions (Hard Ban, Test-Enforced):**
+- ❌ "더 좋다", "유리하다", "불리하다"
+- ❌ "추천", "권장", "선택하세요"
+- ❌ "우수", "뛰어남", "최선"
+- ❌ "동일함", "차이 없음"
+- ❌ "사실상 같은 담보", "유사한 담보"
+- ❌ "종합적으로", "결론적으로"
+
+**Frontend/Backend Contract:**
+- Backend: Generates JSON matching this schema
+- Frontend: Renders JSON (no processing, display only)
+- `debug` section: MUST NOT be displayed in UI
+- Column order: Immutable (frontend cannot reorder)
+- Reference integrity: All `evidence_ref_id` must resolve
+
+**Version Strategy:**
+- `next4.vX`: Breaking changes (add/remove required fields)
+- `next4.vX.Y`: Non-breaking (add optional fields)
+- Backwards compatibility: Frontend handles unknown optional fields
+
+**DoD Achievement:**
+- ✅ `compare_view_model.schema.json` exists (Draft 2020-12)
+- ✅ 5 examples validate against schema
+- ✅ Forbidden phrase test implemented (detects 15+ patterns)
+- ✅ Reference integrity test implemented
+- ✅ `debug` excluded from UI rendering contract
+- ✅ 16/16 tests passing
+- ✅ Constitutional compliance verified
+
+**Next Steps:**
+1. Backend API implementation: `/api/compare` ViewModel assembly
+2. Frontend component development: 3-Block renderer (React/Vue)
+3. Integration with STEP 3.x PRIME comparison results
+
+**Key Principle:**
+- **ViewModel = Presentation Layer Contract = Fact-Only = No Judgment**
+- **Schema enforces constitutional compliance (automated validation)**
+- **Same input → same output structure (deterministic)**
+
+---
+
+### ✅ STEP NEXT-3: UI Layout Specification (ChatGPT-Style MVP)
+**Commit:** 1bacd1e | **Date:** 2025-12-26
 
 **Summary:**
 - Fixed 3-Block ChatGPT-style UI layout specification for insurance comparison MVP

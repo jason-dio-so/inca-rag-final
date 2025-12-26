@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inca-rag-final.example.com/schemas/compare_view_model.schema.json",
+  "title": "Compare View Model",
+  "description": "UI presentation layer schema for insurance coverage comparison (fact-only, no recommendation)",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "header", "snapshot", "fact_table", "evidence_panels"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier",
+      "pattern": "^next4\\.v[0-9]+(\\..[0-9]+)?$",
+      "examples": ["next4.v1", "next4.v1.1"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of generation"
+    },
+    "header": {
+      "type": "object",
+      "description": "BLOCK 0: User Query (Chat Header)",
+      "required": ["user_query"],
+      "properties": {
+        "user_query": {
+          "type": "string",
+          "description": "Original user question exactly as asked",
+          "minLength": 1
+        },
+        "normalized_query": {
+          "type": "string",
+          "description": "Cleaned query (whitespace normalization only, NO semantic change)"
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "description": "BLOCK 1: Coverage Snapshot (fact-only summary)",
+      "required": ["comparison_basis", "insurers"],
+      "properties": {
+        "comparison_basis": {
+          "type": "string",
+          "description": "Normalized canonical coverage name",
+          "minLength": 1
+        },
+        "insurers": {
+          "type": "array",
+          "description": "Per-insurer snapshot data",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["insurer", "status"],
+            "properties": {
+              "insurer": {
+                "type": "string",
+                "enum": ["SAMSUNG", "HANWHA", "LOTTE", "MERITZ", "KB", "HYUNDAI", "HEUNGKUK", "DB"]
+              },
+              "headline_amount": {
+                "type": ["object", "null"],
+                "description": "Top-level amount display (null if missing)",
+                "properties": {
+                  "amount_value": {
+                    "type": "number",
+                    "description": "Numeric value"
+                  },
+                  "amount_unit": {
+                    "type": "string",
+                    "enum": ["만원"],
+                    "description": "Standard unit (만원)"
+                  },
+                  "display_text": {
+                    "type": "string",
+                    "description": "Formatted display (e.g., '3,000만원')"
+                  },
+                  "evidence_ref_id": {
+                    "type": "string",
+                    "description": "Reference to evidence_panels[].id"
+                  }
+                },
+                "required": ["amount_value", "amount_unit", "display_text"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["OK", "MISSING_EVIDENCE", "UNMAPPED", "AMBIGUOUS", "OUT_OF_UNIVERSE"],
+                "description": "Insurer data status"
+              }
+            }
+          }
+        }
+      }
+    },
+    "fact_table": {
+      "type": "object",
+      "description": "BLOCK 2: Fact Table (coverage comparison table)",
+      "required": ["columns", "rows"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "description": "Fixed column headers (immutable order)",
+          "items": {"type": "string"},
+          "minItems": 6,
+          "maxItems": 6,
+          "prefixItems": [
+            {"const": "보험사"},
+            {"const": "담보명(정규화)"},
+            {"const": "보장금액"},
+            {"const": "지급 조건 요약"},
+            {"const": "보험기간"},
+            {"const": "비고"}
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "description": "Table rows (one per insurer-coverage pair)",
+          "items": {
+            "type": "object",
+            "required": ["insurer", "coverage_title_normalized", "row_status"],
+            "properties": {
+              "insurer": {
+                "type": "string",
+                "enum": ["SAMSUNG", "HANWHA", "LOTTE", "MERITZ", "KB", "HYUNDAI", "HEUNGKUK", "DB"]
+              },
+              "coverage_title_normalized": {
+                "type": "string",
+                "description": "Canonical coverage name from coverage_standard table"
+              },
+              "benefit_amount": {
+                "type": ["object", "null"],
+                "description": "Coverage amount (null if missing/not applicable)",
+                "properties": {
+                  "amount_value": {"type": "number"},
+                  "amount_unit": {"type": "string", "enum": ["만원"]},
+                  "display_text": {"type": "string"},
+                  "evidence_ref_id": {"type": "string"}
+                },
+                "required": ["amount_value", "amount_unit", "display_text"]
+              },
+              "payout_conditions": {
+                "type": "array",
+                "description": "Slot-based payout conditions (NO sentence rewriting)",
+                "items": {
+                  "type": "object",
+                  "required": ["slot_key", "value_text"],
+                  "properties": {
+                    "slot_key": {
+                      "type": "string",
+                      "enum": [
+                        "waiting_period",
+                        "payment_frequency",
+                        "diagnosis_definition",
+                        "method_condition",
+                        "exclusion_scope",
+                        "payout_limit",
+                        "disease_scope"
+                      ],
+                      "description": "Slot type (deterministic extraction only)"
+                    },
+                    "value_text": {
+                      "type": "string",
+                      "description": "Slot value as-is from evidence (NO rewriting, NO interpretation)"
+                    },
+                    "evidence_ref_id": {
+                      "type": "string",
+                      "description": "Reference to evidence_panels[].id"
+                    }
+                  }
+                }
+              },
+              "term_text": {
+                "type": ["string", "null"],
+                "description": "Insurance period (e.g., '80세 만기', '100세 만기')"
+              },
+              "note_text": {
+                "type": ["string", "null"],
+                "description": "Remarks (mapping status tags, evidence gaps)"
+              },
+              "row_status": {
+                "type": "string",
+                "enum": ["OK", "MISSING_EVIDENCE", "UNMAPPED", "AMBIGUOUS", "OUT_OF_UNIVERSE"],
+                "description": "Row data status"
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence_panels": {
+      "type": "array",
+      "description": "BLOCK 3: Evidence Panels (collapsible per-insurer accordion)",
+      "items": {
+        "type": "object",
+        "required": ["id", "insurer", "doc_type", "excerpt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique evidence ID (for evidence_ref_id linking)",
+            "minLength": 1
+          },
+          "insurer": {
+            "type": "string",
+            "enum": ["SAMSUNG", "HANWHA", "LOTTE", "MERITZ", "KB", "HYUNDAI", "HEUNGKUK", "DB"]
+          },
+          "doc_type": {
+            "type": "string",
+            "enum": ["가입설계서", "약관", "상품요약서", "사업방법서"],
+            "description": "Document type (priority: proposal > summary > business_rules > policy)"
+          },
+          "doc_title": {
+            "type": "string",
+            "description": "Document title (optional)"
+          },
+          "page": {
+            "type": ["string", "number"],
+            "description": "Page number (e.g., 'p.3', 3)"
+          },
+          "excerpt": {
+            "type": "string",
+            "minLength": 25,
+            "maxLength": 400,
+            "description": "Original text excerpt (NO rewriting, NO summarization, direct quote only)"
+          },
+          "bbox": {
+            "type": "object",
+            "description": "Optional PDF bounding box coordinates",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "required": ["x", "y", "width", "height"]
+          },
+          "source_meta": {
+            "type": "object",
+            "description": "Optional metadata (filename, hash, etc.)",
+            "properties": {
+              "filename": {"type": "string"},
+              "file_hash": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "debug": {
+      "type": "object",
+      "description": "Non-UI debug/reproducibility section (MUST NOT be displayed in UI)",
+      "properties": {
+        "resolved_coverage_codes": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Shinjungwon unified coverage codes resolved internally"
+        },
+        "retrieval": {
+          "type": "object",
+          "description": "Retrieval parameters (topk, strategy, doc_priority)",
+          "properties": {
+            "topk": {"type": "number"},
+            "strategy": {"type": "string"},
+            "doc_priority": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Non-fatal warnings (e.g., 'AMBIGUOUS mapping detected')"
+        },
+        "execution_time_ms": {
+          "type": "number",
+          "description": "Backend processing time in milliseconds"
+        }
+      }
+    }
+  }
+}
