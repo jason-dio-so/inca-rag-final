@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
 """
-STEP NEXT-AB: v2 Proposal Ingestion Stage-1
-Template + Coverage Universe Only
+STEP NEXT-AB (FINAL): v2 Proposal Ingestion Stage-1
+Structure-First Universe Extraction
 
-Constitutional Rules:
-- ❌ NO coverage mapping (Excel)
-- ❌ NO coverage_standard reference
-- ❌ NO proposal_coverage_mapped
-- ✅ Coverage name as-is (insurer_coverage_name)
-- ✅ Simple normalization (lowercase, strip)
-- ✅ Extract amount if visible in table
+Constitutional Principles:
+- PDF는 레이아웃 문서로 취급 (텍스트가 아님)
+- 구조 파악 → 테이블 추출 → 행 단위 저장
+- 의미 해석 / 정규화 / 매핑 전면 금지
+- 실패 / 누락도 데이터로 저장
+
+Stage-0: PDF 문서 타입 확인 (proposal)
+Stage-1: Template 식별 (product + version + fingerprint)
+Stage-2: 앞 2장 담보 테이블 구조 기반 추출
+
+금지 사항:
+- ❌ 텍스트 키워드 기반 추출
+- ❌ LLM 기반 분류/판단
+- ❌ coverage_standard 참조
+- ❌ Excel 매핑
+- ❌ 정규화 / 표준코드 추론
 """
 
 import hashlib
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-import pypdf
+import pdfplumber
 import psycopg2
 from psycopg2.extensions import connection as PGConnection
 from datetime import date
@@ -31,90 +41,216 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ProposalParser:
-    """Simple rule-based parser for proposal front-page coverage table"""
+class ProposalStructureExtractor:
+    """
+    Structure-First PDF Table Extractor
+
+    Principles:
+    1. PDF = Layout Document (not text)
+    2. Table structure first, content second
+    3. Row-by-row extraction (no interpretation)
+    4. Failures stored as data
+    """
 
     def __init__(self, pdf_path: Path):
         self.pdf_path = pdf_path
-        self.reader = pypdf.PdfReader(str(pdf_path))
+        self.pdf = pdfplumber.open(str(pdf_path))
+        logger.info(f"Opened PDF: {pdf_path.name}, pages={len(self.pdf.pages)}")
 
-    def extract_coverage_table(self, max_pages: int = 3) -> List[Dict]:
+    def close(self):
+        """Close PDF"""
+        if self.pdf:
+            self.pdf.close()
+
+    def extract_coverage_universe(self, max_pages: int = 3) -> List[Dict]:
         """
-        Extract coverage table from front pages.
+        Extract coverage universe from front pages (Structure-First).
+
+        Process:
+        1. Locate table on each page
+        2. Extract table structure (rows × columns)
+        3. Parse each row as coverage
+        4. Store failures as NULL
 
         Returns:
-            List of {coverage_name, amount_value, page, span_text}
+            List of {
+                coverage_name_raw: str,
+                amount_value: int | None,
+                amount_text: str | None,
+                source_page: int,
+                span_text: str,
+                extraction_status: str  # 'success' | 'partial' | 'failed'
+            }
         """
         coverages = []
 
-        for page_num in range(min(max_pages, len(self.reader.pages))):
-            page = self.reader.pages[page_num]
-            text = page.extract_text()
+        for page_num in range(min(max_pages, len(self.pdf.pages))):
+            page = self.pdf.pages[page_num]
+            page_coverages = self._extract_page_coverages(page, page_num + 1)
+            coverages.extend(page_coverages)
+            logger.info(f"Page {page_num + 1}: extracted {len(page_coverages)} coverage rows")
 
-            # Simple heuristic: look for lines with coverage names and amounts
-            # This is a placeholder - real implementation would need PDF table extraction
-            lines = text.split('\n')
-
-            for line in lines:
-                # Skip empty or header lines
-                if not line.strip() or len(line.strip()) < 3:
-                    continue
-
-                # Look for patterns like "암진단비 1,000만원" or "암진단비 10,000,000원"
-                if self._looks_like_coverage_line(line):
-                    coverage = self._parse_coverage_line(line, page_num + 1)
-                    if coverage:
-                        coverages.append(coverage)
-
-        logger.info(f"Extracted {len(coverages)} coverages from {self.pdf_path.name}")
+        logger.info(f"Total extracted: {len(coverages)} coverage rows")
         return coverages
 
-    def _looks_like_coverage_line(self, line: str) -> bool:
-        """Check if line looks like a coverage item"""
-        # Simple heuristic: contains common coverage keywords
-        keywords = ['암', '진단', '수술', '입원', '통원', '치료', '사망', '장해']
-        return any(kw in line for kw in keywords)
+    def _extract_page_coverages(self, page, page_num: int) -> List[Dict]:
+        """Extract coverages from a single page using table structure"""
+        coverages = []
 
-    def _parse_coverage_line(self, line: str, page: int) -> Optional[Dict]:
+        # Extract tables from page
+        tables = page.extract_tables()
+
+        if not tables:
+            logger.warning(f"Page {page_num}: No tables found")
+            return coverages
+
+        # Process first table (assumption: coverage table is first)
+        table = tables[0]
+        logger.debug(f"Page {page_num}: Table with {len(table)} rows")
+
+        # Find header row to determine column indices
+        header_row_idx = self._find_header_row(table)
+        if header_row_idx is None:
+            logger.warning(f"Page {page_num}: Could not find header row")
+            # Try to extract anyway with default column mapping
+            header_row_idx = 0
+
+        # Extract coverages from data rows (skip header rows)
+        for row_idx in range(header_row_idx + 1, len(table)):
+            row = table[row_idx]
+            coverage = self._parse_coverage_row(row, page_num)
+            if coverage:
+                coverages.append(coverage)
+
+        return coverages
+
+    def _find_header_row(self, table: List[List[str]]) -> Optional[int]:
         """
-        Parse coverage line to extract name and amount.
+        Find header row by looking for known column headers.
 
-        This is a simplified implementation. Real parser would need:
-        - PDF table structure extraction
-        - Column alignment
-        - Amount parsing with proper unit detection
+        Headers: 담보가입현황, 가입금액, 보험료
         """
-        import re
+        for idx, row in enumerate(table):
+            row_text = ' '.join([str(cell) if cell else '' for cell in row])
+            if '담보가입현황' in row_text or '가입금액' in row_text:
+                logger.debug(f"Found header at row {idx}")
+                return idx
+        return None
 
-        # Try to find amount patterns
-        # Pattern 1: "1,000만원" or "10,000,000원"
-        amount_match = re.search(r'([\d,]+)\s*(만원|원)', line)
+    def _parse_coverage_row(self, row: List[str], page_num: int) -> Optional[Dict]:
+        """
+        Parse a single table row as coverage.
 
-        coverage_name = line.strip()
+        Expected columns (Samsung proposal format):
+        [0] Category (진단/입원/수술) or None
+        [1] Coverage name
+        [2] Coverage amount (가입금액)
+        [3] Premium (보험료)
+        [4] Period/Code (납입기간/보험기간)
+
+        Returns:
+            {
+                coverage_name_raw: str,
+                amount_value: int | None,
+                amount_text: str | None,
+                source_page: int,
+                span_text: str,
+                extraction_status: str
+            }
+        """
+        # Skip empty rows
+        if not any(row):
+            return None
+
+        # Column 1 should contain coverage name
+        coverage_name = row[1] if len(row) > 1 and row[1] else None
+        if not coverage_name:
+            return None
+
+        # Skip header-like rows
+        if '담보가입현황' in coverage_name or '피보험자' in coverage_name:
+            return None
+
+        coverage_name = coverage_name.strip()
+
+        # Column 2 contains amount text (e.g., "3,000만원", "10만원")
+        amount_text = row[2] if len(row) > 2 and row[2] else None
         amount_value = None
+        extraction_status = 'success'
 
-        if amount_match:
-            amount_str = amount_match.group(1).replace(',', '')
-            unit = amount_match.group(2)
+        if amount_text:
+            amount_text = amount_text.strip()
+            # Try to parse amount
+            parsed_amount = self._parse_amount(amount_text)
+            if parsed_amount is not None:
+                amount_value = parsed_amount
+            else:
+                extraction_status = 'partial'  # Name found, amount parse failed
+        else:
+            extraction_status = 'partial'  # Name found, no amount
 
-            try:
-                if unit == '만원':
-                    amount_value = int(amount_str) * 10000
-                elif unit == '원':
-                    amount_value = int(amount_str)
-            except ValueError:
-                pass
+        # Build span text from entire row
+        span_text = ' | '.join([str(cell) if cell else '' for cell in row])
 
         return {
-            'coverage_name': coverage_name,
+            'coverage_name_raw': coverage_name,
             'amount_value': amount_value,
-            'page': page,
-            'span_text': line.strip()
+            'amount_text': amount_text,
+            'source_page': page_num,
+            'span_text': span_text,
+            'extraction_status': extraction_status
         }
+
+    def _parse_amount(self, amount_text: str) -> Optional[int]:
+        """
+        Parse Korean amount text to integer.
+
+        Examples:
+        - "3,000만원" → 30000000
+        - "600만원" → 6000000
+        - "10만원" → 100000
+        - "1만원" → 10000
+        - "10,000,000원" → 10000000
+
+        Returns None if parsing fails.
+        """
+        # Remove spaces
+        amount_text = amount_text.replace(' ', '').replace(',', '')
+
+        # Pattern 1: N만원
+        match = re.match(r'(\d+(?:\.\d+)?)만원', amount_text)
+        if match:
+            try:
+                return int(float(match.group(1)) * 10000)
+            except ValueError:
+                return None
+
+        # Pattern 2: N원
+        match = re.match(r'(\d+)원', amount_text)
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                return None
+
+        # Pattern 3: Just number
+        if amount_text.isdigit():
+            return int(amount_text)
+
+        return None
 
 
 class V2ProposalIngestion:
-    """Stage-1 ingestion: Template + Coverage Universe only"""
+    """
+    Stage-1 Ingestion: Template + Coverage Universe (Structure-First)
+
+    Constitutional Guarantees:
+    - NO coverage mapping
+    - NO normalization
+    - NO Excel reference
+    - NO coverage_standard access
+    - Structure → Data only
+    """
 
     def __init__(self, conn: PGConnection):
         self.conn = conn
@@ -127,7 +263,7 @@ class V2ProposalIngestion:
         effective_date: Optional[date] = None
     ) -> Tuple[str, int]:
         """
-        Ingest proposal PDF to v2 schema.
+        Ingest proposal PDF to v2 schema (Structure-First).
 
         Args:
             pdf_path: Path to proposal PDF
@@ -138,7 +274,7 @@ class V2ProposalIngestion:
         Returns:
             (template_id, coverage_count)
         """
-        logger.info(f"Ingesting proposal: {pdf_path}")
+        logger.info(f"Ingesting proposal (Structure-First): {pdf_path}")
         logger.info(f"  Product: {product_id}")
         logger.info(f"  Version: {version}")
 
@@ -155,26 +291,35 @@ class V2ProposalIngestion:
         )
         logger.info(f"  Template ID: {template_id}")
 
-        # Step 3: Extract coverage table
-        parser = ProposalParser(pdf_path)
-        coverages = parser.extract_coverage_table(max_pages=3)
+        # Step 3: Extract coverage table (Structure-First)
+        extractor = ProposalStructureExtractor(pdf_path)
+        try:
+            coverages = extractor.extract_coverage_universe(max_pages=3)
 
-        if not coverages:
-            logger.warning("No coverages extracted from PDF")
-            return template_id, 0
+            if not coverages:
+                logger.warning("No coverages extracted from PDF")
+                return template_id, 0
 
-        # Step 4: Insert coverages
-        coverage_count = self._insert_coverages(template_id, coverages)
-        logger.info(f"  Inserted {coverage_count} coverages")
+            # Step 4: Insert coverages
+            coverage_count = self._insert_coverages(template_id, coverages)
+            logger.info(f"  Inserted {coverage_count} coverages")
 
-        return template_id, coverage_count
+            # Log extraction quality
+            success_count = sum(1 for c in coverages if c['extraction_status'] == 'success')
+            partial_count = sum(1 for c in coverages if c['extraction_status'] == 'partial')
+            logger.info(f"  Extraction quality: success={success_count}, partial={partial_count}")
+
+            return template_id, coverage_count
+
+        finally:
+            extractor.close()
 
     def _calculate_fingerprint(self, pdf_path: Path) -> str:
         """Calculate content hash for template fingerprint"""
         hasher = hashlib.sha256()
         with open(pdf_path, 'rb') as f:
-            # Read first 10 pages or entire file
-            hasher.update(f.read(1024 * 1024))  # First 1MB
+            # Read first 1MB for fingerprint
+            hasher.update(f.read(1024 * 1024))
         return hasher.hexdigest()
 
     def _get_or_create_template(
@@ -220,7 +365,7 @@ class V2ProposalIngestion:
                 version,
                 fingerprint,
                 effective_date,
-                json.dumps({})
+                json.dumps({'extraction_method': 'structure_first_v1'})
             ))
 
             self.conn.commit()
@@ -233,15 +378,22 @@ class V2ProposalIngestion:
 
         with self.conn.cursor() as cur:
             for cov in coverages:
-                coverage_name = cov['coverage_name']
-                normalized_name = self._normalize_name(coverage_name)
+                coverage_name_raw = cov['coverage_name_raw']
                 amount_value = cov.get('amount_value')
-                page = cov['page']
+                page = cov['source_page']
                 span_text = cov['span_text']
 
                 # Calculate content hash
-                content = f"{normalized_name}|{amount_value}|{page}|{span_text}"
+                content = f"{coverage_name_raw}|{amount_value}|{page}|{span_text}"
                 content_hash = hashlib.sha256(content.encode()).hexdigest()
+
+                # Determine payout_amount_unit from amount_text
+                payout_unit = 'unknown'
+                if cov.get('amount_text'):
+                    if '만원' in cov['amount_text']:
+                        payout_unit = '만원'
+                    elif '원' in cov['amount_text']:
+                        payout_unit = '원'
 
                 try:
                     cur.execute("""
@@ -259,11 +411,11 @@ class V2ProposalIngestion:
                         ON CONFLICT (template_id, content_hash) DO NOTHING
                     """, (
                         template_id,
-                        coverage_name,
-                        normalized_name,
+                        coverage_name_raw,
+                        coverage_name_raw,  # normalized_name = raw for now (no normalization)
                         'KRW',
                         amount_value,
-                        'unknown',  # Will be resolved in later stage
+                        payout_unit,
                         page,
                         span_text,
                         content_hash
@@ -271,22 +423,20 @@ class V2ProposalIngestion:
                     if cur.rowcount > 0:
                         inserted += 1
                 except Exception as e:
-                    logger.error(f"Failed to insert coverage {coverage_name}: {e}")
+                    logger.error(f"Failed to insert coverage {coverage_name_raw}: {e}")
 
             self.conn.commit()
 
         return inserted
-
-    def _normalize_name(self, name: str) -> str:
-        """Simple normalization: lowercase + strip"""
-        return name.lower().strip()
 
 
 def main():
     """Main ingestion script"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='v2 Proposal Ingestion Stage-1')
+    parser = argparse.ArgumentParser(
+        description='v2 Proposal Ingestion Stage-1 (Structure-First)'
+    )
     parser.add_argument('pdf_path', type=Path, help='Path to proposal PDF')
     parser.add_argument('--product-id', required=True, help='Product ID')
     parser.add_argument('--version', required=True, help='Template version')
@@ -302,7 +452,7 @@ def main():
     if args.effective_date:
         effective_date = date.fromisoformat(args.effective_date)
 
-    # Connect to DB (writable mode)
+    # Connect to DB
     conn = get_db_connection(readonly=False)
 
     try:
@@ -314,7 +464,7 @@ def main():
             effective_date=effective_date
         )
 
-        logger.info(f"✅ Ingestion complete:")
+        logger.info(f"✅ Ingestion complete (Structure-First):")
         logger.info(f"  Template: {template_id}")
         logger.info(f"  Coverages: {count}")
 

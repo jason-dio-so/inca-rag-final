@@ -35,21 +35,29 @@
 
 ### 2025-12-26
 
-#### ✅ STEP NEXT-AB: v2 Proposal Ingestion Stage-1 (Template + Universe Only)
-**Commit:** c37f725
-**Summary:** 첫 실제 가입설계서 데이터 v2로 ingestion (삼성 암보험 42개 담보)
+#### ✅ STEP NEXT-AB (FINAL): v2 Proposal Ingestion Stage-1 (Structure-First)
+**Commit:** (pending)
+**Summary:** Structure-First Universe 추출 (pdfplumber 테이블 구조 기반)
 **DoD:** ✅ Pass
 
 **Deliverables:**
-- apps/api/scripts/ingest_v2_proposal_stage1.py
-- v2.template: +1 (Samsung proposal template)
-- v2.proposal_coverage: 42 rows (coverage universe, no mapping)
+- apps/api/scripts/ingest_v2_proposal_stage1.py (structure-first rewrite)
+- v2.template: +1 (Samsung proposal, extraction_method: structure_first_v1)
+- v2.proposal_coverage: 32 rows (29 success, 3 partial)
 
 **Validation:**
-- ✅ v2.proposal_coverage: 42 rows
-- ✅ v2.template: 3 rows (2 seed + 1 Samsung)
+- ✅ v2.proposal_coverage: 32 rows (table structure extraction)
+- ✅ Amount parsing: 29/32 success (3,000만원 → 30000000)
+- ✅ Payout unit: 만원/원 구분 정상
 - ✅ smoke_v2.sh PASSED
 - ✅ Legacy public schema: 0 writes
+
+**Constitutional Compliance:**
+- ✅ PDF = Layout Document (not text)
+- ✅ Table structure first, content second
+- ✅ NO text keyword search
+- ✅ NO LLM-based extraction
+- ✅ NO normalization/mapping
 
 ---
 
