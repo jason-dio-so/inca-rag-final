@@ -1,12 +1,10 @@
--- STEP NEXT-AF: Proposal Coverage Detail Table
+-- STEP NEXT-AF-FIX: Proposal Coverage Detail Table (Safe Migration)
 -- Purpose: Store proposal detail table (보장내용 설명) for Comparison Description
 -- Constitutional Rule: This is NOT evidence - it's comparison description only
+-- Migration Safety: CREATE IF NOT EXISTS to preserve accumulated data
 
--- Drop existing if exists
-DROP TABLE IF EXISTS v2.proposal_coverage_detail CASCADE;
-
--- Create table
-CREATE TABLE v2.proposal_coverage_detail (
+-- Create table (safe - preserves existing data)
+CREATE TABLE IF NOT EXISTS v2.proposal_coverage_detail (
     detail_id SERIAL PRIMARY KEY,
     template_id TEXT NOT NULL,
     coverage_id INTEGER,  -- FK to v2.proposal_coverage, nullable if unmatched
@@ -16,6 +14,7 @@ CREATE TABLE v2.proposal_coverage_detail (
     source_doc_type TEXT NOT NULL DEFAULT 'proposal_detail' CHECK (source_doc_type = 'proposal_detail'),
     source_page INTEGER,  -- Page number in proposal PDF
     excerpt_hash TEXT NOT NULL,  -- For deduplication
+    extraction_method TEXT,  -- AF-FIX: Track extraction method (deterministic_v1, manual, etc.)
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
 
@@ -25,10 +24,24 @@ CREATE TABLE v2.proposal_coverage_detail (
     CONSTRAINT unique_detail_per_template UNIQUE (template_id, coverage_id, excerpt_hash)
 );
 
--- Indexes
-CREATE INDEX idx_proposal_coverage_detail_template ON v2.proposal_coverage_detail(template_id);
-CREATE INDEX idx_proposal_coverage_detail_coverage ON v2.proposal_coverage_detail(coverage_id);
-CREATE INDEX idx_proposal_coverage_detail_updated ON v2.proposal_coverage_detail(updated_at DESC);
+-- Add extraction_method column if not exists (for migration from AF to AF-FIX)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'v2'
+        AND table_name = 'proposal_coverage_detail'
+        AND column_name = 'extraction_method'
+    ) THEN
+        ALTER TABLE v2.proposal_coverage_detail ADD COLUMN extraction_method TEXT;
+    END IF;
+END $$;
+
+-- Indexes (CREATE IF NOT EXISTS not needed for indexes, they are safe)
+CREATE INDEX IF NOT EXISTS idx_proposal_coverage_detail_template ON v2.proposal_coverage_detail(template_id);
+CREATE INDEX IF NOT EXISTS idx_proposal_coverage_detail_coverage ON v2.proposal_coverage_detail(coverage_id);
+CREATE INDEX IF NOT EXISTS idx_proposal_coverage_detail_updated ON v2.proposal_coverage_detail(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_proposal_coverage_detail_extraction ON v2.proposal_coverage_detail(extraction_method);
 
 -- Updated_at trigger
 CREATE OR REPLACE FUNCTION update_proposal_coverage_detail_updated_at()
