@@ -35,8 +35,26 @@
 
 ### 2025-12-26
 
-#### ✅ STEP NEXT-X: Insurer/Product/Template SSOT Lock
+#### ✅ STEP NEXT-Y: Provenance Audit + Route Alignment
 **Commit:** (pending)
+**Summary:** DB/Container/Repo 완전 provenance 분석 + SSOT 정합 결론
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- docs/db/provenance/DOCKER_PROVENANCE.md (Container/Volume/Env 증거)
+- docs/db/provenance/DB_ROW_PROVENANCE.md (Row-level 시간순 분석)
+- docs/db/provenance/REPO_EXECUTION_PROVENANCE.md (Git/Scripts/Seed 경로 추적)
+- docs/db/ROUTE_ALIGNMENT_REPORT.md (SSOT 위배 판정 + 신규 스키마 권고)
+
+**Key Findings:**
+- 모든 DB 데이터 = E2E test fixtures (2025-12-24 23:21 UTC, seed_step13_minimal.sql)
+- insurer VARCHAR / proposal_id / template_id 부재 → 구조적 SSOT 위반
+- 권고: Option B (New Schema v2 재구축)
+
+---
+
+#### ✅ STEP NEXT-X: Insurer/Product/Template SSOT Lock
+**Commit:** 2dbbde4
 **Summary:** insurer(8개), product, template_id 헌법급 SSOT 고정
 **DoD:** ✅ Pass
 
@@ -44,10 +62,6 @@
 - CLAUDE.md § Insurer/Product/Template SSOT (Hard Rule) 추가
 - docs/db/SSOT_VIOLATIONS.md (위반 자산 목록화)
 - Violations: insurer VARCHAR, proposal_id 사용, template_id 부재
-
-**Next Steps:**
-- Migration 설계 (insurer_code ENUM, product_id FK, template_id 스키마)
-- Provenance Audit (Route Alignment)
 
 ---
 
