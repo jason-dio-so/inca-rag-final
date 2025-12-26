@@ -8,10 +8,26 @@
 
 ## 1. Database Migration Application
 
-### 1.1 Migration File
+### 1.1 Prerequisites
+**Requirement:** PostgreSQL connection available at `localhost:5433`
+
+**Verify connection:**
+```bash
+pg_isready -h localhost -p 5433
+# Expected: localhost:5433 - accepting connections
+```
+
+**Note:** PostgreSQL can be:
+- Local installation
+- Docker container (already running)
+- Remote instance (configured via env vars)
+
+**Docker is NOT required** if PostgreSQL is already available.
+
+### 1.2 Migration File
 **Location:** `migrations/step_next7_admin_mapping_workbench.sql`
 
-### 1.2 Application Steps
+### 1.3 Application Steps
 ```bash
 # Connect to PostgreSQL
 psql -h localhost -p 5433 -U postgres -d inca_rag_final_test

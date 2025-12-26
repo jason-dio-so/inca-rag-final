@@ -8,14 +8,24 @@
 
 ## Test Infrastructure Created
 
-### 1. Docker Compose for Tests
+### Primary Requirement: PostgreSQL Connection
+**Connection:** `localhost:5433` (or configured via environment variables)
+**Database:** `inca_rag_final_test`
+
+**✅ If PostgreSQL is already running:** Use it directly (Docker NOT required)
+**⚠️ If PostgreSQL is NOT available:** Use Docker Compose as fallback
+
+### [OPTIONAL] Docker Compose for Tests
 **File:** `docker-compose.test.yml`
 
+**Purpose:** Provides PostgreSQL when not available locally
 **Contents:**
 - PostgreSQL 15-alpine
 - Port: 5433 (no conflict with default)
 - Database: `inca_rag_final_test`
 - Health check enabled
+
+**Note:** Docker is a convenience tool, NOT a system dependency
 
 ### 2. Migration Application Script
 **File:** `tools/db/apply_migrations_next7.sh`
@@ -40,13 +50,24 @@
 
 ## Expected Execution Flow
 
-### Step 1: Start Database
+### Step 0: Verify PostgreSQL Connection (Primary Path)
+```bash
+$ pg_isready -h localhost -p 5433
+localhost:5433 - accepting connections
+```
+
+**✅ If connection successful:** Skip to Step 2 (Migration)
+**❌ If connection failed:** Run Step 1 (Start Docker - Optional)
+
+### Step 1: [OPTIONAL] Start Database (Only if PostgreSQL unavailable)
 ```bash
 $ docker-compose -f docker-compose.test.yml up -d
 Creating inca_rag_test_db ... done
 Waiting for database to be ready...
 ✓ Database started (healthy)
 ```
+
+**Note:** This step is NOT required if PostgreSQL is already running on localhost:5433
 
 ### Step 2: Apply Migration
 ```bash
@@ -306,18 +327,27 @@ curl http://localhost:8000/health
 
 ## Quick Start Commands
 
-### One-Command Execution
+### Primary Path (PostgreSQL already running)
 ```bash
-# Run everything (DB + migration + tests)
-./tools/test/run_admin_mapping_tests.sh
+# Verify connection
+pg_isready -h localhost -p 5433
 
-# Run with cleanup
-CLEANUP=yes ./tools/test/run_admin_mapping_tests.sh
+# Apply migration
+./tools/db/apply_migrations_next7.sh
+
+# Run tests
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5433
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=testpass
+export POSTGRES_DB=inca_rag_final_test
+
+python -m pytest tests/test_admin_mapping_approve.py -v
 ```
 
-### Manual Step-by-Step
+### Alternative Path (Using Docker if PostgreSQL unavailable)
 ```bash
-# 1. Start DB
+# 1. Start DB (ONLY if pg_isready fails)
 docker-compose -f docker-compose.test.yml up -d
 
 # 2. Apply migration
@@ -334,6 +364,15 @@ python -m pytest tests/test_admin_mapping_approve.py -v
 
 # 4. Cleanup
 docker-compose -f docker-compose.test.yml down
+```
+
+### One-Command Execution (Handles both paths)
+```bash
+# Automatically checks PostgreSQL availability
+./tools/test/run_admin_mapping_tests.sh
+
+# Run with cleanup (if using Docker)
+CLEANUP=yes ./tools/test/run_admin_mapping_tests.sh
 ```
 
 ---

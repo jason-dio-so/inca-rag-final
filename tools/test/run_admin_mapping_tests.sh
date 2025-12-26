@@ -1,7 +1,12 @@
 #!/bin/bash
 # One-Command Test Runner for Admin Mapping Tests
-# Purpose: Start DB, apply migration, run tests, report results
+# Purpose: Verify PostgreSQL connection, apply migration, run tests, report results
 # Constitutional: Tests must pass without skip/xfail markers
+#
+# EXECUTION INDEPENDENCE PRINCIPLE:
+# - Docker is OPTIONAL, not required
+# - If PostgreSQL is already running (localhost:5433), Docker is skipped
+# - This script works with ANY PostgreSQL source (local, Docker, remote)
 
 set -e  # Exit on error
 
