@@ -331,10 +331,10 @@ async def approve_event(request: ApproveEventRequest):
 
 ### Event Creation Trigger
 - `/compare` endpoint에서 UNMAPPED/AMBIGUOUS 감지 시
-- `src/admin_mapping/integration.py::maybe_create_unmapped_event_from_compare()` 호출
+- `apps/api/app/admin_mapping/integration.py::maybe_create_unmapped_event_from_compare()` 호출
 
 ```python
-from src.admin_mapping.integration import maybe_create_unmapped_event_from_compare
+from apps.api.app.admin_mapping.integration import maybe_create_unmapped_event_from_compare
 
 # In compare endpoint
 if coverage_a and coverage_a.get("mapping_status") in ["UNMAPPED", "AMBIGUOUS"]:
@@ -396,6 +396,6 @@ if coverage_a and coverage_a.get("mapping_status") in ["UNMAPPED", "AMBIGUOUS"]:
 
 - Constitutional: `/Users/cheollee/inca-RAG-final/CLAUDE.md`
 - Migration: `/Users/cheollee/inca-RAG-final/migrations/step_next7_admin_mapping_workbench.sql`
-- Backend: `/Users/cheollee/inca-RAG-final/src/admin_mapping/`
+- Backend: `/Users/cheollee/inca-RAG-final/apps/api/app/admin_mapping/`
 - Frontend: `/Users/cheollee/inca-RAG-final/apps/web/src/pages/admin/mapping.tsx`
 - Tests: `/Users/cheollee/inca-RAG-final/tests/test_admin_mapping_approve.py`

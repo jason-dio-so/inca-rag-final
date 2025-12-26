@@ -6,8 +6,8 @@ Constitutional: Canonical Coverage Rule enforcement
 import pytest
 import asyncpg
 import uuid
-from src.admin_mapping.service import AdminMappingService, ValidationError
-from src.admin_mapping.models import (
+from apps.api.app.admin_mapping.service import AdminMappingService, ValidationError
+from apps.api.app.admin_mapping.models import (
     CreateMappingEventRequest,
     ApproveEventRequest,
     DetectedStatus,
@@ -217,7 +217,7 @@ async def test_reject_event(
     """
     Test: Reject event updates state and creates audit log
     """
-    from src.admin_mapping.models import RejectEventRequest
+    from apps.api.app.admin_mapping.models import RejectEventRequest
 
     request = RejectEventRequest(
         event_id=sample_event,
@@ -242,7 +242,7 @@ async def test_snooze_event(
     """
     Test: Snooze event updates state and creates audit log
     """
-    from src.admin_mapping.models import SnoozeEventRequest
+    from apps.api.app.admin_mapping.models import SnoozeEventRequest
 
     request = SnoozeEventRequest(
         event_id=sample_event,

@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .routers import products, compare, evidence, view_model, compile
+from .admin_mapping import router as admin_mapping_router
+from .db import close_async_pool
 
 app = FastAPI(
     title="inca-RAG-final STEP 5 API",
@@ -42,6 +44,7 @@ app.include_router(compare.router)
 app.include_router(evidence.router)
 app.include_router(view_model.router)
 app.include_router(compile.router)
+app.include_router(admin_mapping_router)  # STEP NEXT-7: Admin Mapping Workbench
 
 
 @app.get("/")
@@ -65,3 +68,9 @@ async def root():
 async def health():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup async database pool on shutdown"""
+    await close_async_pool()

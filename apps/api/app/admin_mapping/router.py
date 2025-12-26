@@ -17,7 +17,7 @@ from .models import (
     EventState,
 )
 from .service import AdminMappingService, ValidationError
-from src.db import get_db_pool
+from ..db import get_db_pool
 import asyncpg
 
 

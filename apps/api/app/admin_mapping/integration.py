@@ -5,8 +5,8 @@ Helper functions to populate mapping_event_queue from compare/clarify flows
 
 import asyncpg
 from typing import Optional, List
-from src.admin_mapping.service import AdminMappingService
-from src.admin_mapping.models import CreateMappingEventRequest, DetectedStatus
+from .service import AdminMappingService
+from .models import CreateMappingEventRequest, DetectedStatus
 
 
 async def maybe_create_unmapped_event(

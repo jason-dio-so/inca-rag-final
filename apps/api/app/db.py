@@ -1,18 +1,21 @@
 """
-Database connection module for STEP 5 API (READ-ONLY)
+Database connection module for STEP 5 API (READ-ONLY) + Admin (WRITE)
 
 Constitutional guarantee:
-- All transactions are READ ONLY
-- No INSERT/UPDATE/DELETE/DDL allowed
-- Accidental write attempts will fail at DB level
+- All transactions are READ ONLY by default
+- Admin mapping workbench requires WRITE access (async)
+- Accidental write attempts will fail at DB level for read-only endpoints
 """
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from typing import Iterator, Optional, Dict, Any, List
 
 import psycopg2
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import RealDictCursor
+
+# Admin mapping requires async DB access
+import asyncpg
 
 
 def get_db_connection(readonly: bool = True) -> PGConnection:
@@ -173,3 +176,55 @@ def execute_readonly_query_one(
         cur.execute(query, params or {})
         row = cur.fetchone()
         return dict(row) if row else None
+
+
+# ============================================================================
+# Async DB Pool for Admin Mapping (WRITE operations)
+# ============================================================================
+
+_async_pool: Optional[asyncpg.Pool] = None
+
+
+async def get_async_pool() -> asyncpg.Pool:
+    """
+    Get or create async database pool for admin operations.
+
+    NOTE: This pool allows WRITE operations (for admin_mapping only).
+    Constitutional: Admin mapping workbench requires write access.
+    """
+    global _async_pool
+
+    if _async_pool is None or _async_pool._closed:
+        _async_pool = await asyncpg.create_pool(
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=int(os.getenv("POSTGRES_PORT", "5433")),
+            database=os.getenv("POSTGRES_DB", "inca_rag_final_test"),
+            user=os.getenv("POSTGRES_USER", "postgres"),
+            password=os.getenv("POSTGRES_PASSWORD", "testpass"),
+            min_size=2,
+            max_size=10,
+        )
+
+    return _async_pool
+
+
+async def close_async_pool():
+    """Close async database pool on shutdown."""
+    global _async_pool
+    if _async_pool is not None and not _async_pool._closed:
+        await _async_pool.close()
+        _async_pool = None
+
+
+async def get_db_pool() -> asyncpg.Pool:
+    """
+    FastAPI dependency for async database pool.
+
+    Usage:
+        @router.post("/endpoint")
+        async def endpoint(db_pool: asyncpg.Pool = Depends(get_db_pool)):
+            async with db_pool.acquire() as conn:
+                # Use conn for queries
+                ...
+    """
+    return await get_async_pool()
