@@ -13,7 +13,7 @@ import re
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
-from .cancer_canonical import CancerScopeEvidence
+from .cancer_canonical import CancerScopeEvidence, NameBasedHint
 
 
 @dataclass
@@ -41,7 +41,6 @@ class CancerScopeDetector:
     # Patterns for detecting cancer types in policy text
     GENERAL_CANCER_PATTERNS = [
         r"일반암",
-        r"암\s*진단",
         r"악성신생물",
         r"C00\s*[-~]\s*C97",  # KCD-7 general cancer range
     ]
@@ -95,7 +94,7 @@ class CancerScopeDetector:
         """
         text_lower = policy_text.lower()
 
-        # Detect inclusions
+        # Detect inclusions (initial broad detection)
         includes_general = CancerScopeDetector._detect_pattern(
             text_lower, CancerScopeDetector.GENERAL_CANCER_PATTERNS
         )
@@ -109,38 +108,60 @@ class CancerScopeDetector:
             text_lower, CancerScopeDetector.BORDERLINE_PATTERNS
         )
 
+        # Filter out "별도" context
+        # If "X와 별도" appears, don't include X
+        if re.search(r"유사암.*별도", text_lower) or re.search(r"별도.*유사암", text_lower):
+            includes_similar = False
+        if re.search(r"일반암.*별도", text_lower) or re.search(r"별도.*일반암", text_lower):
+            includes_general = False
+
         # Detect exclusions
         has_exclusion = CancerScopeDetector._detect_pattern(
             text_lower, CancerScopeDetector.EXCLUSION_PATTERNS
         )
 
         # Apply exclusion logic
-        # If "유사암 제외" appears → includes_similar = False
-        if has_exclusion and "유사암" in text_lower:
-            includes_similar = False
+        # Pattern: "[X]는 제외" or "[X] 제외" or "단, [X]"
+        # Must verify that "제외" is near the cancer type keyword
+        if has_exclusion:
+            # Check for exclusion patterns with context
+            # "유사암은 제외", "유사암 제외", "유사암(C73, C44)은 제외"
+            if re.search(r"유사암[^\)]*제외", text_lower) or re.search(r"유사암.*은\s*제외", text_lower):
+                includes_similar = False
 
-        # If "제자리암 제외" appears → includes_in_situ = False
-        if has_exclusion and "제자리암" in text_lower:
-            includes_in_situ = False
+            # "제자리암은 제외", "제자리암 제외", "제자리암(D00-D09)은 제외"
+            if re.search(r"제자리암[^\)]*제외", text_lower) or re.search(r"제자리암.*은\s*제외", text_lower):
+                includes_in_situ = False
 
-        # If "경계성종양 제외" appears → includes_borderline = False
-        if has_exclusion and "경계성" in text_lower:
-            includes_borderline = False
+            # "경계성종양은 제외", "경계성종양 제외", "경계성종양(D37-D48)은 제외"
+            if re.search(r"경계성종양[^\)]*제외", text_lower) or re.search(r"경계성.*은\s*제외", text_lower):
+                includes_borderline = False
 
         # Determine confidence
-        confidence = "policy_confirmed" if any([
+        has_any_match = any([
             includes_general,
             includes_similar,
             includes_in_situ,
             includes_borderline,
-        ]) else "unknown"
+        ])
+
+        confidence = "evidence_strong" if has_any_match else "unknown"
+
+        # Build evidence spans
+        evidence_spans = [{
+            "doc_id": policy_span.document_id,
+            "doc_type": "policy",
+            "page": policy_span.page,
+            "span_text": policy_span.span_text,
+            "rule_id": "cancer_scope_detector_v1",
+        }] if has_any_match else None
 
         return CancerScopeEvidence(
             includes_general=includes_general,
             includes_similar=includes_similar,
             includes_in_situ=includes_in_situ,
             includes_borderline=includes_borderline,
-            evidence_source=f"{policy_span.document_id}:p{policy_span.page}",
+            evidence_spans=evidence_spans,
             confidence=confidence,
         )
 
@@ -155,73 +176,38 @@ class CancerScopeDetector:
         return False
 
     @staticmethod
-    def detect_scope_from_coverage_name(coverage_name_raw: str) -> CancerScopeEvidence:
+    def extract_hint_from_coverage_name(coverage_name_raw: str) -> NameBasedHint:
         """
-        Heuristic-based scope detection from coverage name.
+        Extract hint from coverage name (NOT a final decision).
 
-        WARNING: This is NOT constitutional.
-        Only use when policy evidence is unavailable.
+        AH-3 Constitutional Rule:
+        - This ONLY extracts hints for debug/audit
+        - DO NOT use this for canonical code determination
+        - Final decision requires policy evidence
 
         Returns:
-            CancerScopeEvidence with confidence='inferred'
+            NameBasedHint with mentions_* flags
 
-        Logic Priority (to avoid ambiguity):
-        1. If "유사암" appears → Check if specific sub-types mentioned in parentheses
-           - "유사암 진단비(제자리암)" → CA_DIAG_IN_SITU (specific wins)
-           - "유사암 진단비(경계성종양)" → CA_DIAG_BORDERLINE (specific wins)
-           - "유사암 진단비(갑상선암)" → CA_DIAG_SIMILAR (similar category)
-           - "유사암 진단비" (no parentheses) → CA_DIAG_SIMILAR (general similar)
-        2. If "암진단(유사암제외)" → CA_DIAG_GENERAL
-        3. If "제자리암" alone → CA_DIAG_IN_SITU
-        4. If "경계성종양" alone → CA_DIAG_BORDERLINE
+        Example:
+        - "유사암 진단비(제자리암)" → mentions_similar=True, mentions_in_situ=True
+        - "암진단비(유사암제외)" → mentions_general=True, mentions_exclusion=True
         """
         name_lower = coverage_name_raw.lower().replace(" ", "")
 
-        includes_general = False
-        includes_similar = False
-        includes_in_situ = False
-        includes_borderline = False
+        hint = NameBasedHint(raw_name=coverage_name_raw)
 
-        # Priority 1: Specific sub-types within "유사암" context
-        if "유사암" in name_lower:
-            # Check if specific sub-type mentioned in parentheses
-            if "유사암" in name_lower and "제자리암" in name_lower:
-                # "유사암 진단비(제자리암)" → IN_SITU (specific wins)
-                includes_in_situ = True
-            elif "유사암" in name_lower and ("경계성종양" in name_lower or "경계성" in name_lower):
-                # "유사암 진단비(경계성종양)" → BORDERLINE (specific wins)
-                includes_borderline = True
-            else:
-                # "유사암 진단비" or "유사암 진단비(갑상선암)" → SIMILAR
-                includes_similar = True
-        else:
-            # Not in "유사암" context → Independent detection
-            if "제자리암" in name_lower:
-                includes_in_situ = True
-            if "경계성종양" in name_lower or "경계성" in name_lower:
-                includes_borderline = True
+        # Detect mentions (NOT final decision)
+        hint.mentions_similar = "유사암" in name_lower
+        hint.mentions_in_situ = "제자리암" in name_lower
+        hint.mentions_borderline = "경계성종양" in name_lower or "경계성" in name_lower
+        hint.mentions_general = "암진단" in name_lower or "일반암" in name_lower
+        hint.mentions_exclusion = any([
+            "유사암제외" in name_lower,
+            "유사암 제외" in name_lower,
+            "4대유사암제외" in name_lower,
+        ])
 
-        # Detect general cancer
-        if "암진단" in name_lower or "일반암" in name_lower:
-            # If no specific type mentioned, assume general
-            if not (includes_similar or includes_in_situ or includes_borderline):
-                includes_general = True
-
-        # Handle exclusion clauses
-        if "유사암제외" in name_lower or "유사암 제외" in name_lower or "4대유사암제외" in name_lower:
-            includes_similar = False
-            includes_in_situ = False
-            includes_borderline = False
-            includes_general = True  # If excluding similar, likely general
-
-        return CancerScopeEvidence(
-            includes_general=includes_general,
-            includes_similar=includes_similar,
-            includes_in_situ=includes_in_situ,
-            includes_borderline=includes_borderline,
-            evidence_source="coverage_name_heuristic",
-            confidence="inferred",
-        )
+        return hint
 
 
 def build_scope_evidence_from_policy(
@@ -242,9 +228,68 @@ def build_scope_evidence_from_policy(
     2. Extract relevant text span
     3. Run CancerScopeDetector.detect_scope_from_text()
     4. Return evidence with metadata
-    """
-    # This is a placeholder for actual policy document search
-    # In production, this would query v2.coverage_evidence table
 
-    # For now, return None (use heuristic fallback)
-    return None
+    Constitutional Requirement (AH-3):
+    - MUST return evidence with doc_id, page, span_text
+    - MUST use deterministic pattern matching only
+    - NO LLM inference allowed
+    """
+    if not policy_documents:
+        return None
+
+    detector = CancerScopeDetector()
+    all_evidence_spans = []
+
+    # Aggregate flags from all matching policy chunks
+    includes_general = False
+    includes_similar = False
+    includes_in_situ = False
+    includes_borderline = False
+
+    for doc in policy_documents:
+        # Extract required fields
+        doc_id = doc.get("document_id") or doc.get("doc_id")
+        page = doc.get("page")
+        text = doc.get("text") or doc.get("span_text") or doc.get("content", "")
+
+        if not doc_id or page is None or not text:
+            continue
+
+        # Build span
+        span = PolicyTextSpan(
+            document_id=doc_id,
+            page=page,
+            span_text=text,
+            section=doc.get("section"),
+        )
+
+        # Detect scope from this span
+        evidence = detector.detect_scope_from_text(text, span)
+
+        # Aggregate flags
+        if evidence.includes_general:
+            includes_general = True
+        if evidence.includes_similar:
+            includes_similar = True
+        if evidence.includes_in_situ:
+            includes_in_situ = True
+        if evidence.includes_borderline:
+            includes_borderline = True
+
+        # Collect evidence spans
+        if evidence.evidence_spans:
+            all_evidence_spans.extend(evidence.evidence_spans)
+
+    # If no evidence found, return None
+    if not all_evidence_spans:
+        return None
+
+    # Build aggregated evidence
+    return CancerScopeEvidence(
+        includes_general=includes_general,
+        includes_similar=includes_similar,
+        includes_in_situ=includes_in_situ,
+        includes_borderline=includes_borderline,
+        evidence_spans=all_evidence_spans,
+        confidence="evidence_strong" if all_evidence_spans else "unknown",
+    )

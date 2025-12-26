@@ -11,8 +11,8 @@ Principle:
 """
 
 from enum import Enum
-from typing import Set, Dict, Optional
-from dataclasses import dataclass
+from typing import Set, Dict, Optional, List, Any
+from dataclasses import dataclass, field
 
 
 class CancerCanonicalCode(str, Enum):
@@ -36,17 +36,39 @@ class CancerCanonicalCode(str, Enum):
 
 
 @dataclass
+class NameBasedHint:
+    """
+    Hint extracted from coverage name (NOT a final decision).
+
+    This is for debug/audit purposes only.
+    DO NOT use this for canonical code determination.
+    """
+    mentions_in_situ: bool = False
+    mentions_borderline: bool = False
+    mentions_similar: bool = False
+    mentions_general: bool = False
+    mentions_exclusion: bool = False
+    raw_name: Optional[str] = None
+
+
+@dataclass
 class CancerScopeEvidence:
     """
     Evidence-based cancer coverage scope determination.
 
+    Constitutional Rule (AH-3):
+    - includes_* fields can ONLY be True if policy evidence exists
+    - confidence MUST be "evidence_strong" or "evidence_weak" when includes_* is True
+    - confidence="unknown" → all includes_* must be False
+
     Fields:
-    - includes_general: 일반암 포함 여부
-    - includes_similar: 유사암 포함 여부
-    - includes_in_situ: 제자리암 포함 여부
-    - includes_borderline: 경계성종양 포함 여부
-    - evidence_source: Evidence 출처 (policy page, section)
-    - confidence: Evidence 신뢰도 (policy_confirmed | inferred | unknown)
+    - includes_general: 일반암 포함 여부 (policy evidence required)
+    - includes_similar: 유사암 포함 여부 (policy evidence required)
+    - includes_in_situ: 제자리암 포함 여부 (policy evidence required)
+    - includes_borderline: 경계성종양 포함 여부 (policy evidence required)
+    - evidence_spans: List of policy spans (doc_id, page, span_text)
+    - confidence: evidence_strong | evidence_weak | unknown
+    - hint: Optional name-based hint (for debug only)
     """
 
     includes_general: bool
@@ -54,8 +76,24 @@ class CancerScopeEvidence:
     includes_in_situ: bool
     includes_borderline: bool
 
-    evidence_source: Optional[str] = None
-    confidence: str = "unknown"  # policy_confirmed | inferred | unknown
+    evidence_spans: Optional[List[Dict[str, Any]]] = field(default=None)  # [{doc_id, page, span_text, rule_id}]
+    confidence: str = "unknown"  # evidence_strong | evidence_weak | unknown
+    hint: Optional[NameBasedHint] = None
+
+    def __post_init__(self):
+        """
+        Validate constitutional constraint (AH-3).
+
+        If confidence="unknown" → all includes_* must be False.
+        """
+        if self.confidence == "unknown":
+            if any([self.includes_general, self.includes_similar,
+                   self.includes_in_situ, self.includes_borderline]):
+                raise ValueError(
+                    "AH-3 Constitutional violation: "
+                    "confidence='unknown' cannot have includes_*=True. "
+                    "Evidence required for scope determination."
+                )
 
     def get_canonical_code(self) -> Optional[CancerCanonicalCode]:
         """

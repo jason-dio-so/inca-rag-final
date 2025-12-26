@@ -31,29 +31,42 @@ class CoverageSplitResult:
     """
     Result of splitting a coverage instance into canonical codes.
 
+    AH-3 Constitutional Rule:
+    - canonical_codes can only be decided if split_method = "policy_evidence"
+    - If split_method = "undecided", canonical_codes must be empty
+    - hint field is for debug only
+
     Fields:
     - original_coverage_name: Original coverage name from proposal
-    - canonical_codes: Set of applicable CancerCanonicalCode values
-    - evidence: CancerScopeEvidence used for split
-    - split_method: Method used (policy_evidence | heuristic | legacy_mapping)
+    - decided_canonical_codes: Set of decided CancerCanonicalCode values (policy evidence required)
+    - recalled_candidates: Set of recalled canonical codes (from AH-1 Excel Alias)
+    - evidence: CancerScopeEvidence used for split (None if undecided)
+    - split_method: Method used (policy_evidence | undecided)
     """
 
     original_coverage_name: str
-    canonical_codes: Set[CancerCanonicalCode]
+    decided_canonical_codes: Set[CancerCanonicalCode]
+    recalled_candidates: Set[CancerCanonicalCode]
     evidence: Optional[CancerScopeEvidence]
-    split_method: str  # policy_evidence | heuristic | legacy_mapping
+    split_method: str  # policy_evidence | undecided
+
+    def is_decided(self) -> bool:
+        """
+        Check if split is decided (has policy evidence).
+        """
+        return self.split_method == "policy_evidence" and len(self.decided_canonical_codes) > 0
+
+    def is_undecided(self) -> bool:
+        """
+        Check if split is undecided (no policy evidence).
+        """
+        return self.split_method == "undecided"
 
     def is_ambiguous(self) -> bool:
         """
-        Check if split is ambiguous (multiple canonical codes).
+        Check if split is ambiguous (multiple decided canonical codes).
         """
-        return len(self.canonical_codes) > 1
-
-    def is_unmapped(self) -> bool:
-        """
-        Check if no canonical codes found.
-        """
-        return len(self.canonical_codes) == 0
+        return len(self.decided_canonical_codes) > 1
 
     def get_primary_canonical_code(self) -> Optional[CancerCanonicalCode]:
         """
@@ -62,8 +75,8 @@ class CoverageSplitResult:
         If multiple codes, returns None (ambiguous).
         If single code, returns that code.
         """
-        if len(self.canonical_codes) == 1:
-            return next(iter(self.canonical_codes))
+        if len(self.decided_canonical_codes) == 1:
+            return next(iter(self.decided_canonical_codes))
         else:
             return None
 
@@ -72,10 +85,10 @@ class CanonicalSplitMapper:
     """
     Maps coverage instances to cancer canonical codes.
 
-    Priority:
-    1. Policy evidence (preferred)
-    2. Heuristic from coverage name (backward compatibility)
-    3. Legacy Excel mapping (fallback)
+    AH-3 Constitutional Rule:
+    - ONLY policy evidence can decide canonical codes
+    - Name-based patterns produce hints only (for debug)
+    - If no policy evidence → split_method = "undecided"
     """
 
     def __init__(self):
@@ -86,46 +99,64 @@ class CanonicalSplitMapper:
         coverage_name_raw: str,
         policy_documents: Optional[List[Dict[str, Any]]] = None,
         coverage_id: Optional[str] = None,
+        recalled_candidates: Optional[Set[CancerCanonicalCode]] = None,
     ) -> CoverageSplitResult:
         """
-        Split coverage into canonical codes.
+        Split coverage into canonical codes (evidence-first).
 
         Args:
             coverage_name_raw: Raw coverage name from proposal
             policy_documents: Optional policy documents for evidence
             coverage_id: Optional coverage ID for policy lookup
+            recalled_candidates: Optional recalled candidates from AH-1 Excel Alias
 
         Returns:
-            CoverageSplitResult with canonical codes and evidence
+            CoverageSplitResult with decided_canonical_codes (if evidence exists)
 
-        Logic:
-        1. Try policy evidence (if available)
-        2. Fall back to heuristic from coverage name
-        3. Fall back to legacy Excel mapping (if applicable)
+        AH-3 Logic:
+        1. Try policy evidence ONLY
+        2. If no policy evidence → return undecided (with hint)
+        3. DO NOT use name-based heuristic for final decision
         """
+        # Extract hint from name (for debug/audit only)
+        hint = self.detector.extract_hint_from_coverage_name(coverage_name_raw)
+
         # Try policy evidence first
         if policy_documents and coverage_id:
             evidence = build_scope_evidence_from_policy(policy_documents, coverage_id)
-            if evidence and evidence.confidence == "policy_confirmed":
+            if evidence and evidence.confidence in ["evidence_strong", "evidence_weak"]:
+                # Attach hint to evidence
+                evidence.hint = hint
+
                 codes = split_cancer_coverage_by_scope(
                     coverage_name_raw, evidence=evidence
                 )
                 return CoverageSplitResult(
                     original_coverage_name=coverage_name_raw,
-                    canonical_codes=codes,
+                    decided_canonical_codes=codes,
+                    recalled_candidates=recalled_candidates or set(),
                     evidence=evidence,
                     split_method="policy_evidence",
                 )
 
-        # Fall back to heuristic
-        evidence = self.detector.detect_scope_from_coverage_name(coverage_name_raw)
-        codes = split_cancer_coverage_by_scope(coverage_name_raw, evidence=evidence)
+        # No policy evidence → undecided
+        # Build undecided evidence (with hint only)
+        undecided_evidence = CancerScopeEvidence(
+            includes_general=False,
+            includes_similar=False,
+            includes_in_situ=False,
+            includes_borderline=False,
+            evidence_spans=None,
+            confidence="unknown",
+            hint=hint,
+        )
 
         return CoverageSplitResult(
             original_coverage_name=coverage_name_raw,
-            canonical_codes=codes,
-            evidence=evidence,
-            split_method="heuristic",
+            decided_canonical_codes=set(),  # Empty = undecided
+            recalled_candidates=recalled_candidates or set(),
+            evidence=undecided_evidence,
+            split_method="undecided",
         )
 
     def split_universe_coverages(
@@ -181,15 +212,17 @@ def generate_split_report(
     {
         "total_coverages": int,
         "split_by_method": {method: count},
+        "decided_count": int,
+        "undecided_count": int,
         "ambiguous_count": int,
-        "unmapped_count": int,
         "canonical_distribution": {code: count},
     }
     """
     total = len(split_results)
     split_by_method = {}
+    decided = 0
+    undecided = 0
     ambiguous = 0
-    unmapped = 0
     canonical_dist = {}
 
     for result in split_results:
@@ -197,23 +230,26 @@ def generate_split_report(
         method = result.split_method
         split_by_method[method] = split_by_method.get(method, 0) + 1
 
+        # Count decided/undecided
+        if result.is_decided():
+            decided += 1
+        if result.is_undecided():
+            undecided += 1
+
         # Count ambiguous
         if result.is_ambiguous():
             ambiguous += 1
 
-        # Count unmapped
-        if result.is_unmapped():
-            unmapped += 1
-
-        # Count by canonical code
-        for code in result.canonical_codes:
+        # Count by canonical code (decided only)
+        for code in result.decided_canonical_codes:
             code_str = code.value
             canonical_dist[code_str] = canonical_dist.get(code_str, 0) + 1
 
     return {
         "total_coverages": total,
         "split_by_method": split_by_method,
+        "decided_count": decided,
+        "undecided_count": undecided,
         "ambiguous_count": ambiguous,
-        "unmapped_count": unmapped,
         "canonical_distribution": canonical_dist,
     }
