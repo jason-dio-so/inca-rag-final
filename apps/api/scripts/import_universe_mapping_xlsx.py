@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-STEP NEXT-AD: Import Universe Mapping (XLSX → DB)
+STEP NEXT-AD-FIX: Import Universe Mapping (XLSX → DB) with SSOT Enforcement
 
 Purpose:
 Import manually-filled canonical codes from XLSX to v2.coverage_mapping.
@@ -8,7 +8,7 @@ Import manually-filled canonical codes from XLSX to v2.coverage_mapping.
 Constitutional Guarantees:
 - DB is SSOT, XLSX is I/O medium only
 - Strict validation (all-or-nothing, ON_ERROR_STOP semantics)
-- NO coverage_standard reference (code validation deferred)
+- 신정원 통일코드 검증 필수 (v2.coverage_standard reference)
 - NO legacy public schema writes
 - Upsert on (template_id, coverage_id) conflict
 """
@@ -40,10 +40,22 @@ class MappingValidator:
     3. coverage_id must exist in DB with matching template_id
     4. canonical_coverage_code must not be empty
     5. canonical_coverage_code format: [A-Z0-9_]+ (conservative)
+    6. canonical_coverage_code must exist in v2.coverage_standard (신정원 SSOT)
     """
 
     def __init__(self, conn: PGConnection):
         self.conn = conn
+        self._load_coverage_standard()
+
+    def _load_coverage_standard(self):
+        """Load신정원 coverage codes from v2.coverage_standard (SSOT)"""
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT coverage_code FROM v2.coverage_standard")
+            self.valid_coverage_codes = {row[0] for row in cur.fetchall()}
+
+        logger.info(f"Loaded {len(self.valid_coverage_codes)} valid신정원 coverage codes from v2.coverage_standard")
+        if not self.valid_coverage_codes:
+            logger.warning("⚠️  v2.coverage_standard is EMPTY - all canonical_coverage_code will FAIL validation")
 
     def validate_xlsx(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
         """
@@ -100,7 +112,7 @@ class MappingValidator:
         if errors:
             return False, errors
 
-        # Rule 4 & 5: canonical_coverage_code validation (per row with code)
+        # Rule 4, 5, 6: canonical_coverage_code validation (per row with code)
         for idx, row in df.iterrows():
             canonical_code = row.get('canonical_coverage_code', '')
 
@@ -118,6 +130,16 @@ class MappingValidator:
                     f"Rule 5 FAILED: Row {idx+2} (Excel row): "
                     f"canonical_coverage_code '{canonical_code}' "
                     f"has invalid format (expected [A-Z0-9_]+)"
+                )
+                continue
+
+            # Rule 6: 신정원 SSOT validation (must exist in v2.coverage_standard)
+            if canonical_code not in self.valid_coverage_codes:
+                errors.append(
+                    f"Rule 6 FAILED: Row {idx+2} (Excel row): "
+                    f"canonical_coverage_code '{canonical_code}' "
+                    f"NOT FOUND in v2.coverage_standard (신정원 통일코드 SSOT). "
+                    f"Valid codes: {sorted(self.valid_coverage_codes)}"
                 )
 
         if errors:

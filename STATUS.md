@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-AD (Coverage Mapping - DB-First XLSX Import)
+**Current Phase:** STEP NEXT-AD-FIX (신정원 통일코드 강제 검증)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -35,31 +35,33 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-AD-FIX: 신정원 통일코드 강제 검증
+**Commit:** (pending)
+**Summary:** Universe → Coverage mapping은 반드시 신정원 통일코드로만 이루어진다. 임의 코드 제거 완료.
+**DoD:** ✅ Pass
+
+**Changes:**
+- import_universe_mapping_xlsx.py: Rule 6 추가 (신정원 코드 검증 필수)
+- smoke_v2.sh Test 7: 신정원 코드 기준 검증 (arbitrary code 감지)
+- v2.coverage_mapping: 3 valid신정원 mappings (CA_DIAG_GENERAL, CA_DIAG_SIMILAR)
+
+**Validation:**
+- ✅ v2.coverage_mapping: 3 rows (all valid신정원 codes, 0 arbitrary)
+- ✅ Import validation: 신정원 SSOT 검증 (v2.coverage_standard FK)
+- ✅ smoke_v2.sh PASSED (Test 7: Valid >= 3, Invalid = 0)
+
+---
+
 #### ✅ STEP NEXT-AD: Coverage Mapping (DB-First, XLSX Import)
 **Commit:** e10b508
 **Summary:** Universe → Canonical 매핑 (DB SSOT, XLSX I/O medium)
-**DoD:** ✅ Pass
+**DoD:** ✅ Pass (형식만, 내용은 NEXT-AD-FIX에서 수정)
 
 **Deliverables:**
-- v2.coverage_mapping table (3 sample mappings)
+- v2.coverage_mapping table
 - apps/api/scripts/export_universe_for_mapping.py
 - apps/api/scripts/import_universe_mapping_xlsx.py
 - smoke_v2.sh: Test 7 (Coverage Mapping validation)
-
-**Validation:**
-- ✅ Export: 29 Universe rows → XLSX
-- ✅ Manual mapping: 3 canonical codes filled
-- ✅ Dry-run: validation PASSED
-- ✅ Import: 3 rows inserted (0 updated)
-- ✅ smoke_v2.sh PASSED (Test 7: >= 3 mappings)
-- ✅ Legacy public schema: 0 writes
-
-**Constitutional Compliance:**
-- ✅ DB is SSOT, XLSX is I/O medium only
-- ✅ NO insurer_code/product_id in XLSX input (prevents past mismatch)
-- ✅ Join key: (template_id, coverage_id) only
-- ✅ Strict validation (all-or-nothing)
-- ✅ NO coverage_standard reference (code validation deferred)
 
 ---
 

@@ -122,26 +122,45 @@ echo "   cd apps/api && uvicorn app.main:app --port 8001"
 echo "   curl -X POST http://127.0.0.1:8001/compare/view-model ..."
 
 # ============================================
-# Test 7: Coverage Mapping (STEP NEXT-AD)
+# Test 7: Coverage Mapping (STEP NEXT-AD-FIX)
 # ============================================
 
 echo
-echo "📋 Test 7: Coverage Mapping (Universe → Canonical)..."
+echo "📋 Test 7: Coverage Mapping (신정원 통일코드 검증)..."
 
 # Check v2.coverage_mapping table exists
 MAPPING_TABLE_CHECK=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
     "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'v2' AND table_name = 'coverage_mapping');" | xargs)
 
 if [ "$MAPPING_TABLE_CHECK" = "t" ]; then
-    MAPPING_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+    # Count TOTAL mappings
+    TOTAL_MAPPING_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
         "SELECT COUNT(*) FROM v2.coverage_mapping;" | xargs)
-    echo "✅ v2.coverage_mapping: $MAPPING_COUNT rows"
 
-    # For STEP NEXT-AD DoD: require at least 3 mappings
-    if [ "$MAPPING_COUNT" -ge 3 ]; then
-        echo "✅ Sample mappings exist (>= 3)"
+    # Count VALID mappings (신정원 코드 검증)
+    VALID_MAPPING_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_mapping m WHERE EXISTS (SELECT 1 FROM v2.coverage_standard cs WHERE cs.coverage_code = m.canonical_coverage_code);" | xargs)
+
+    # Count INVALID mappings (arbitrary codes)
+    INVALID_MAPPING_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_mapping m WHERE NOT EXISTS (SELECT 1 FROM v2.coverage_standard cs WHERE cs.coverage_code = m.canonical_coverage_code);" | xargs)
+
+    echo "✅ v2.coverage_mapping: $TOTAL_MAPPING_COUNT rows total"
+    echo "   - Valid (신정원 코드): $VALID_MAPPING_COUNT"
+    echo "   - Invalid (arbitrary): $INVALID_MAPPING_COUNT"
+
+    # STEP NEXT-AD-FIX DoD: require at least 3 VALID mappings
+    if [ "$INVALID_MAPPING_COUNT" -gt 0 ]; then
+        echo "❌ FAILED: Found $INVALID_MAPPING_COUNT mappings with arbitrary canonical codes"
+        echo "   Run: DELETE FROM v2.coverage_mapping WHERE canonical_coverage_code NOT IN (SELECT coverage_code FROM v2.coverage_standard);"
+        exit 1
+    fi
+
+    if [ "$VALID_MAPPING_COUNT" -ge 3 ]; then
+        echo "✅ Valid신정원 mappings >= 3 (DoD PASS)"
     else
-        echo "ℹ️  Sample mappings: $MAPPING_COUNT (expected >= 3 for STEP NEXT-AD)"
+        echo "ℹ️  Valid신정원 mappings: $VALID_MAPPING_COUNT (expected >= 3 for STEP NEXT-AD-FIX DoD)"
+        echo "   Run: python apps/api/scripts/import_universe_mapping_xlsx.py --xlsx <path>"
     fi
 else
     echo "❌ v2.coverage_mapping: NOT FOUND"
