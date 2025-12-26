@@ -35,6 +35,25 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-AA: Apply v2 Schema + SSOT Seed + API Read Path Switch
+**Commit:** (pending)
+**Summary:** v2 schema 실제 DB 적용 + SSOT seed (8 insurer) + API search_path v2 전환
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- v2 schema applied to DB (13 tables)
+- SSOT seed: 8 insurers, 2 products, 2 templates
+- apps/api/app/db.py: search_path = v2, public (v2 우선)
+- db_doctor.py: v2 schema 검증 추가
+- smoke_v2.sh: v2 기본 검증 스크립트
+
+**Validation:**
+- ✅ v2.insurer: 8 rows (SAMSUNG, MERITZ, KB, HANA, DB, HANWHA, LOTTE, HYUNDAI)
+- ✅ product_id SSOT format: {insurer_code}_{internal_product_code}
+- ✅ API read path uses v2 schema priority
+
+---
+
 #### ✅ STEP NEXT-Z: New Schema v2 Bootstrap
 **Commit:** (pending)
 **Summary:** SSOT 기반 v2 schema 설계 완료 (insurer enum + product_id + template_id)

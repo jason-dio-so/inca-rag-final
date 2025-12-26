@@ -104,7 +104,7 @@ def check_connection(config: Dict[str, str]) -> Tuple[bool, str]:
 
 def check_tables(config: Dict[str, str]) -> Tuple[bool, List[str]]:
     """
-    Check existence of critical tables.
+    Check existence of critical tables (v2 schema + legacy).
 
     Returns:
         (success, messages)
@@ -123,17 +123,62 @@ def check_tables(config: Dict[str, str]) -> Tuple[bool, List[str]]:
 
         cur = conn.cursor()
 
-        # Check critical tables
-        critical_tables = [
-            'proposal_coverage_universe',
-            'proposal_coverage_mapped',
-            'coverage_standard',
-        ]
-
         messages = []
         all_exist = True
 
-        for table in critical_tables:
+        # Check v2 schema existence
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.schemata
+                WHERE schema_name = 'v2'
+            )
+        """)
+        v2_exists = cur.fetchone()[0]
+
+        if v2_exists:
+            messages.append("  ✅ v2 schema: EXISTS (API uses v2 priority)")
+
+            # Check v2 critical tables
+            v2_tables = [
+                'insurer',
+                'product',
+                'template',
+                'coverage_standard',
+                'proposal_coverage',
+                'proposal_coverage_mapped',
+            ]
+
+            for table in v2_tables:
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables
+                        WHERE table_schema = 'v2'
+                        AND table_name = %s
+                    )
+                """, (table,))
+                exists = cur.fetchone()[0]
+
+                if exists:
+                    # Count rows
+                    cur.execute(f"SELECT COUNT(*) FROM v2.{table}")
+                    count = cur.fetchone()[0]
+                    messages.append(f"  ✅ v2.{table}: {count} rows")
+                else:
+                    messages.append(f"  ❌ v2.{table}: NOT FOUND")
+                    all_exist = False
+        else:
+            messages.append("  ❌ v2 schema: NOT FOUND (run docs/db/schema_v2.sql)")
+            all_exist = False
+
+        # Check legacy public schema (audit-only)
+        legacy_tables = [
+            'proposal_coverage_universe',
+            'proposal_coverage_mapped',
+        ]
+
+        messages.append("")
+        messages.append("  📦 Legacy (public schema, audit-only):")
+        for table in legacy_tables:
             cur.execute("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
@@ -144,13 +189,11 @@ def check_tables(config: Dict[str, str]) -> Tuple[bool, List[str]]:
             exists = cur.fetchone()[0]
 
             if exists:
-                # Count rows
-                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                cur.execute(f"SELECT COUNT(*) FROM public.{table}")
                 count = cur.fetchone()[0]
-                messages.append(f"  ✅ {table}: {count} rows")
+                messages.append(f"     ℹ️  public.{table}: {count} rows (legacy)")
             else:
-                messages.append(f"  ❌ {table}: NOT FOUND")
-                all_exist = False
+                messages.append(f"     ℹ️  public.{table}: NOT FOUND (legacy)")
 
         cur.close()
         conn.close()
@@ -220,19 +263,22 @@ def main():
         print("✅ DB Doctor: All checks passed")
         print("=" * 60)
         print()
+        print("ℹ️  Current API schema priority: v2 (search_path = v2, public)")
+        print()
         print("You can now start the API:")
         print("  cd apps/api")
         print("  uvicorn app.main:app --port 8001")
         print()
         sys.exit(0)
     else:
-        print("⚠️  DB Doctor: Connection OK, but some tables missing")
+        print("⚠️  DB Doctor: Connection OK, but v2 schema incomplete")
         print("=" * 60)
         print()
-        print("This may be expected if you haven't run data ingestion yet.")
-        print("Check ingestion scripts or migration files.")
+        print("Setup v2 schema:")
+        print("  psql \"postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final\" -f docs/db/schema_v2.sql")
+        print("  psql \"postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final\" -f docs/db/seed_v2_ssot_minimal.sql")
         print()
-        sys.exit(0)  # Not a hard failure
+        sys.exit(1)  # Hard failure if v2 schema missing
 
 
 if __name__ == '__main__':

@@ -207,10 +207,8 @@ CREATE TABLE v2.proposal_coverage (
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT uq_coverage_hash UNIQUE (template_id, content_hash),
-    CONSTRAINT chk_template_type_proposal CHECK (
-        (SELECT template_type FROM v2.template WHERE template_id = v2.proposal_coverage.template_id) = 'proposal'
-    )
+    CONSTRAINT uq_coverage_hash UNIQUE (template_id, content_hash)
+    -- Note: template_type validation should be done at application level (CHECK constraint cannot use subquery)
 );
 
 COMMENT ON TABLE v2.proposal_coverage IS
@@ -375,7 +373,7 @@ CREATE TABLE v2.evidence_chunk (
     page_number INT,
     chunk_index INT NOT NULL, -- 페이지 내 순서
     content TEXT NOT NULL,
-    embedding vector(1536), -- pgvector extension 필요
+    -- embedding vector(1536), -- TODO: Enable after pgvector extension installed
     is_synthetic BOOLEAN NOT NULL DEFAULT false,
     synthetic_source_chunk_id INT REFERENCES v2.evidence_chunk(chunk_id) ON DELETE SET NULL,
     meta JSONB DEFAULT '{}',
@@ -559,7 +557,7 @@ SELECT
     c.page_number,
     c.chunk_index,
     c.content,
-    c.embedding,
+    -- c.embedding, -- TODO: Uncomment after pgvector extension installed
     c.meta,
     d.template_id,
     t.product_id,

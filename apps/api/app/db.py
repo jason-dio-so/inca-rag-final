@@ -74,10 +74,16 @@ def get_db_connection(readonly: bool = True) -> PGConnection:
         # Use autocommit=False with explicit BEGIN READ ONLY
         conn.set_session(autocommit=False)
         with conn.cursor() as cur:
+            # SET search_path BEFORE BEGIN (must be outside transaction)
+            cur.execute("SET search_path TO v2, public;")
             # SET TRANSACTION to READ ONLY before any queries
             cur.execute("BEGIN READ ONLY;")
         # Now any INSERT/UPDATE/DELETE will fail with:
         # psycopg2.errors.ReadOnlySqlTransaction: cannot execute ... in a read-only transaction
+    else:
+        # For write-enabled connections, just set search_path
+        with conn.cursor() as cur:
+            cur.execute("SET search_path TO v2, public;")
 
     return conn
 
@@ -234,6 +240,8 @@ async def get_async_pool() -> asyncpg.Pool:
             password=password,
             min_size=2,
             max_size=10,
+            # Set search_path to v2 schema for async connections
+            server_settings={'search_path': 'v2, public'}
         )
 
     return _async_pool
