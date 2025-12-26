@@ -36,7 +36,7 @@
 ### 2025-12-26
 
 #### ✅ STEP NEXT-AD: Coverage Mapping (DB-First, XLSX Import)
-**Commit:** (pending)
+**Commit:** e10b508
 **Summary:** Universe → Canonical 매핑 (DB SSOT, XLSX I/O medium)
 **DoD:** ✅ Pass
 
