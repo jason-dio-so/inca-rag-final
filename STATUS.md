@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-AB (v2 Proposal Ingestion Stage-1)
+**Current Phase:** STEP NEXT-AC (Universe Lock + Structure Contract)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -34,6 +34,26 @@
 ## Latest Work (Last 7 Days)
 
 ### 2025-12-26
+
+#### ✅ STEP NEXT-AC: Universe Lock + Structure Contract (No Mapping)
+**Commit:** (pending)
+**Summary:** Universe 품질 고정 (SSOT 적격 행 분류) + 구조 계약 문서화
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- v2.proposal_coverage_universe_lock table (29 UNIVERSE_COVERAGE, 3 NON_UNIVERSE_META)
+- apps/api/scripts/universe_lock_v2_stage1.py (deterministic classifier)
+- docs/db/provenance/STRUCTURE_CONTRACT_SAMSUNG_2511.md
+- docs/db/provenance/NEXT_AC_UNIVERSE_LOCK_REPORT.md
+
+**Validation:**
+- ✅ Universe Lock: 29 SSOT-eligible rows
+- ✅ Raw data preserved (v2.proposal_coverage unchanged)
+- ✅ Re-run idempotent (same classification)
+- ✅ smoke_v2.sh PASSED
+- ✅ Legacy public schema write: 0
+
+---
 
 #### ✅ STEP NEXT-AB (FINAL): v2 Proposal Ingestion Stage-1 (Structure-First)
 **Commit:** 30be125
