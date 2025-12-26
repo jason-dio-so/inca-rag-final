@@ -35,21 +35,21 @@
 
 ### 2025-12-26
 
-#### ✅ STEP NEXT-AE: Coverage 조건/정의 Evidence 연결 (본단계)
-**Commit:** (pending)
-**Summary:** Coverage별 조건/정의/증거 데이터 구조 완성. Universe → Mapping → Evidence E2E 연결 검증 완료.
+#### ✅ STEP NEXT-AE: Coverage 조건/정의 Evidence 연결 (문서 기반 추출)
+**Commit:** a2b72c0
+**Summary:** Structure-First 약관 추출 파이프라인 구현. Universe → Mapping → Evidence E2E 연결 검증 완료.
 **DoD:** ✅ Pass
 
 **Deliverables:**
-- migrations/step_next_ae/001_create_coverage_evidence.sql (v2.coverage_evidence 테이블)
-- v2.coverage_evidence: 3 sample evidence records (CA_DIAG_GENERAL: definition, payment_condition, exclusion)
+- apps/api/scripts/ae_extract_evidence.py (문서 기반 evidence 추출)
+- v2.coverage_evidence: 6 evidences (CA_DIAG_GENERAL: 3 types, CA_DIAG_SIMILAR: 2 types)
+- smoke_v2.sh Test 8 추가 (evidence 검증)
 
 **Validation:**
-- ✅ v2.coverage_evidence schema created (17 columns, 6 indexes, FK constraints)
-- ✅ E2E connection: Universe (proposal_coverage) → Mapping (coverage_mapping) → Evidence (coverage_evidence)
-- ✅ Sample evidence: CA_DIAG_GENERAL (1 coverage × 3 evidence types)
-
-**Note:** Full policy extraction은 별도 STEP으로 진행 (본 단계는 schema + framework 완성)
+- ✅ v2.coverage_evidence: 6 document-based evidences
+- ✅ CA_DIAG_GENERAL: definition, payment_condition, exclusion (DoD 3종 충족)
+- ✅ E2E 연결: Universe → Mapping → Evidence
+- ✅ Deterministic extraction (Structure-First PDF parsing)
 
 ---
 
