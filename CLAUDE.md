@@ -758,6 +758,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AF-FIX-3: Row-level proposal detail matching (coverage_id + template_id)
 - ✅ STEP NEXT-AH-0: Cancer Coverage Alias Audit (8 insurers, 128 coverages)
 - ✅ STEP NEXT-AH-1: Excel Alias 강제 적용 (Query → Canonical → Universe Recall Lock)
+- ✅ STEP NEXT-AH-2: Cancer Coverage Canonical Split (4 canonical codes: GENERAL/SIMILAR/IN_SITU/BORDERLINE)
 
 **현재 브랜치**: `main`
 
@@ -797,6 +798,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-26 | AF-FIX-2 | STATUS.md 덮어쓰기 + template_id만으로 조회 | STATUS.md 복구 + template_id+insurer_code isolation + raw key matching | 히스토리 보존, 템플릿+보험사 격리, DB raw 키 사용 |
 | 2025-12-26 | AF-FIX-3 | coverage_metadata reuse across rows | Row-level keys (coverage_id + template_id + insurer_coverage_name_raw) | FactTableRow마다 독립적인 comparison_description 조회 보장 |
 | 2025-12-27 | Query Interpretation | Query → DB raw name direct match | Query → Excel Alias Index → Canonical Code → Universe Recall (AH-1) | SAMSUNG "암 진단비" 등 표현 차이로 인한 리콜 누락 방지, 8개 보험사 암 담보 전수 감사 완료 |
+| 2025-12-27 | Cancer Canonical | "암진단비" 단일 코드 | 4종 분리: CA_DIAG_GENERAL/SIMILAR/IN_SITU/BORDERLINE (AH-2) | "암진단비"는 하나의 담보가 아니라 구조적으로 분해해야 할 개념, Evidence 기반 Canonical 결정 프레임워크 구축 |
 
 ---
 
