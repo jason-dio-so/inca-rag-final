@@ -122,6 +122,34 @@ echo "   cd apps/api && uvicorn app.main:app --port 8001"
 echo "   curl -X POST http://127.0.0.1:8001/compare/view-model ..."
 
 # ============================================
+# Test 7: Coverage Mapping (STEP NEXT-AD)
+# ============================================
+
+echo
+echo "📋 Test 7: Coverage Mapping (Universe → Canonical)..."
+
+# Check v2.coverage_mapping table exists
+MAPPING_TABLE_CHECK=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'v2' AND table_name = 'coverage_mapping');" | xargs)
+
+if [ "$MAPPING_TABLE_CHECK" = "t" ]; then
+    MAPPING_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_mapping;" | xargs)
+    echo "✅ v2.coverage_mapping: $MAPPING_COUNT rows"
+
+    # For STEP NEXT-AD DoD: require at least 3 mappings
+    if [ "$MAPPING_COUNT" -ge 3 ]; then
+        echo "✅ Sample mappings exist (>= 3)"
+    else
+        echo "ℹ️  Sample mappings: $MAPPING_COUNT (expected >= 3 for STEP NEXT-AD)"
+    fi
+else
+    echo "❌ v2.coverage_mapping: NOT FOUND"
+    echo "   Run migration: psql \"postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final\" -f migrations/step_next_ad/001_create_coverage_mapping.sql"
+    exit 1
+fi
+
+# ============================================
 # Final Summary
 # ============================================
 

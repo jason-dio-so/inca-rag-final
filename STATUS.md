@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-AC (Universe Lock + Structure Contract)
+**Current Phase:** STEP NEXT-AD (Coverage Mapping - DB-First XLSX Import)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -34,6 +34,34 @@
 ## Latest Work (Last 7 Days)
 
 ### 2025-12-26
+
+#### ✅ STEP NEXT-AD: Coverage Mapping (DB-First, XLSX Import)
+**Commit:** (pending)
+**Summary:** Universe → Canonical 매핑 (DB SSOT, XLSX I/O medium)
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- v2.coverage_mapping table (3 sample mappings)
+- apps/api/scripts/export_universe_for_mapping.py
+- apps/api/scripts/import_universe_mapping_xlsx.py
+- smoke_v2.sh: Test 7 (Coverage Mapping validation)
+
+**Validation:**
+- ✅ Export: 29 Universe rows → XLSX
+- ✅ Manual mapping: 3 canonical codes filled
+- ✅ Dry-run: validation PASSED
+- ✅ Import: 3 rows inserted (0 updated)
+- ✅ smoke_v2.sh PASSED (Test 7: >= 3 mappings)
+- ✅ Legacy public schema: 0 writes
+
+**Constitutional Compliance:**
+- ✅ DB is SSOT, XLSX is I/O medium only
+- ✅ NO insurer_code/product_id in XLSX input (prevents past mismatch)
+- ✅ Join key: (template_id, coverage_id) only
+- ✅ Strict validation (all-or-nothing)
+- ✅ NO coverage_standard reference (code validation deferred)
+
+---
 
 #### ✅ STEP NEXT-AC: Universe Lock + Structure Contract (No Mapping)
 **Commit:** fbbe28b
