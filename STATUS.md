@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-4 Complete (ViewModel JSON Schema Contract)
-**Project Health:** ✅ ACTIVE - UI Contract Locked with Validation
+**Current Phase:** STEP NEXT-5 Backend Complete (ViewModel Assembler)
+**Project Health:** ✅ ACTIVE - Backend Foundation Complete, Frontend Deferred
 
 ---
 
@@ -25,8 +25,110 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP NEXT-4: ViewModel JSON Schema Contract
+### ✅ STEP NEXT-5: Backend ViewModel Assembler (Backend Complete)
 **Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- Backend ViewModel assembler: ProposalCompareResponse → ViewModel JSON
+- `/compare/view-model` endpoint with runtime schema validation
+- 15 automated tests (100% passing)
+- Evidence reference integrity guaranteed
+- Hard-ban phrase detection (0 violations)
+
+**Module Structure:**
+```
+apps/api/app/view_model/
+├── __init__.py
+├── types.py (Pydantic models matching JSON Schema)
+├── schema_loader.py (JSON Schema loader + validator)
+└── assembler.py (assembler logic)
+```
+
+**Assembler Features:**
+- **Conservative status mapping**: No new inference (existing data → StatusCode)
+- **Deterministic**: Same input → same output (test-verified)
+- **Amount formatting**: 원 → 만원 conversion with thousand separator
+- **Evidence ID generation**: `ev_{insurer}_{doc_type}_{index}` (deterministic)
+- **Stable sorting**: fact_table rows (insurer/coverage), evidence_panels (insurer/doc_type/id)
+- **Ref integrity**: All evidence_ref_id resolve to evidence_panels[].id
+
+**Status Mapping Rules** (Conservative, No Inference):
+| Input | Output Status |
+|-------|---------------|
+| mapping_status=UNMAPPED | UNMAPPED |
+| mapping_status=AMBIGUOUS | AMBIGUOUS |
+| comparison_result=out_of_universe | OUT_OF_UNIVERSE |
+| comparison_result=comparable + MAPPED | OK |
+| comparison_result=comparable_with_gaps | MISSING_EVIDENCE (conservative) |
+| comparison_result=non_comparable | OK (fact exists) |
+| Otherwise | MISSING_EVIDENCE (conservative fallback) |
+
+**Endpoint:**
+- URL: `POST /compare/view-model`
+- Request: `ProposalCompareRequest` (same as `/compare`)
+- Response: ViewModel JSON (schema-validated)
+- Validation: Runtime check against `compare_view_model.schema.json` (env-controlled, default ON)
+- Flow: `/compare` logic → assemble ViewModel → validate → return JSON
+
+**Tests** (15/15 passing):
+1. Schema validation (JSON Schema Draft 2020-12 compliance)
+2. Evidence ref_id integrity (all refs resolve)
+3. No forbidden phrases (hard-ban enforced)
+4. Schema version format (`next4.vX`)
+5. Deterministic output (reproducibility)
+6. Fact table columns fixed (6 columns, immutable order)
+7. Fact table deterministic sort (insurer/coverage ASC)
+8. UNMAPPED status mapping
+9. OUT_OF_UNIVERSE handling (empty snapshot/rows/panels)
+10. Policy evidence added to panels
+11. Amount formatting (원 → 만원)
+12. Debug section optional
+13. Canonical coverage codes in debug only
+14. Excerpt length constraints (min 25 chars)
+15. Insurer codes uppercase (canonical format)
+
+**Golden Samples** (Test Fixtures):
+- `sample_comparable_response`: Scenario A (both MAPPED, normal flow)
+- `sample_unmapped_response`: Scenario B (UNMAPPED coverage)
+- `sample_out_of_universe_response`: OUT_OF_UNIVERSE edge case
+- `sample_with_policy_evidence_response`: Scenario C (policy evidence)
+
+**Schema Updates:**
+- Allow `null` for optional fields: `bbox`, `source_meta`, `debug.*`
+- Rationale: Pydantic emits `null` for unset optional fields
+
+**Constitutional Compliance:**
+- ✅ Fact-only: Status from existing data, no new inference
+- ✅ No Recommendation: 0 forbidden phrases (test-enforced)
+- ✅ Presentation Only: Pure mapping/formatting (no business logic)
+- ✅ Canonical Coverage Rule: Internal codes in debug, UI uses normalized names
+- ✅ Coverage Universe Lock: OUT_OF_UNIVERSE for non-proposal
+- ✅ Evidence Rule: All amounts have evidence_ref_id
+- ✅ Deterministic: Test-verified reproducibility
+
+**Frontend Status:**
+- **DEFERRED** to next session
+- Reason: Backend foundation requires full validation first
+- Next: React components (ChatHeader, CoverageSnapshot, FactTable, EvidenceAccordion)
+
+**DoD Achievement:**
+- ✅ `/compare/view-model` endpoint schema-compliant
+- ✅ Assembler validates against JSON Schema
+- ✅ Hard-ban test passing (0 violations)
+- ✅ Evidence ref_id integrity passing
+- ✅ 15/15 tests passing
+- ✅ Documentation complete (`STEP_NEXT5_ADAPTER_AND_RENDERER.md`)
+- ✅ Ready for frontend implementation
+
+**Key Principle:**
+- **Assembler = Adapter = Presentation Layer = No Inference**
+- **Status from existing data only (conservative fallback to MISSING_EVIDENCE)**
+- **Same input → same output (deterministic, test-verified)**
+
+---
+
+### ✅ STEP NEXT-4: ViewModel JSON Schema Contract
+**Commit:** e19f3f1 | **Date:** 2025-12-26
 
 **Summary:**
 - JSON Schema Draft 2020-12 for UI ViewModel (presentation layer contract)

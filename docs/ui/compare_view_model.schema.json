@@ -220,7 +220,7 @@
             "description": "Original text excerpt (NO rewriting, NO summarization, direct quote only)"
           },
           "bbox": {
-            "type": "object",
+            "type": ["object", "null"],
             "description": "Optional PDF bounding box coordinates",
             "properties": {
               "x": {"type": "number"},
@@ -231,7 +231,7 @@
             "required": ["x", "y", "width", "height"]
           },
           "source_meta": {
-            "type": "object",
+            "type": ["object", "null"],
             "description": "Optional metadata (filename, hash, etc.)",
             "properties": {
               "filename": {"type": "string"},
@@ -246,29 +246,29 @@
       "description": "Non-UI debug/reproducibility section (MUST NOT be displayed in UI)",
       "properties": {
         "resolved_coverage_codes": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": {"type": "string"},
           "description": "Shinjungwon unified coverage codes resolved internally"
         },
         "retrieval": {
-          "type": "object",
+          "type": ["object", "null"],
           "description": "Retrieval parameters (topk, strategy, doc_priority)",
           "properties": {
-            "topk": {"type": "number"},
-            "strategy": {"type": "string"},
+            "topk": {"type": ["number", "null"]},
+            "strategy": {"type": ["string", "null"]},
             "doc_priority": {
-              "type": "array",
+              "type": ["array", "null"],
               "items": {"type": "string"}
             }
           }
         },
         "warnings": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": {"type": "string"},
           "description": "Non-fatal warnings (e.g., 'AMBIGUOUS mapping detected')"
         },
         "execution_time_ms": {
-          "type": "number",
+          "type": ["number", "null"],
           "description": "Backend processing time in milliseconds"
         }
       }

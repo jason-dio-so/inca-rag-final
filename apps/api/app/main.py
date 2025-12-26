@@ -7,7 +7,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from .routers import products, compare, evidence
+from .routers import products, compare, evidence, view_model
 
 app = FastAPI(
     title="inca-RAG-final STEP 5 API",
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(products.router)
 app.include_router(compare.router)
 app.include_router(evidence.router)
+app.include_router(view_model.router)
 
 
 @app.get("/")
