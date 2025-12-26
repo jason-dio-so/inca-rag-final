@@ -756,6 +756,8 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AF-FIX: Deterministic extraction + Row-level join + Template isolation
 - ✅ STEP NEXT-AF-FIX-2: STATUS.md 복구 + Template+Insurer isolation + Raw key matching
 - ✅ STEP NEXT-AF-FIX-3: Row-level proposal detail matching (coverage_id + template_id)
+- ✅ STEP NEXT-AH-0: Cancer Coverage Alias Audit (8 insurers, 128 coverages)
+- ✅ STEP NEXT-AH-1: Excel Alias 강제 적용 (Query → Canonical → Universe Recall Lock)
 
 **현재 브랜치**: `main`
 
@@ -765,6 +767,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - `apps/api/app/compiler/` (Deterministic compiler, rule-based)
 - `apps/api/app/view_model/` (ViewModel assembler)
 - `apps/api/app/admin_mapping/` (Admin mapping workbench)
+- `apps/api/app/ah/` (AH: Query → Canonical Code → Universe Recall, Excel Alias SSOT)
 - `migrations/step_next_af/` (STEP NEXT-AF-FIX: proposal_coverage_detail table with safe migration)
 - `apps/api/scripts/af_extract_proposal_detail_v2.py` (Improved proposal detail parser - section detection + template isolation)
 
@@ -793,6 +796,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-26 | AF-FIX | Manual INSERT 허용 + DROP migration | Deterministic only + Safe migration + Row-level join + Template isolation | 수동 데이터 금지, 데이터 파괴 방지, 템플릿 혼입 방지 |
 | 2025-12-26 | AF-FIX-2 | STATUS.md 덮어쓰기 + template_id만으로 조회 | STATUS.md 복구 + template_id+insurer_code isolation + raw key matching | 히스토리 보존, 템플릿+보험사 격리, DB raw 키 사용 |
 | 2025-12-26 | AF-FIX-3 | coverage_metadata reuse across rows | Row-level keys (coverage_id + template_id + insurer_coverage_name_raw) | FactTableRow마다 독립적인 comparison_description 조회 보장 |
+| 2025-12-27 | Query Interpretation | Query → DB raw name direct match | Query → Excel Alias Index → Canonical Code → Universe Recall (AH-1) | SAMSUNG "암 진단비" 등 표현 차이로 인한 리콜 누락 방지, 8개 보험사 암 담보 전수 감사 완료 |
 
 ---
 
