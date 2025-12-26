@@ -761,6 +761,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP NEXT-AH-2: Cancer Coverage Canonical Split (4 canonical codes: GENERAL/SIMILAR/IN_SITU/BORDERLINE)
 - ✅ STEP NEXT-AH-3: Cancer Scope Evidence Extraction & Split Gatekeeping (Policy Evidence ONLY)
 - ✅ STEP NEXT-AH-4: Policy Evidence Retrieval Wiring + Evidence Typing (DEFINITION vs SEPARATE_BENEFIT)
+- ✅ STEP NEXT-AH-5: Cancer Canonical Decision → Compare Pipeline Hard Wiring (recalled vs decided, meta row filter)
 
 **현재 브랜치**: `main`
 
@@ -803,6 +804,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-27 | Cancer Canonical | "암진단비" 단일 코드 | 4종 분리: CA_DIAG_GENERAL/SIMILAR/IN_SITU/BORDERLINE (AH-2) | "암진단비"는 하나의 담보가 아니라 구조적으로 분해해야 할 개념, Evidence 기반 Canonical 결정 프레임워크 구축 |
 | 2025-12-27 | Canonical Split Decision | Name-based heuristic allowed for canonical code confirmation | Policy Evidence ONLY (AH-3) | Name-based patterns → hint only (debug/audit), Final canonical code requires policy evidence with doc_id+page+span_text |
 | 2025-12-27 | Evidence Interpretation | All policy spans treated equally for scope determination | Evidence Typing: DEFINITION_INCLUDED vs SEPARATE_BENEFIT vs EXCLUSION (AH-4) | "유사암 정의에 제자리암 포함" ≠ "제자리암 별도 담보", Policy evidence retrieval wiring (deterministic keyword-based) |
+| 2025-12-27 | Compare Pipeline Integration | Implicit mixing of recalled/decided codes | recalled_candidates vs decided_canonical_codes 명확 분리 (AH-5) | UNDECIDED → empty set for compare (recalled은 참고용만), Meta row filter (합계/소계/주계약 제거), decision_status 강제 |
 
 ---
 
