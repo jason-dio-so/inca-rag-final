@@ -15,18 +15,23 @@ SET search_path TO v2;
 -- ========================================
 
 -- Insurer SSOT (8개 고정 enum)
-CREATE TYPE v2.insurer_code_enum AS ENUM (
-    'SAMSUNG',
-    'MERITZ',
-    'KB',
-    'HANA',
-    'DB',
-    'HANWHA',
-    'LOTTE',
-    'HYUNDAI'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'insurer_code_enum' AND typnamespace = 'v2'::regnamespace) THEN
+        CREATE TYPE v2.insurer_code_enum AS ENUM (
+            'SAMSUNG',
+            'MERITZ',
+            'KB',
+            'HANA',
+            'DB',
+            'HANWHA',
+            'LOTTE',
+            'HYUNDAI'
+        );
+    END IF;
+END $$;
 
-CREATE TABLE v2.insurer (
+CREATE TABLE IF NOT EXISTS v2.insurer (
     insurer_code v2.insurer_code_enum PRIMARY KEY,
     display_name VARCHAR(100) NOT NULL,
     display_name_eng VARCHAR(100),
@@ -46,7 +51,7 @@ COMMENT ON COLUMN v2.insurer.display_name IS
 'UI 노출 이름 (예: "삼성화재", "메리츠화재")';
 
 -- Product SSOT (insurer_code + internal_product_code = PK)
-CREATE TABLE v2.product (
+CREATE TABLE IF NOT EXISTS v2.product (
     product_id VARCHAR(200) PRIMARY KEY,
     insurer_code v2.insurer_code_enum NOT NULL REFERENCES v2.insurer(insurer_code) ON DELETE CASCADE,
     internal_product_code VARCHAR(100) NOT NULL,
@@ -73,7 +78,7 @@ COMMENT ON COLUMN v2.product.display_name IS
 'UI 노출 상품명 (예: "무배당 내맘편한 암보험")';
 
 -- Template SSOT (insurer_code + product_id + version + fingerprint)
-CREATE TABLE v2.template (
+CREATE TABLE IF NOT EXISTS v2.template (
     template_id VARCHAR(300) PRIMARY KEY,
     product_id VARCHAR(200) NOT NULL REFERENCES v2.product(product_id) ON DELETE CASCADE,
     template_type VARCHAR(50) NOT NULL, -- proposal/policy/summary/business_method
@@ -101,7 +106,7 @@ COMMENT ON COLUMN v2.template.template_id IS
 '유일키 = {product_id}_{template_type}_{version}_{fingerprint[0:8]}';
 
 -- Document (template_id FK 필수)
-CREATE TABLE v2.document (
+CREATE TABLE IF NOT EXISTS v2.document (
     document_id VARCHAR(300) PRIMARY KEY,
     template_id VARCHAR(300) NOT NULL REFERENCES v2.template(template_id) ON DELETE CASCADE,
     file_path TEXT NOT NULL,
@@ -129,7 +134,7 @@ COMMENT ON COLUMN v2.document.doc_type_priority IS
 -- Tier 2: Coverage Standard (신정원 통일 담보 코드)
 -- ========================================
 
-CREATE TABLE v2.coverage_standard (
+CREATE TABLE IF NOT EXISTS v2.coverage_standard (
     coverage_code VARCHAR(100) PRIMARY KEY,
     display_name VARCHAR(300) NOT NULL,
     domain VARCHAR(100),
@@ -157,7 +162,7 @@ COMMENT ON COLUMN v2.coverage_standard.is_main IS
 '메인 담보 여부 (파생 담보와 구분) - 외부화 규칙 필요';
 
 -- Coverage Name Mapping (Excel 기반)
-CREATE TABLE v2.coverage_name_map (
+CREATE TABLE IF NOT EXISTS v2.coverage_name_map (
     map_id SERIAL PRIMARY KEY,
     insurer_code v2.insurer_code_enum NOT NULL REFERENCES v2.insurer(insurer_code) ON DELETE CASCADE,
     coverage_alias TEXT NOT NULL, -- 가입설계서 담보명 (정규화 전)
@@ -189,7 +194,7 @@ COMMENT ON COLUMN v2.coverage_name_map.mapping_source IS
 -- ========================================
 
 -- Proposal Coverage (가입설계서 앞 2장 테이블 추출 결과)
-CREATE TABLE v2.proposal_coverage (
+CREATE TABLE IF NOT EXISTS v2.proposal_coverage (
     coverage_id SERIAL PRIMARY KEY,
     template_id VARCHAR(300) NOT NULL REFERENCES v2.template(template_id) ON DELETE CASCADE,
     insurer_coverage_name TEXT NOT NULL,
@@ -221,9 +226,14 @@ COMMENT ON COLUMN v2.proposal_coverage.content_hash IS
 'SHA256(template_id||page||span_text) - 중복 삽입 방지';
 
 -- Proposal Coverage Mapped (Universe → Canonical Code Mapping)
-CREATE TYPE v2.mapping_status_enum AS ENUM ('MAPPED', 'UNMAPPED', 'AMBIGUOUS');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mapping_status_enum' AND typnamespace = 'v2'::regnamespace) THEN
+        CREATE TYPE v2.mapping_status_enum AS ENUM ('MAPPED', 'UNMAPPED', 'AMBIGUOUS');
+    END IF;
+END $$;
 
-CREATE TABLE v2.proposal_coverage_mapped (
+CREATE TABLE IF NOT EXISTS v2.proposal_coverage_mapped (
     mapped_id SERIAL PRIMARY KEY,
     coverage_id INT NOT NULL REFERENCES v2.proposal_coverage(coverage_id) ON DELETE CASCADE,
 
@@ -248,10 +258,17 @@ COMMENT ON TABLE v2.proposal_coverage_mapped IS
 'Universe 담보의 신정원 코드 매핑 결과 - Excel 기반만 허용';
 
 -- Proposal Coverage Detail (상세 페이지 근거/조건/정의 추출 결과)
-CREATE TYPE v2.event_type_enum AS ENUM ('diagnosis', 'surgery', 'hospitalization', 'treatment', 'death', 'unknown');
-CREATE TYPE v2.source_confidence_enum AS ENUM ('proposal_confirmed', 'policy_required', 'unknown');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_type_enum' AND typnamespace = 'v2'::regnamespace) THEN
+        CREATE TYPE v2.event_type_enum AS ENUM ('diagnosis', 'surgery', 'hospitalization', 'treatment', 'death', 'unknown');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'source_confidence_enum' AND typnamespace = 'v2'::regnamespace) THEN
+        CREATE TYPE v2.source_confidence_enum AS ENUM ('proposal_confirmed', 'policy_required', 'unknown');
+    END IF;
+END $$;
 
-CREATE TABLE v2.proposal_coverage_detail (
+CREATE TABLE IF NOT EXISTS v2.proposal_coverage_detail (
     detail_id SERIAL PRIMARY KEY,
     mapped_id INT NOT NULL REFERENCES v2.proposal_coverage_mapped(mapped_id) ON DELETE CASCADE,
 
@@ -304,7 +321,7 @@ COMMENT ON COLUMN v2.proposal_coverage_detail.payout_limit IS
 -- Tier 4: KCD-7 Disease Code (3-tier model)
 -- ========================================
 
-CREATE TABLE v2.disease_code_master (
+CREATE TABLE IF NOT EXISTS v2.disease_code_master (
     code VARCHAR(10) PRIMARY KEY,
     version VARCHAR(20) NOT NULL DEFAULT 'KCD-7',
     name_ko TEXT,
@@ -318,9 +335,10 @@ CREATE TABLE v2.disease_code_master (
 COMMENT ON TABLE v2.disease_code_master IS
 'KCD-7 질병코드 사전 - 공식 배포본만 허용 (보험 의미 금지)';
 
-CREATE TYPE v2.member_type_enum AS ENUM ('CODE', 'RANGE');
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'member_type_enum' AND typnamespace = 'v2'::regnamespace) THEN CREATE TYPE v2.member_type_enum AS ENUM ('CODE', 'RANGE');
+    END IF; END $$;
 
-CREATE TABLE v2.disease_code_group (
+CREATE TABLE IF NOT EXISTS v2.disease_code_group (
     group_id VARCHAR(100) PRIMARY KEY,
     group_label VARCHAR(200) NOT NULL,
     insurer_code v2.insurer_code_enum REFERENCES v2.insurer(insurer_code) ON DELETE CASCADE,
@@ -339,7 +357,7 @@ COMMENT ON TABLE v2.disease_code_group IS
 COMMENT ON COLUMN v2.disease_code_group.insurer_code IS
 '보험사별 그룹. NULL은 KCD 분류 자체(C00-C97 등) 의학적 범위에만 허용';
 
-CREATE TABLE v2.disease_code_group_member (
+CREATE TABLE IF NOT EXISTS v2.disease_code_group_member (
     member_id SERIAL PRIMARY KEY,
     group_id VARCHAR(100) NOT NULL REFERENCES v2.disease_code_group(group_id) ON DELETE CASCADE,
     member_type v2.member_type_enum NOT NULL,
@@ -367,7 +385,7 @@ COMMENT ON TABLE v2.disease_code_group_member IS
 -- Tier 5: Evidence Chunk (향후 RAG 대비)
 -- ========================================
 
-CREATE TABLE v2.evidence_chunk (
+CREATE TABLE IF NOT EXISTS v2.evidence_chunk (
     chunk_id SERIAL PRIMARY KEY,
     document_id VARCHAR(300) NOT NULL REFERENCES v2.document(document_id) ON DELETE CASCADE,
     page_number INT,
@@ -398,54 +416,54 @@ COMMENT ON COLUMN v2.evidence_chunk.is_synthetic IS
 -- ========================================
 
 -- insurer
-CREATE INDEX idx_v2_insurer_active ON v2.insurer(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_v2_insurer_active ON v2.insurer(is_active) WHERE is_active = true;
 
 -- product
-CREATE INDEX idx_v2_product_insurer ON v2.product(insurer_code);
-CREATE INDEX idx_v2_product_type ON v2.product(product_type);
-CREATE INDEX idx_v2_product_active ON v2.product(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_v2_product_insurer ON v2.product(insurer_code);
+CREATE INDEX IF NOT EXISTS idx_v2_product_type ON v2.product(product_type);
+CREATE INDEX IF NOT EXISTS idx_v2_product_active ON v2.product(is_active) WHERE is_active = true;
 
 -- template
-CREATE INDEX idx_v2_template_product ON v2.template(product_id);
-CREATE INDEX idx_v2_template_type ON v2.template(template_type);
+CREATE INDEX IF NOT EXISTS idx_v2_template_product ON v2.template(product_id);
+CREATE INDEX IF NOT EXISTS idx_v2_template_type ON v2.template(template_type);
 
 -- document
-CREATE INDEX idx_v2_document_template ON v2.document(template_id);
-CREATE INDEX idx_v2_document_priority ON v2.document(doc_type_priority);
+CREATE INDEX IF NOT EXISTS idx_v2_document_template ON v2.document(template_id);
+CREATE INDEX IF NOT EXISTS idx_v2_document_priority ON v2.document(doc_type_priority);
 
 -- coverage_standard
-CREATE INDEX idx_v2_coverage_domain ON v2.coverage_standard(domain);
-CREATE INDEX idx_v2_coverage_priority ON v2.coverage_standard(domain, priority);
-CREATE INDEX idx_v2_coverage_main ON v2.coverage_standard(is_main) WHERE is_main = true;
+CREATE INDEX IF NOT EXISTS idx_v2_coverage_domain ON v2.coverage_standard(domain);
+CREATE INDEX IF NOT EXISTS idx_v2_coverage_priority ON v2.coverage_standard(domain, priority);
+CREATE INDEX IF NOT EXISTS idx_v2_coverage_main ON v2.coverage_standard(is_main) WHERE is_main = true;
 
 -- coverage_name_map
-CREATE INDEX idx_v2_map_insurer ON v2.coverage_name_map(insurer_code);
-CREATE INDEX idx_v2_map_canonical ON v2.coverage_name_map(canonical_coverage_code);
-CREATE INDEX idx_v2_map_status ON v2.coverage_name_map(mapping_status);
+CREATE INDEX IF NOT EXISTS idx_v2_map_insurer ON v2.coverage_name_map(insurer_code);
+CREATE INDEX IF NOT EXISTS idx_v2_map_canonical ON v2.coverage_name_map(canonical_coverage_code);
+CREATE INDEX IF NOT EXISTS idx_v2_map_status ON v2.coverage_name_map(mapping_status);
 
 -- proposal_coverage
-CREATE INDEX idx_v2_coverage_template ON v2.proposal_coverage(template_id);
-CREATE INDEX idx_v2_coverage_normalized ON v2.proposal_coverage(normalized_name);
+CREATE INDEX IF NOT EXISTS idx_v2_coverage_template ON v2.proposal_coverage(template_id);
+CREATE INDEX IF NOT EXISTS idx_v2_coverage_normalized ON v2.proposal_coverage(normalized_name);
 
 -- proposal_coverage_mapped
-CREATE INDEX idx_v2_mapped_canonical ON v2.proposal_coverage_mapped(canonical_coverage_code);
-CREATE INDEX idx_v2_mapped_status ON v2.proposal_coverage_mapped(mapping_status);
+CREATE INDEX IF NOT EXISTS idx_v2_mapped_canonical ON v2.proposal_coverage_mapped(canonical_coverage_code);
+CREATE INDEX IF NOT EXISTS idx_v2_mapped_status ON v2.proposal_coverage_mapped(mapping_status);
 
 -- proposal_coverage_detail
-CREATE INDEX idx_v2_detail_event ON v2.proposal_coverage_detail(event_type);
-CREATE INDEX idx_v2_detail_confidence ON v2.proposal_coverage_detail(source_confidence);
+CREATE INDEX IF NOT EXISTS idx_v2_detail_event ON v2.proposal_coverage_detail(event_type);
+CREATE INDEX IF NOT EXISTS idx_v2_detail_confidence ON v2.proposal_coverage_detail(source_confidence);
 
 -- disease_code_group
-CREATE INDEX idx_v2_group_insurer ON v2.disease_code_group(insurer_code);
+CREATE INDEX IF NOT EXISTS idx_v2_group_insurer ON v2.disease_code_group(insurer_code);
 
 -- disease_code_group_member
-CREATE INDEX idx_v2_member_group ON v2.disease_code_group_member(group_id);
-CREATE INDEX idx_v2_member_code ON v2.disease_code_group_member(code);
+CREATE INDEX IF NOT EXISTS idx_v2_member_group ON v2.disease_code_group_member(group_id);
+CREATE INDEX IF NOT EXISTS idx_v2_member_code ON v2.disease_code_group_member(code);
 
 -- evidence_chunk
-CREATE INDEX idx_v2_chunk_document ON v2.evidence_chunk(document_id);
-CREATE INDEX idx_v2_chunk_synthetic ON v2.evidence_chunk(is_synthetic);
-CREATE INDEX idx_v2_chunk_page ON v2.evidence_chunk(document_id, page_number);
+CREATE INDEX IF NOT EXISTS idx_v2_chunk_document ON v2.evidence_chunk(document_id);
+CREATE INDEX IF NOT EXISTS idx_v2_chunk_synthetic ON v2.evidence_chunk(is_synthetic);
+CREATE INDEX IF NOT EXISTS idx_v2_chunk_page ON v2.evidence_chunk(document_id, page_number);
 
 -- ========================================
 -- Triggers (updated_at auto-update)
@@ -459,23 +477,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_insurer_updated_at BEFORE UPDATE ON v2.insurer
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_insurer_updated_at BEFORE UPDATE ON v2.insurer
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_product_updated_at BEFORE UPDATE ON v2.product
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_product_updated_at BEFORE UPDATE ON v2.product
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_template_updated_at BEFORE UPDATE ON v2.template
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_template_updated_at BEFORE UPDATE ON v2.template
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_document_updated_at BEFORE UPDATE ON v2.document
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_document_updated_at BEFORE UPDATE ON v2.document
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_coverage_standard_updated_at BEFORE UPDATE ON v2.coverage_standard
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_coverage_standard_updated_at BEFORE UPDATE ON v2.coverage_standard
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_coverage_name_map_updated_at BEFORE UPDATE ON v2.coverage_name_map
-    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column();
+DO $$ BEGIN CREATE TRIGGER update_coverage_name_map_updated_at BEFORE UPDATE ON v2.coverage_name_map
+    FOR EACH ROW EXECUTE FUNCTION v2.update_updated_at_column(); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ========================================
 -- Views

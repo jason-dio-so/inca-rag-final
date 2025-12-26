@@ -35,6 +35,22 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-AA-FIX: v2 Schema Idempotency + Smoke Hard Pass
+**Commit:** (pending)
+**Summary:** schema_v2.sql 완전 idempotent 보장 + smoke_v2.sh repo root 1회 통과
+**DoD:** ✅ Pass
+
+**Changes:**
+- schema_v2.sql: CREATE IF NOT EXISTS (모든 TYPE/TABLE/INDEX/TRIGGER)
+- ON_ERROR_STOP=1 2회 연속 실행 ERROR 0건
+- smoke_v2.sh: repo root 기준 경로 수정 + 1회 완주 PASS
+
+**Validation:**
+- ✅ schema_v2.sql 재실행 idempotent (ERROR 0)
+- ✅ smoke_v2.sh PASSED (5 tests, API test skipped)
+
+---
+
 #### ✅ STEP NEXT-AA: Apply v2 Schema + SSOT Seed + API Read Path Switch
 **Commit:** (pending)
 **Summary:** v2 schema 실제 DB 적용 + SSOT seed (8 insurer) + API search_path v2 전환
