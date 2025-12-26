@@ -452,17 +452,35 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ---
 
-## STATUS.md 업데이트 원칙
+## STATUS.md 운영 규칙 (Hard Rule)
 
-- 모든 작업 완료 시 STATUS.md 업데이트 (대문자 주의)
+### 절대 원칙
+**STATUS.md는 최근 7일 상태 요약 전용 파일이다.**
+
+### 작업 완료 시 기록 규칙
+- 작업 1건 완료 시 **최대 5~10줄만** 허용
 - 포함 내용:
-  - 수행한 작업명
-  - 작업 요약
-  - 완료 여부
-  - 주요 변경 사항
-  - 관련 커밋 해시
-  - Constitutional 원칙 준수 여부
-  - DoD(Definition of Done) 달성 여부
+  - 작업명 (STEP-XX)
+  - 커밋 해시
+  - DoD 달성 여부 (✅/❌)
+  - 핵심 변경 사항 (최대 3줄)
+
+### 절대 금지
+- ❌ 전체 로그, 테스트 결과 전문, stack trace 기록
+- ❌ "지금까지 한 모든 작업 요약"
+- ❌ 상세 구현 내용, 설계 논의 기록
+
+### 상세 이력 이동 규칙
+상세 내용은 **반드시** 아래 중 하나로 이동:
+- `docs/status/STATUS-YYMMDD-YYMMDD.md` (아카이브)
+- 기능별 문서 (`docs/testing/*`, `docs/ui/*`, `docs/db/*`)
+
+### SSOT 명시
+- STATUS.md는 절대 SSOT가 아니다
+- SSOT 인정 문서:
+  - `docs/CONTEXT_PACK.md`
+  - `docs/CUSTOMER_UI_SPEC.md`
+  - `CLAUDE.md`
 
 ---
 

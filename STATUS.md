@@ -6,6 +6,14 @@
 
 ---
 
+## 🔒 STATUS 운영 규칙
+- 본 파일은 **최근 7일 요약판**이다.
+- 각 작업 완료 시 **최대 5~10줄만** 기록한다.
+- 상세 이력은 `docs/status/` 하위 아카이브 문서를 참조한다.
+- **본 파일은 SSOT가 아니다** (SSOT: CLAUDE.md, docs/CONTEXT_PACK.md, docs/CUSTOMER_UI_SPEC.md)
+
+---
+
 ## Quick Overview
 
 **inca-RAG-final** = Proposal-centered insurance comparison RAG system
