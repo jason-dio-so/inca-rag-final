@@ -36,7 +36,7 @@
 ### 2025-12-26
 
 #### ✅ STEP NEXT-AB: v2 Proposal Ingestion Stage-1 (Template + Universe Only)
-**Commit:** (pending)
+**Commit:** c37f725
 **Summary:** 첫 실제 가입설계서 데이터 v2로 ingestion (삼성 암보험 42개 담보)
 **DoD:** ✅ Pass
 
