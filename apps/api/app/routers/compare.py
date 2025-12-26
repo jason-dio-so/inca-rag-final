@@ -1,9 +1,9 @@
 """
-/compare endpoint - STEP 14-α: Proposal Universe Lock enforcement
+/compare endpoint - AH-6: Cancer Canonical Decision Integration
 """
 from fastapi import APIRouter, HTTPException, Depends
 from psycopg2.extensions import connection as PGConnection
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from ..schemas.compare import (
     CompareRequest,
     CompareResponse,
@@ -29,28 +29,10 @@ from ..contracts import (
     validate_compare_response,  # STEP 24: Runtime code guard
     validate_ux_message_code,   # STEP 26: UX message code guard
 )
+from ..ah.compare_integration import CancerCompareIntegration
+from ..ah.cancer_decision import CancerCanonicalDecision, DecisionStatus
 
 router = APIRouter(tags=["Compare"])
-
-
-# STEP 14-α: Deterministic query resolution rules
-# Constitutional: NO LLM, NO inference - only exact keyword matching
-QUERY_RESOLUTION_RULES = {
-    "일반암진단비": "CA_DIAG_GENERAL",
-    "유사암진단금": "CA_DIAG_SIMILAR",
-    # Add more mappings as needed
-}
-
-
-def resolve_query_to_canonical(query: str) -> Optional[str]:
-    """
-    Resolve user query to canonical coverage code via deterministic rules.
-
-    Constitutional: NO LLM, NO similarity matching.
-    Returns None if no exact match found.
-    """
-    query_normalized = query.strip()
-    return QUERY_RESOLUTION_RULES.get(query_normalized)
 
 
 @router.post("/compare", response_model=ProposalCompareResponse)
@@ -59,33 +41,65 @@ async def compare_proposals(
     conn: PGConnection = Depends(get_readonly_conn)
 ):
     """
-    STEP 14-α: Proposal Universe-based Coverage Comparison
+    AH-6: Cancer Canonical Decision Integration
 
     Constitutional Principles:
     - Universe Lock: Only coverages in proposal_coverage_universe can be compared
-    - Deterministic query resolution (NO LLM)
-    - Excel-based mapping (NO inference)
-    - Evidence order: PROPOSAL → PRODUCT_SUMMARY → BUSINESS_METHOD → POLICY
+    - Cancer Canonical Decision: Query → Excel Alias → Policy Evidence → DECIDED/UNDECIDED
+    - Compare execution ONLY uses DECIDED codes (UNDECIDED → empty set, "확정 불가")
+    - No LLM/heuristic/fallback to recalled_candidates
 
-    Scenarios:
-    - A: Normal comparison (두 보험사 모두 MAPPED, 같은 canonical code)
-    - B: UNMAPPED coverage (Excel에 매핑 없음)
-    - C: Disease scope required (disease_scope_norm 존재, policy evidence 필요)
+    Flow:
+    1. Query → CancerCompareIntegration → CancerCanonicalDecision per insurer
+    2. DECIDED: Use decided_canonical_codes for comparison
+    3. UNDECIDED: Return "약관 근거 부족으로 확정 불가" (NO comparison)
     """
     try:
-        # Step 1: Resolve query to canonical code or raw name
-        canonical_code = resolve_query_to_canonical(request.query)
-        raw_name = None if canonical_code else request.query
+        # Step 1: Get insurers list (support both legacy and new formats)
+        if request.insurers:
+            insurers = request.insurers
+        else:
+            insurers = [request.insurer_a or "SAMSUNG"]
+            if request.insurer_b:
+                insurers.append(request.insurer_b)
 
-        # Step 2: Default insurers if not provided (for test scenarios)
-        insurer_a = request.insurer_a or "SAMSUNG"
-        insurer_b = request.insurer_b or "MERITZ"
+        # Step 2: Initialize Cancer Compare Integration
+        cancer_integration = CancerCompareIntegration(conn=conn)
 
-        # Handle special case: single insurer query (Scenario C)
-        if not request.insurer_b and canonical_code == "CA_DIAG_SIMILAR":
-            insurer_b = None  # Single coverage lookup
+        # Step 3: Resolve cancer canonical decisions for all insurers
+        compare_context = cancer_integration.resolve_compare_context(
+            query=request.query,
+            insurer_codes=insurers,
+        )
 
-        # Step 3: Get coverages from proposal universe
+        # Step 4: Check if we have any DECIDED codes
+        all_decided = all(d.is_decided() for d in compare_context.decisions)
+        any_decided = any(d.is_decided() for d in compare_context.decisions)
+
+        # Step 5: Get canonical codes for comparison (DECIDED only)
+        canonical_codes_for_compare = set()
+        for decision in compare_context.decisions:
+            # Constitutional Rule: ONLY DECIDED codes are used for comparison
+            canonical_codes_for_compare.update(
+                code.value for code in decision.get_canonical_codes_for_compare()
+            )
+
+        # If no DECIDED codes, we cannot compare
+        if not canonical_codes_for_compare:
+            # All UNDECIDED → return "확정 불가"
+            return _build_undecided_response(
+                request=request,
+                compare_context=compare_context,
+            )
+
+        # Step 6: For backward compatibility, use first decided code
+        canonical_code = list(canonical_codes_for_compare)[0] if canonical_codes_for_compare else None
+        raw_name = None
+
+        # Step 7: Get coverages from proposal universe
+        insurer_a = insurers[0]
+        insurer_b = insurers[1] if len(insurers) > 1 else None
+
         coverage_a = get_proposal_coverage(
             conn=conn,
             insurer=insurer_a,
@@ -185,6 +199,7 @@ async def compare_proposals(
         # STEP 26: UX message code validation (fail-fast on unknown codes)
         validate_ux_message_code(ux_message_code)
 
+        # AH-6: Include cancer canonical decision context in debug
         return ProposalCompareResponse(
             query=request.query,
             comparison_result=comparison_result,
@@ -198,7 +213,9 @@ async def compare_proposals(
             debug={
                 "canonical_code_resolved": canonical_code,
                 "raw_name_used": raw_name,
-                "universe_lock_enforced": True
+                "universe_lock_enforced": True,
+                "cancer_canonical_decision": compare_context.to_dict() if compare_context else None,
+                "decided_codes_for_compare": list(canonical_codes_for_compare),
             }
         )
 
@@ -299,4 +316,44 @@ def determine_comparison_result(
         "REQUEST_MORE_INFO",
         f"Different coverage types: {coverage_a.get('canonical_coverage_code')} vs {coverage_b.get('canonical_coverage_code')}",
         "COVERAGE_TYPE_MISMATCH"
+    )
+
+
+def _build_undecided_response(
+    request: ProposalCompareRequest,
+    compare_context: Any,  # CancerCompareContext
+) -> ProposalCompareResponse:
+    """
+    Build response for UNDECIDED cancer canonical decision.
+
+    Constitutional Rule (AH-6):
+    - UNDECIDED → "약관 근거 부족으로 확정 불가"
+    - NO comparison execution (empty canonical codes)
+    - NO fallback to recalled_candidates
+    - NO recommendations/inferences/alternatives
+
+    Args:
+        request: Original compare request
+        compare_context: Cancer compare context with UNDECIDED decisions
+
+    Returns:
+        ProposalCompareResponse with UNDECIDED status
+    """
+    return ProposalCompareResponse(
+        query=request.query,
+        comparison_result="undecided",
+        next_action="REQUEST_MORE_INFO",
+        coverage_a=None,
+        coverage_b=None,
+        policy_evidence_a=None,
+        policy_evidence_b=None,
+        message="약관 근거 부족으로 담보 확정 불가",
+        ux_message_code="CANCER_CANONICAL_UNDECIDED",
+        debug={
+            "cancer_canonical_decision": compare_context.to_dict(),
+            "decided_count": compare_context.get_decided_count(),
+            "undecided_count": compare_context.get_undecided_count(),
+            "decided_rate": compare_context.get_decided_rate(),
+            "reason": "All cancer canonical decisions are UNDECIDED (no policy evidence)",
+        }
     )

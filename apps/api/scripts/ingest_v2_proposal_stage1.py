@@ -36,6 +36,7 @@ from datetime import date
 # Add app to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.db import get_db_connection
+from app.ah.proposal_meta_filter import ProposalMetaFilter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -294,10 +295,32 @@ class V2ProposalIngestion:
         # Step 3: Extract coverage table (Structure-First)
         extractor = ProposalStructureExtractor(pdf_path)
         try:
-            coverages = extractor.extract_coverage_universe(max_pages=3)
+            coverages_raw = extractor.extract_coverage_universe(max_pages=3)
+
+            if not coverages_raw:
+                logger.warning("No coverages extracted from PDF")
+                return template_id, 0
+
+            # Step 3.5: Apply meta row filter (AH-6)
+            logger.info(f"  Applying meta row filter to {len(coverages_raw)} rows...")
+            coverages, filter_stats = ProposalMetaFilter.filter_proposal_rows(coverages_raw)
+            logger.info(f"  Meta filter results:")
+            logger.info(f"    Total rows: {filter_stats['total_rows']}")
+            logger.info(f"    Filtered out: {filter_stats['filtered_rows']}")
+            logger.info(f"    Kept: {filter_stats['kept_rows']}")
+            logger.info(f"    Filter rate: {filter_stats['filter_rate']:.2%}")
+
+            # Log sample of filtered rows (first 10)
+            if filter_stats['filtered_rows'] > 0:
+                filtered_samples = [
+                    r.get('coverage_name_raw')
+                    for r in coverages_raw
+                    if ProposalMetaFilter.is_meta_row(r.get('coverage_name_raw'))
+                ][:10]
+                logger.info(f"  Sample filtered rows: {filtered_samples}")
 
             if not coverages:
-                logger.warning("No coverages extracted from PDF")
+                logger.warning("No valid coverages after meta filtering")
                 return template_id, 0
 
             # Step 4: Insert coverages
