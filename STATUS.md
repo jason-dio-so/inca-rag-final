@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-12A (E2E Lock with Playwright)
+**Current Phase:** STEP NEXT-AB (v2 Proposal Ingestion Stage-1)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -34,6 +34,24 @@
 ## Latest Work (Last 7 Days)
 
 ### 2025-12-26
+
+#### ✅ STEP NEXT-AB: v2 Proposal Ingestion Stage-1 (Template + Universe Only)
+**Commit:** (pending)
+**Summary:** 첫 실제 가입설계서 데이터 v2로 ingestion (삼성 암보험 42개 담보)
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- apps/api/scripts/ingest_v2_proposal_stage1.py
+- v2.template: +1 (Samsung proposal template)
+- v2.proposal_coverage: 42 rows (coverage universe, no mapping)
+
+**Validation:**
+- ✅ v2.proposal_coverage: 42 rows
+- ✅ v2.template: 3 rows (2 seed + 1 Samsung)
+- ✅ smoke_v2.sh PASSED
+- ✅ Legacy public schema: 0 writes
+
+---
 
 #### ✅ STEP NEXT-AA-FIX: v2 Schema Idempotency + Smoke Hard Pass
 **Commit:** (pending)
