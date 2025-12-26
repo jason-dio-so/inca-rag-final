@@ -1,8 +1,8 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-5 Backend Complete (ViewModel Assembler)
-**Project Health:** ✅ ACTIVE - Backend Foundation Complete, Frontend Deferred
+**Current Phase:** STEP NEXT-5 Complete (ViewModel Assembler + Frontend Renderer)
+**Project Health:** ✅ ACTIVE - E2E ViewModel Pipeline Complete
 
 ---
 
@@ -25,23 +25,42 @@
 
 Detailed implementation logs available in [`docs/status/`](docs/status/).
 
-### ✅ STEP NEXT-5: Backend ViewModel Assembler (Backend Complete)
+### ✅ STEP NEXT-5: ViewModel Assembler + Frontend Renderer (Complete)
 **Commit:** [pending] | **Date:** 2025-12-26
 
 **Summary:**
-- Backend ViewModel assembler: ProposalCompareResponse → ViewModel JSON
-- `/compare/view-model` endpoint with runtime schema validation
-- 15 automated tests (100% passing)
+- Backend: ViewModel assembler (ProposalCompareResponse → ViewModel JSON)
+- Backend: `/compare/view-model` endpoint with runtime schema validation
+- Backend: 15 automated tests (100% passing)
+- Frontend: 3-Block ChatGPT-style renderer (React/TypeScript)
+- Frontend: 5 components (CompareViewModelRenderer + 4 blocks)
+- Frontend: Test page at `/compare-test`
 - Evidence reference integrity guaranteed
 - Hard-ban phrase detection (0 violations)
+- Debug section non-display enforced
 
-**Module Structure:**
+**Module Structure (Backend):**
 ```
 apps/api/app/view_model/
 ├── __init__.py
 ├── types.py (Pydantic models matching JSON Schema)
 ├── schema_loader.py (JSON Schema loader + validator)
 └── assembler.py (assembler logic)
+```
+
+**Component Structure (Frontend):**
+```
+apps/web/src/
+├── components/compare/
+│   ├── CompareViewModelRenderer.tsx  # Entry (3-Block layout)
+│   ├── ChatHeader.tsx                # BLOCK 0: User query
+│   ├── CoverageSnapshot.tsx          # BLOCK 1: Per-insurer snapshot
+│   ├── FactTable.tsx                 # BLOCK 2: Comparison table
+│   └── EvidenceAccordion.tsx         # BLOCK 3: Collapsible evidence
+├── lib/compare/
+│   └── viewModelTypes.ts             # TypeScript types from JSON Schema
+└── pages/
+    └── compare-test.tsx              # Test page (/compare-test)
 ```
 
 **Assembler Features:**
@@ -97,28 +116,41 @@ apps/api/app/view_model/
 - Allow `null` for optional fields: `bbox`, `source_meta`, `debug.*`
 - Rationale: Pydantic emits `null` for unset optional fields
 
+**Frontend Implementation:**
+- **BLOCK 0: ChatHeader**: Displays user_query + normalized_query (no internal codes)
+- **BLOCK 1: CoverageSnapshot**: Shows comparison_basis + per-insurer headline amounts/status
+- **BLOCK 2: FactTable**: Fixed 6-column layout (immutable order), no frontend sorting
+  - Columns: 보험사, 담보명(정규화), 보장금액, 지급 조건 요약, 보험기간, 비고
+  - Payout conditions: bullet list (Korean label + value_text, no interpretation)
+- **BLOCK 3: EvidenceAccordion**: Collapsible per-insurer groups (doc_type, page, excerpt as-is)
+- **Test Page**: `/compare-test` (example selector + live API test button)
+- **Edge Cases**: Handles UNMAPPED/OUT_OF_UNIVERSE/empty evidence without crash
+
 **Constitutional Compliance:**
-- ✅ Fact-only: Status from existing data, no new inference
-- ✅ No Recommendation: 0 forbidden phrases (test-enforced)
-- ✅ Presentation Only: Pure mapping/formatting (no business logic)
+- ✅ Backend: Fact-only (status from existing data, no new inference)
+- ✅ Backend: No Recommendation (0 forbidden phrases, test-enforced)
+- ✅ Backend: Presentation Only (pure mapping/formatting, no business logic)
+- ✅ Frontend: Fact-only (display ViewModel as-is, no modification)
+- ✅ Frontend: No Recommendation (zero "better/worse/same/different" phrases)
+- ✅ Frontend: Presentation Only (no sorting/filtering/scoring)
+- ✅ Frontend: Debug Non-UI (debug section completely hidden)
 - ✅ Canonical Coverage Rule: Internal codes in debug, UI uses normalized names
 - ✅ Coverage Universe Lock: OUT_OF_UNIVERSE for non-proposal
 - ✅ Evidence Rule: All amounts have evidence_ref_id
 - ✅ Deterministic: Test-verified reproducibility
 
-**Frontend Status:**
-- **DEFERRED** to next session
-- Reason: Backend foundation requires full validation first
-- Next: React components (ChatHeader, CoverageSnapshot, FactTable, EvidenceAccordion)
-
 **DoD Achievement:**
-- ✅ `/compare/view-model` endpoint schema-compliant
-- ✅ Assembler validates against JSON Schema
-- ✅ Hard-ban test passing (0 violations)
-- ✅ Evidence ref_id integrity passing
-- ✅ 15/15 tests passing
-- ✅ Documentation complete (`STEP_NEXT5_ADAPTER_AND_RENDERER.md`)
-- ✅ Ready for frontend implementation
+- ✅ Backend: `/compare/view-model` endpoint schema-compliant
+- ✅ Backend: Assembler validates against JSON Schema
+- ✅ Backend: Hard-ban test passing (0 violations)
+- ✅ Backend: Evidence ref_id integrity passing
+- ✅ Backend: 15/15 tests passing
+- ✅ Frontend: CompareViewModelRenderer renders schema-compliant ViewModel
+- ✅ Frontend: 3-Block structure implemented (Header, Snapshot, FactTable, Evidence)
+- ✅ Frontend: Debug section non-display enforced
+- ✅ Frontend: Build passes (type-safe)
+- ✅ Frontend: Test page functional with example data
+- ✅ Documentation complete (`STEP_NEXT5_ADAPTER_AND_RENDERER.md` v2.0.0)
 
 **Key Principle:**
 - **Assembler = Adapter = Presentation Layer = No Inference**

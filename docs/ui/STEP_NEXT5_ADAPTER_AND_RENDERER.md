@@ -1,13 +1,14 @@
-# STEP NEXT-5: Backend ViewModel Assembler (Complete)
+# STEP NEXT-5: ViewModel Assembler + Frontend Renderer (Complete)
 
-> **Status**: Backend Complete | Frontend Deferred to Next Session
+> **Status**: Backend Complete | Frontend Complete
 
 ---
 
 ## 0. Summary
 
-**Completed**: Backend foundation with full ViewModel assembler, endpoint, validation, and tests.
-**Deferred**: Frontend 3-Block renderer (React/TypeScript components) to next session.
+**Completed**:
+- Backend: ViewModel assembler, endpoint, validation, and tests
+- Frontend: 3-Block React renderer with ChatGPT-style layout
 
 ---
 
@@ -193,21 +194,94 @@ python -m pytest tests/test_view_model_assembler.py -v
 
 ---
 
-## 6. Frontend Status
+## 6. Frontend Implementation
 
-**Status**: **DEFERRED** to next session
+**Status**: **COMPLETE**
 
-**Reason**: Backend foundation requires full validation before frontend implementation.
+### 6.1 Component Structure
 
-**Next Session Tasks**:
-1. Create `CompareViewModelRenderer` React component
-2. Implement 4 sub-components:
-   - `ChatHeader.tsx` (BLOCK 0)
-   - `CoverageSnapshot.tsx` (BLOCK 1)
-   - `FactTable.tsx` (BLOCK 2)
-   - `EvidenceAccordion.tsx` (BLOCK 3)
-3. Enforce `debug` section non-display in UI
-4. Handle edge cases (UNMAPPED, OUT_OF_UNIVERSE, empty panels)
+```
+apps/web/src/
+├── components/compare/
+│   ├── CompareViewModelRenderer.tsx  # Entry component (3-Block layout)
+│   ├── ChatHeader.tsx                # BLOCK 0: User query display
+│   ├── CoverageSnapshot.tsx          # BLOCK 1: Per-insurer snapshot
+│   ├── FactTable.tsx                 # BLOCK 2: Comparison table
+│   └── EvidenceAccordion.tsx         # BLOCK 3: Collapsible evidence
+└── lib/compare/
+    └── viewModelTypes.ts             # TypeScript types from JSON Schema
+```
+
+### 6.2 Implementation Details
+
+**CompareViewModelRenderer** (Entry):
+- Renders 3-Block ChatGPT-style layout
+- Takes `CompareViewModel` prop (schema-validated JSON)
+- Constitutional enforcement: Debug section NEVER rendered
+- No sorting/filtering/scoring (presentation only)
+
+**BLOCK 0: ChatHeader**:
+- Displays `user_query` (primary, large font)
+- Displays `normalized_query` (optional, small font)
+- No coverage_code or internal identifiers shown
+
+**BLOCK 1: CoverageSnapshot**:
+- Shows `comparison_basis` (canonical coverage name)
+- Lists insurers in ViewModel order (no reordering)
+- Displays `headline_amount.display_text` if present
+- Shows status text if amount is null (OK/MISSING_EVIDENCE/UNMAPPED/etc.)
+- No "same/different" interpretation text
+
+**BLOCK 2: FactTable**:
+- Fixed 6-column layout (immutable order per schema)
+- Columns: 보험사, 담보명(정규화), 보장금액, 지급 조건 요약, 보험기간, 비고
+- Shows "—" for null `benefit_amount`
+- `payout_conditions` rendered as bullet list:
+  - Each item: Korean label (대기기간, 지급횟수, etc.) + value_text
+  - No text generation or interpretation
+- Rows displayed in ViewModel order (no frontend sorting)
+
+**BLOCK 3: EvidenceAccordion**:
+- Groups evidence by insurer (collapsible accordion UI)
+- Shows: doc_type badge, doc_title, page number, excerpt
+- Excerpt displayed as-is (no summarization/rewriting)
+- Neutral message if no evidence: "근거 문서 정보 없음"
+
+### 6.3 Edge Case Handling
+
+| Case | Behavior |
+|------|----------|
+| `status=OUT_OF_UNIVERSE` | Snapshot/table/evidence may be empty, no UI crash |
+| Empty `evidence_panels` | Shows neutral message, no recommendation phrases |
+| `benefit_amount=null` | Shows "—" in table |
+| `payout_conditions=[]` | Shows "—" in table |
+| UNMAPPED/AMBIGUOUS | Shows status in note_text, displays data as-is |
+
+### 6.4 Test Page
+
+**URL**: `/compare-test`
+
+**Features**:
+- Example selector (loads from `/public/data/compare_view_model.examples.json`)
+- Live API test button (calls `/compare/view-model` endpoint)
+- Renders ViewModel with CompareViewModelRenderer
+- Error handling for network failures (neutral message only)
+
+**Verification**:
+- ✅ Build passes (type-safe)
+- ✅ JSON examples load correctly
+- ✅ Page renders without crash
+- ✅ Debug section not displayed
+
+### 6.5 Constitutional Compliance
+
+| Principle | Frontend Implementation |
+|-----------|-------------------------|
+| Fact-only | Display ViewModel data as-is, no modification |
+| No Recommendation | Zero "better/worse/same/different" phrases |
+| Presentation Only | No sorting/filtering/scoring in frontend |
+| Debug Non-UI | Debug section completely hidden (hardcoded) |
+| Fixed Layout | 3-Block structure immutable, column order fixed |
 
 ---
 
@@ -221,8 +295,12 @@ python -m pytest tests/test_view_model_assembler.py -v
 - ✅ Schema updated (allow null for optional fields)
 - ✅ Evidence ref_id integrity guaranteed
 - ✅ Hard-ban phrases test-enforced
+- ✅ Frontend 5 components implemented
+- ✅ TypeScript types from JSON Schema
+- ✅ Test page (`/compare-test`) functional
+- ✅ Build passes (type-safe)
+- ✅ Debug section non-display enforced
 - ✅ Documentation complete
-- ⏸️ Frontend deferred to next session
 
 ---
 
@@ -242,16 +320,27 @@ python -m pytest tests/test_view_model_assembler.py -v
 
 ## 9. DoD Achievement
 
+**Backend**:
 - ✅ `/compare/view-model` endpoint schema-compliant
 - ✅ Assembler output validates against JSON Schema
 - ✅ Hard-ban auto-test passing
 - ✅ Evidence ref_id integrity test passing
 - ✅ 15/15 tests passing
-- ✅ Documentation complete
-- ✅ Ready for frontend implementation
+
+**Frontend**:
+- ✅ CompareViewModelRenderer renders schema-compliant ViewModel
+- ✅ 3-Block structure implemented (Header, Snapshot, FactTable, Evidence)
+- ✅ Debug section non-display enforced
+- ✅ Edge cases handled (UNMAPPED, OUT_OF_UNIVERSE, empty panels)
+- ✅ Test page functional with example data
+- ✅ Build passes (type-safe)
+
+**Documentation**:
+- ✅ Backend + Frontend implementation documented
+- ✅ Constitutional compliance verified
 
 ---
 
-**Document Version**: 1.0.0
+**Document Version**: 2.0.0
 **Date**: 2025-12-26
-**Status**: Backend Complete, Frontend Deferred
+**Status**: Backend Complete + Frontend Complete

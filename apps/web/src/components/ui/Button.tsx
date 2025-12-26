@@ -10,6 +10,7 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'outline';
   disabled?: boolean;
   className?: string;
+  size?: string;
 }
 
 export function Button({
@@ -18,6 +19,7 @@ export function Button({
   variant = 'primary',
   disabled = false,
   className = '',
+  size = 'md',
 }: ButtonProps) {
   const variantClasses = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700',
