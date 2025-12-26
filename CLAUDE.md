@@ -362,6 +362,62 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ---
 
+## Insurer / Product / Template SSOT (Hard Rule)
+
+### 절대 원칙
+**insurer(8개), product, template_id는 헌법급 SSOT로 고정되며, 모든 DB/ingestion/compare/viewmodel/frontend 작업의 전제다.**
+
+### Insurer SSOT
+
+**8개 insurer_code (enum) + display_name 분리**:
+- insurer_code = 유일키 (SAMSUNG, MERITZ, KB, HANA, DB, HANWHA, LOTTE, HYUNDAI)
+- display_name = UI 노출용 (예: "삼성화재", "메리츠화재")
+- **절대 금지**:
+  - ❌ 문자열 보험사명을 직접 저장/비교/조인 (코드 우회)
+  - ❌ insurer_code 없이 display_name만으로 식별
+  - ❌ 임의 보험사 코드 추가 (8개 고정)
+
+### Product SSOT
+
+**고객 노출 상품명은 product 테이블에서만 관리**:
+- product_id = 유일키 (insurer_code + internal_product_code)
+- display_name = UI 노출 상품명 (예: "무배당 내맘편한 암보험")
+- 모든 비교/결과는 product_id 기준으로 묶음
+- UI에는 display_name 노출
+- **절대 금지**:
+  - ❌ product_name을 문자열로 직접 저장 (SSOT 우회)
+  - ❌ proposal_id 등 임시 식별자로 product_id 대체
+  - ❌ 테이블별로 상품명 정의 분산
+
+### Template SSOT (template_id)
+
+**template_id = 가입설계서/문서 템플릿 식별의 유일키**:
+- 생성 규칙: `insurer_code + product_id + version + fingerprint(content_hash)`
+- fingerprint = 문서 구조/양식 변경 감지 해시
+- version = 보험사 공식 버전 (YYYYMM 등)
+- **절대 금지**:
+  - ❌ 임의 template_id 생성 (규칙 위반)
+  - ❌ 랜덤/증분 ID로 template_id 대체
+  - ❌ 버전/fingerprint 없이 template_id 생성
+
+### "새 술은 새 포대" 판단 규칙
+
+**SSOT 규칙을 위반하는 기존 자산은 "이관 대상"으로 분류**:
+- 기존 스키마 재활용 전제 금지
+- 필요시 신규 스키마/네임스페이스로 재구축
+- 위반 자산 목록화 후 이관 계획 수립 (삭제/DROP 금지)
+
+### 검증 포인트
+
+**다음 항목 중 하나라도 위반 시 SSOT 위반으로 간주**:
+1. insurer를 문자열로 저장/조인/필터링
+2. product_name을 SSOT 없이 문자열로 직접 저장
+3. template_id를 규칙 없이 랜덤/증분/임의 생성
+4. proposal_id를 product_id 대신 사용
+5. 테이블별로 보험사명/상품명 정의 분산
+
+---
+
 ## 설계 원칙
 
 ### Coverage Universe Lock (STEP 6-C 확정)

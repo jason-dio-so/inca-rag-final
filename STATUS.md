@@ -35,6 +35,22 @@
 
 ### 2025-12-26
 
+#### ✅ STEP NEXT-X: Insurer/Product/Template SSOT Lock
+**Commit:** (pending)
+**Summary:** insurer(8개), product, template_id 헌법급 SSOT 고정
+**DoD:** ✅ Pass
+
+**Key Changes:**
+- CLAUDE.md § Insurer/Product/Template SSOT (Hard Rule) 추가
+- docs/db/SSOT_VIOLATIONS.md (위반 자산 목록화)
+- Violations: insurer VARCHAR, proposal_id 사용, template_id 부재
+
+**Next Steps:**
+- Migration 설계 (insurer_code ENUM, product_id FK, template_id 스키마)
+- Provenance Audit (Route Alignment)
+
+---
+
 #### ✅ STEP NEXT-12A: Automated E2E Lock with Playwright
 **Commit:** 4f3308f
 **Summary:** Playwright 자동화 E2E 테스트 (Example 1-4, Forbidden phrases 검증)
