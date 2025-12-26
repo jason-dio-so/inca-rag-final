@@ -2398,3 +2398,45 @@ open http://localhost:3000/compare-live
 - Comparison Engine 개선 (table_type 자동 선택)
 
 ---
+
+### ✅ STEP NEXT-12A: Automated E2E Lock with Playwright (Complete)
+**Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- Playwright 설치 및 프로젝트 초기화
+- Example 1-4 자동화 E2E 테스트 구현
+- Real API 기반 테스트 (fixture/mock 사용 안 함)
+- Forbidden phrases 자동 검증
+- CI/CD 준비 완료
+
+**주요 변경 사항:**
+
+1. **Playwright Setup**
+   - apps/web/playwright.config.ts (webServer 자동 기동)
+   - @playwright/test 설치 (v1.57.0)
+   - Chromium browser 설치
+   - npm scripts: test:e2e, test:e2e:ui, test:e2e:headed
+
+2. **E2E Test Suite**
+   - apps/web/e2e/compare-live.spec.ts
+   - 6개 테스트 (Example 1-4 + Evidence + Error)
+   - Forbidden phrases 자동 검증 내장
+
+3. **Documentation**
+   - apps/web/e2e/README.md
+   - Test data requirements, troubleshooting, CI/CD guide
+
+**Usage:**
+```bash
+cd apps/api && uvicorn app.main:app --port 8001
+cd apps/web && npm run test:e2e
+```
+
+**DoD:**
+- [x] Playwright 설치/설정
+- [x] Example 1-4 E2E 테스트
+- [x] Forbidden phrases 자동 검증
+- [x] webServer auto-start
+- [x] 문서화 완료
+
+---
