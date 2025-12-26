@@ -29,6 +29,7 @@ Detailed implementation logs available in [`docs/status/`](docs/status/).
 **Commit:** 946e1e4 | **Date:** 2025-12-26
 **Stabilization-β:** 8562a1f | **Date:** 2025-12-26
 **Stabilization-γ:** eb5704d | **Date:** 2025-12-26
+**Stabilization-δ:** [PENDING] | **Date:** 2025-12-26
 
 **Summary:**
 - Backend: Admin mapping service with canonical coverage rule enforcement
@@ -54,6 +55,15 @@ Detailed implementation logs available in [`docs/status/`](docs/status/).
 - Smoke Tests: Complete documentation in `docs/admin/STEP_NEXT7_GAMMA_SMOKE_TESTS.md`
 - Deployment Ready: Migration verified safe, API endpoints documented, UI workflow tested
 - Constitutional: No skip/xfail markers (tests require DB but are production-ready)
+
+**NEXT-7-δ Stabilization:**
+- Docker Compose: Test-specific DB environment (`docker-compose.test.yml`)
+- Migration Script: One-command migration application (`tools/db/apply_migrations_next7.sh`)
+- Test Runner: One-command test execution (`tools/test/run_admin_mapping_tests.sh`)
+- DB Reflection: Tests verify coverage_name_map + audit_log row creation
+- Conflict Test: Restored test_approve_event_conflict (safe defaults verification)
+- Test Count: 7 comprehensive tests (added conflict scenario)
+- Execution Log: Complete smoke test documentation in `docs/admin/STEP_NEXT7_DELTA_SMOKE_LOG.md`
 
 **Key Features:**
 1. **Event Queue Management**: UNMAPPED/AMBIGUOUS events auto-collected with deduplication
@@ -85,23 +95,27 @@ docs/admin/
 └── STEP_NEXT7_ADMIN_MAPPING_WORKBENCH.md (complete documentation)
 ```
 
-**DoD Status (NEXT-7-γ):**
+**DoD Status (NEXT-7-δ):**
 - [x] OPEN UNMAPPED/AMBIGUOUS events queued with deduplication
 - [x] Admin approval reflects to coverage_code_alias or coverage_name_map
 - [x] All actions logged to admin_audit_log
 - [x] Conflicts/invalid codes fail conservatively (no auto-overwrite)
-- [x] Backend tests restored (6 tests, async fixtures fixed, no skip)
-- [x] Smoke test documentation complete (docs/admin/STEP_NEXT7_GAMMA_SMOKE_TESTS.md)
-- [x] Migration verified safe (IF NOT EXISTS clauses)
-- [x] Core test suite still passing (231 tests, no regression)
-- [ ] Main branch commit + push (NEXT-7-γ)
+- [x] Backend tests enhanced (7 tests, DB reflection verified, conflict test restored)
+- [x] Docker Compose test environment created
+- [x] One-command migration script (`./tools/db/apply_migrations_next7.sh`)
+- [x] One-command test runner (`./tools/test/run_admin_mapping_tests.sh`)
+- [x] DB reflection checks added (coverage_name_map + audit_log verification)
+- [x] Execution log documented (docs/admin/STEP_NEXT7_DELTA_SMOKE_LOG.md)
+- [ ] Main branch commit + push (NEXT-7-δ)
 
-**Next Steps (Deployment):**
-- Apply migration: `psql < migrations/step_next7_admin_mapping_workbench.sql`
-- Start FastAPI: Admin router already registered in main.py
-- Verify endpoints: `curl http://localhost:8000/admin/mapping/events`
-- Access UI: http://localhost:3000/admin/mapping
-- Follow smoke test guide: `docs/admin/STEP_NEXT7_GAMMA_SMOKE_TESTS.md`
+**Next Steps (One-Command Execution):**
+- Run tests: `./tools/test/run_admin_mapping_tests.sh`
+- Or step-by-step:
+  1. Start DB: `docker-compose -f docker-compose.test.yml up -d`
+  2. Migrate: `./tools/db/apply_migrations_next7.sh`
+  3. Test: `python -m pytest tests/test_admin_mapping_approve.py -v`
+- Verify: All 7 tests pass (no skip/xfail)
+- Cleanup: `docker-compose -f docker-compose.test.yml down`
 
 ---
 

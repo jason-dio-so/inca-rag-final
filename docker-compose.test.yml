@@ -1,0 +1,27 @@
+# Docker Compose for Admin Mapping Tests
+# Purpose: Provide reproducible PostgreSQL environment for test execution
+# Constitutional: Admin mapping requires WRITE access (not read-only)
+
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: inca_rag_test_db
+    environment:
+      POSTGRES_DB: inca_rag_final_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+    ports:
+      - "5433:5432"  # Avoid conflict with default PostgreSQL port
+    volumes:
+      - pg_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_test_data:
+    name: inca_rag_test_data

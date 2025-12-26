@@ -145,6 +145,34 @@ async def test_approve_event_success(
     assert event.resolved_coverage_code == "CA_DIAG_GENERAL"
     assert event.resolved_by == "test_admin"
 
+    # DB Reflection Verification: Check coverage_name_map entry created
+    async with admin_service.db_pool.acquire() as conn:
+        name_map = await conn.fetchrow(
+            """
+            SELECT * FROM coverage_name_map
+            WHERE insurer = $1 AND raw_name = $2
+            """,
+            "SAMSUNG",
+            "일반암 진단비",
+        )
+        assert name_map is not None, "coverage_name_map entry not created"
+        assert name_map["coverage_code"] == "CA_DIAG_GENERAL"
+        assert name_map["created_by"] == "test_admin"
+
+        # Verify audit_log entry created
+        audit_log = await conn.fetchrow(
+            """
+            SELECT * FROM admin_audit_log
+            WHERE target_id = $1 AND action = 'APPROVE'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            str(sample_event),
+        )
+        assert audit_log is not None, "audit_log entry not created"
+        assert audit_log["actor"] == "test_admin"
+        assert audit_log["target_type"] == "EVENT"
+
 
 @pytest.mark.asyncio
 async def test_approve_event_invalid_code(
@@ -241,3 +269,49 @@ async def test_deduplication(admin_service: AdminMappingService, clean_tables):
     events, total = await admin_service.get_queue(state=EventState.OPEN)
     meritz_events = [e for e in events if e.insurer == "MERITZ" and e.raw_coverage_title == "유사암 진단금"]
     assert len(meritz_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_approve_event_conflict(
+    admin_service: AdminMappingService,
+    sample_event,
+    ensure_canonical_code,
+    db_pool,
+):
+    """
+    Test: Approval fails if alias already exists with different coverage_code
+    Constitutional: Safe defaults - no auto-overwrite
+    """
+    # Pre-populate conflicting alias
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO coverage_code_alias (insurer, alias_text, coverage_code, created_by)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (insurer, alias_text) DO NOTHING
+            """,
+            "SAMSUNG",
+            "일반암진단비",  # normalized_query from sample_event
+            "DIFFERENT_CODE_123",
+            "previous_admin",
+        )
+
+    # Attempt approval with ALIAS resolution type (uses normalized_query as alias)
+    request = ApproveEventRequest(
+        event_id=sample_event,
+        coverage_code="CA_DIAG_GENERAL",
+        resolution_type=ResolutionType.ALIAS,  # This triggers alias conflict check
+        note="Test conflict",
+        actor="test_admin",
+    )
+
+    # Should raise ValidationError due to conflict
+    with pytest.raises(ValidationError) as exc_info:
+        await admin_service.approve_event(request)
+
+    assert "already mapped to different code" in str(exc_info.value)
+    assert "Safe defaults" in str(exc_info.value)
+
+    # Verify event still OPEN (not approved)
+    event = await admin_service.get_event_detail(sample_event)
+    assert event.state == EventState.OPEN
