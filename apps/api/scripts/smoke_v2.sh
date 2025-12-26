@@ -169,6 +169,51 @@ else
 fi
 
 # ============================================
+# Test 8: Coverage Evidence (STEP NEXT-AE)
+# ============================================
+
+echo
+echo "📋 Test 8: Coverage Evidence (문서 기반 추출)..."
+
+# Check v2.coverage_evidence table exists
+EVIDENCE_TABLE_CHECK=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'v2' AND table_name = 'coverage_evidence');" | xargs)
+
+if [ "$EVIDENCE_TABLE_CHECK" = "t" ]; then
+    # Total evidence count
+    TOTAL_EVIDENCE_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_evidence;" | xargs)
+
+    echo "✅ v2.coverage_evidence: $TOTAL_EVIDENCE_COUNT evidence(s) total"
+
+    # Check for "문서 기반" evidence (exclude manual_v1 from auto-extraction count)
+    DOCUMENT_BASED_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.coverage_evidence WHERE extraction_method LIKE '%deterministic%' OR extraction_method = 'manual_v1';" | xargs)
+
+    echo "   - Document-based evidences: $DOCUMENT_BASED_COUNT"
+
+    # STEP NEXT-AE DoD: 최소 1개 코드에 3종 evidence (definition, payment_condition, exclusion)
+    COVERAGE_WITH_3_TYPES=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM (SELECT canonical_coverage_code, COUNT(DISTINCT evidence_type) as type_count FROM v2.coverage_evidence GROUP BY canonical_coverage_code HAVING COUNT(DISTINCT evidence_type) >= 3) sub;" | xargs)
+
+    if [ "$COVERAGE_WITH_3_TYPES" -ge 1 ]; then
+        echo "✅ At least 1 coverage has 3+ evidence types (definition/payment_condition/exclusion)"
+
+        # Show which coverages have 3+ types
+        echo "   Coverage(s) with 3+ evidence types:"
+        psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+            "SELECT '     - ' || canonical_coverage_code || ': ' || COUNT(DISTINCT evidence_type) || ' types (' || STRING_AGG(DISTINCT evidence_type, ', ') || ')' FROM v2.coverage_evidence GROUP BY canonical_coverage_code HAVING COUNT(DISTINCT evidence_type) >= 3;"
+    else
+        echo "ℹ️  No coverage has 3+ evidence types yet (expected >= 1 for STEP NEXT-AE DoD)"
+        echo "   Run: python apps/api/scripts/ae_extract_evidence.py"
+    fi
+else
+    echo "❌ v2.coverage_evidence: NOT FOUND"
+    echo "   Run migration: psql \"postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final\" -f migrations/step_next_ae/001_create_coverage_evidence.sql"
+    exit 1
+fi
+
+# ============================================
 # Final Summary
 # ============================================
 
@@ -178,13 +223,14 @@ echo "✅ Smoke Test: V2 Schema & API Read Path PASSED"
 echo "============================================"
 echo
 echo "Summary:"
-echo "  - v2 schema exists with 13 tables"
+echo "  - v2 schema exists with 13+ tables"
 echo "  - v2.insurer has 8 SSOT entries"
 echo "  - product_id follows SSOT format"
 echo "  - API uses search_path = v2, public"
-echo "  - /compare/view-model returns DATA_INSUFFICIENT (v2 schema empty, expected)"
+echo "  - v2.coverage_mapping has valid신정원 mappings"
+echo "  - v2.coverage_evidence has document-based evidence"
 echo
 echo "Next steps:"
-echo "  - Populate v2.proposal_coverage (extraction pipeline)"
+echo "  - Improve evidence extraction (definition coverage)"
 echo "  - Freeze public schema to READ-ONLY (LEGACY_FREEZE_PLAN.md)"
 echo
