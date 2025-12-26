@@ -2220,3 +2220,85 @@ Total: 12 passed, 32 warnings (pydantic deprecation)
 - Comparison Engine 개선 (table_type 자동 선택)
 
 ---
+
+### ✅ STEP NEXT-11: Frontend Renderer v2 (Complete)
+**Commit:** [pending] | **Date:** 2025-12-26
+
+**Summary:**
+- ViewModel v2 필드 렌더링 지원 (filter_criteria, table_type, highlight, sort_metadata)
+- O/X 매트릭스 테이블 렌더러 추가
+- Example 1-4 UI 픽스처 + 테스트 페이지 추가
+- ChatGPT UI 스타일 유지
+
+**목적:**
+- STEP NEXT-10-β에서 생성되는 ViewModel v2를 프론트엔드에서 렌더링
+- INCA DIO 요구사항 Example 1-4 UI 형태 고정
+- 백엔드 로직 변경 없이 렌더링 계층만 구현
+
+**주요 변경 사항:**
+
+1. **TypeScript Types 업데이트 (schema v2)**
+   - apps/web/src/lib/compare/viewModelTypes.ts
+   - FilterCriteria, SortMetadata, VisualEmphasis 추가
+   - FactTableRow.highlight, FactTable.table_type 추가
+
+2. **CoverageSnapshot 업데이트**
+   - apps/web/src/components/compare/CoverageSnapshot.tsx
+   - filter_criteria 표시 (보험사/질병범위/비교항목/차이감지)
+   - Fact-only 표시 (판단 문구 금지)
+
+3. **FactTable 업데이트**
+   - apps/web/src/components/compare/FactTable.tsx
+   - sort_metadata 표시 (정렬 기준, 순서, 개수)
+   - highlight 지원 (차이 난 셀만 노란색 강조)
+   - table_type에 따라 O/X 매트릭스 렌더러 호출
+
+4. **O/X Matrix Table Renderer**
+   - apps/web/src/components/compare/OXMatrixTable.tsx
+   - Example 4 (질병별 보장 가능 여부) 전용
+   - O (보장) / X (미보장) / — (정보 없음)
+   - Constitutional: NO judgment text
+
+5. **Example 1-4 Fixtures + Test Page**
+   - apps/web/src/fixtures/example-viewmodels.ts (4 fixtures)
+   - apps/web/src/pages/examples-test.tsx (UI 테스트 페이지)
+   - Visit: http://localhost:3000/examples-test
+
+**Constitutional Compliance:**
+- ✅ Fact-only rendering (추가 생성 문구 없음)
+- ✅ No recommendation/judgment/interpretation
+- ✅ Evidence-based display
+- ✅ UI hint only (visual_emphasis, sort_metadata는 판단 아님)
+- ✅ Difference detection ≠ superiority judgment
+
+**테스트 방법:**
+```bash
+# 개발 서버 실행
+npm run dev
+
+# Examples 페이지 방문
+open http://localhost:3000/examples-test
+```
+
+**Example 렌더링 검증:**
+- [x] Example 1: 보험료 정렬 (sort_metadata, visual_emphasis)
+- [x] Example 2: 보장한도 차이 (filter_criteria.difference_detected, highlight)
+- [x] Example 3: 특정 보험사 비교 (filter_criteria.insurer_filter)
+- [x] Example 4: 질병별 O/X 매트릭스 (table_type=ox_matrix, disease_scope)
+
+**DoD (Definition of Done):**
+- [x] ViewModel v2 필드 렌더링 지원
+- [x] O/X 매트릭스 테이블 렌더러
+- [x] Example 1-4 UI 픽스처
+- [x] Examples 테스트 페이지
+- [x] 컴파일 성공
+- [x] STATUS.md 업데이트
+- [x] git commit + push
+
+**다음 단계:**
+- E2E 테스트 (Playwright) 추가 (optional)
+- Query Parser 구현 (filter_criteria 자동 채우기)
+- Comparison Engine 개선 (table_type 자동 선택)
+- 보험료 기능 설계 (data/호출_api/ 연결)
+
+---

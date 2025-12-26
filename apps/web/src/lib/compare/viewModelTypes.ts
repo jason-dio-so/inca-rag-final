@@ -55,9 +55,17 @@ export interface InsurerSnapshot {
   status: StatusCode;
 }
 
+export interface FilterCriteria {
+  insurer_filter?: string[];
+  disease_scope?: string[];
+  slot_key?: string;
+  difference_detected?: boolean;
+}
+
 export interface Snapshot {
   comparison_basis: string;
   insurers: InsurerSnapshot[];
+  filter_criteria?: FilterCriteria | null;
 }
 
 export interface PayoutCondition {
@@ -74,6 +82,18 @@ export interface FactTableRow {
   term_text: string | null;
   note_text: string | null;
   row_status: StatusCode;
+  highlight?: string[] | null; // v2: Cell keys to emphasize
+}
+
+export interface SortMetadata {
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+}
+
+export interface VisualEmphasis {
+  min_value_style?: "blue" | "green" | "default";
+  max_value_style?: "red" | "orange" | "default";
 }
 
 export interface FactTable {
@@ -86,6 +106,9 @@ export interface FactTable {
     "비고"
   ];
   rows: FactTableRow[];
+  table_type?: "default" | "ox_matrix"; // v2: Table display mode
+  sort_metadata?: SortMetadata | null; // v2: Sorting configuration
+  visual_emphasis?: VisualEmphasis | null; // v2: Visual styling
 }
 
 export interface BBox {
