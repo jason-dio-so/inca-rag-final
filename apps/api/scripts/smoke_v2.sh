@@ -236,6 +236,71 @@ else
 fi
 
 # ============================================
+# Test 9: Proposal Coverage Detail (STEP NEXT-AF)
+# ============================================
+
+echo
+echo "📋 Test 9: Proposal Coverage Detail (Comparison Description)..."
+
+# Check v2.proposal_coverage_detail table exists
+DETAIL_TABLE_CHECK=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'v2' AND table_name = 'proposal_coverage_detail');" | xargs)
+
+if [ "$DETAIL_TABLE_CHECK" = "t" ]; then
+    # Total detail count
+    TOTAL_DETAIL_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail;" | xargs)
+
+    echo "✅ v2.proposal_coverage_detail: $TOTAL_DETAIL_COUNT detail(s) total"
+
+    # STEP NEXT-AF: Constitutional validation (source_doc_type = 'proposal_detail' only)
+    INVALID_DOC_TYPE_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE source_doc_type != 'proposal_detail';" | xargs)
+
+    if [ "$INVALID_DOC_TYPE_COUNT" -eq 0 ]; then
+        echo "✅ All detail source_doc_type = 'proposal_detail' (constitution compliant)"
+    else
+        echo "❌ FAILED: Found $INVALID_DOC_TYPE_COUNT detail(s) with invalid source_doc_type"
+        echo "   Expected: source_doc_type = 'proposal_detail' (NOT evidence source)"
+        exit 1
+    fi
+
+    # Check matched vs unmatched details
+    MATCHED_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE coverage_id IS NOT NULL;" | xargs)
+
+    UNMATCHED_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE coverage_id IS NULL;" | xargs)
+
+    echo "   - Matched to coverage: $MATCHED_COUNT"
+    echo "   - Unmatched (NULL coverage_id): $UNMATCHED_COUNT"
+
+    # STEP NEXT-AF DoD: 최소 1개 template에 detail >= 1, 최소 1개 row는 매칭 성공
+    TEMPLATES_WITH_DETAILS=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(DISTINCT template_id) FROM v2.proposal_coverage_detail;" | xargs)
+
+    echo "   - Templates with details: $TEMPLATES_WITH_DETAILS"
+
+    if [ "$TEMPLATES_WITH_DETAILS" -ge 1 ] && [ "$MATCHED_COUNT" -ge 1 ]; then
+        echo "✅ At least 1 template has details with 1+ matched coverage (DoD PASS)"
+    else
+        echo "ℹ️  Not enough data for STEP NEXT-AF DoD (expected >= 1 template with >= 1 matched detail)"
+        echo "   Run: python apps/api/scripts/af_extract_proposal_detail.py <template_id> <pdf_path>"
+    fi
+
+    # Template distribution
+    if [ "$TOTAL_DETAIL_COUNT" -gt 0 ]; then
+        echo "   Template distribution:"
+        psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+            "SELECT '     - ' || template_id || ': ' || COUNT(*) || ' details (matched: ' || COUNT(*) FILTER (WHERE coverage_id IS NOT NULL) || ')' FROM v2.proposal_coverage_detail GROUP BY template_id ORDER BY template_id;"
+    fi
+else
+    echo "❌ v2.proposal_coverage_detail: NOT FOUND"
+    echo "   Run migration: psql \"postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final\" -f migrations/step_next_af/001_create_proposal_coverage_detail.sql"
+    exit 1
+fi
+
+# ============================================
 # Final Summary
 # ============================================
 
@@ -251,6 +316,7 @@ echo "  - product_id follows SSOT format"
 echo "  - API uses search_path = v2, public"
 echo "  - v2.coverage_mapping has valid신정원 mappings"
 echo "  - v2.coverage_evidence has document-based evidence"
+echo "  - v2.proposal_coverage_detail for comparison description"
 echo
 echo "Next steps:"
 echo "  - Improve evidence extraction (definition coverage)"

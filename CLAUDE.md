@@ -751,6 +751,8 @@ apps/api/scripts/smoke_compare_view_model.sh
 - ✅ STEP 6-C: Proposal Universe Lock (E2E Functional)
 - ✅ STEP NEXT-3~7: UI Layout + ViewModel + Clarify Panel + Admin Mapping Workbench
 - ✅ STEP NEXT-8A: SSOT Entry Point Lock
+- ✅ STEP NEXT-AE-FIX: Comparison/Evidence 레이어 분리 (헌법 고정)
+- ✅ STEP NEXT-AF: Proposal Detail → Comparison Description (Non-Breaking)
 
 **현재 브랜치**: `main`
 
@@ -760,6 +762,8 @@ apps/api/scripts/smoke_compare_view_model.sh
 - `apps/api/app/compiler/` (Deterministic compiler, rule-based)
 - `apps/api/app/view_model/` (ViewModel assembler)
 - `apps/api/app/admin_mapping/` (Admin mapping workbench)
+- `migrations/step_next_af/` (STEP NEXT-AF: proposal_coverage_detail table)
+- `apps/api/scripts/af_extract_proposal_detail.py` (Proposal detail parser)
 
 **다음 작업**:
 - data/inca-dio.pdf 기반 요구사항 정합성 확인
@@ -782,6 +786,7 @@ apps/api/scripts/smoke_compare_view_model.sh
 | 2025-12-26 | 금지 사항 | 10개 항목 | 15개 항목 (UI/응답 레벨 5개 추가) | UI/응답 단계까지 추천/우열/해석/추론 금지 확장 |
 | 2025-12-26 | Deterministic Compiler | 데이터 추출만 | 전 구간 (데이터 추출 / 매핑 / UI 응답 / 비교 결과) | UI/응답 생성도 규칙 기반으로 제한 |
 | 2025-12-26 | 현행 시스템 상태 | 2025-12-24, branch: feature/* | 2025-12-26, branch: main, NEXT-8A 포함 | 최신 완료 단계 반영 |
+| 2025-12-26 | Proposal Detail | (기능 없음) | STEP NEXT-AF: v2.proposal_coverage_detail + comparison_description 필드 | 가입설계서 상세표를 Comparison Description으로 분리 (Evidence 아님) |
 
 ---
 

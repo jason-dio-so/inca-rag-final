@@ -13,13 +13,51 @@ Constitutional Principles:
 import os
 from fastapi import APIRouter, HTTPException, Depends
 from psycopg2.extensions import connection as PGConnection
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from ..schemas.compare import ProposalCompareRequest
+from ..schemas.compare import ProposalCompareRequest, ProposalCoverageItem
 from ..db import get_readonly_conn
 from ..view_model.assembler import assemble_view_model
 from ..view_model.schema_loader import load_schema, validate_view_model
 from .compare import compare_proposals as base_compare_proposals
+
+
+def fetch_comparison_description(
+    conn: PGConnection,
+    coverage_item: ProposalCoverageItem
+) -> tuple[Optional[str], Optional[dict]]:
+    """
+    Fetch comparison description from v2.proposal_coverage_detail (STEP NEXT-AF).
+
+    Args:
+        conn: DB connection
+        coverage_item: Coverage item from proposal
+
+    Returns:
+        (detail_text, source_metadata) or (None, None) if not found
+    """
+    cursor = conn.cursor()
+
+    # Match by template_id + insurer_coverage_name
+    # We need template_id from proposal_id - simplified: use latest detail for this insurer
+    cursor.execute("""
+        SELECT d.detail_text, d.source_page, d.template_id
+        FROM v2.proposal_coverage pc
+        JOIN v2.proposal_coverage_detail d ON d.coverage_id = pc.coverage_id
+        WHERE pc.insurer_coverage_name = %s
+        ORDER BY d.updated_at DESC
+        LIMIT 1
+    """, (coverage_item.coverage_name_raw,))
+
+    row = cursor.fetchone()
+    cursor.close()
+
+    if row:
+        detail_text, source_page, template_id = row
+        source_meta = {"doc_type": "proposal_detail", "page": source_page}
+        return detail_text, source_meta
+
+    return None, None
 
 
 router = APIRouter(tags=["ViewModel"])
@@ -67,6 +105,26 @@ async def compare_view_model(
 
         # Step 3: Convert to dict
         view_model_dict = view_model.model_dump(mode="json")
+
+        # Step 3.5: Enrich with comparison_description (STEP NEXT-AF)
+        # Add comparison_description to fact_table rows if available
+        if "fact_table" in view_model_dict and "rows" in view_model_dict["fact_table"]:
+            for row in view_model_dict["fact_table"]["rows"]:
+                insurer = row.get("insurer")
+                coverage_name = row.get("coverage_title_normalized")
+
+                # Find matching coverage from compare_response
+                coverage_item = None
+                if compare_response.coverage_a and compare_response.coverage_a.insurer.upper() == insurer:
+                    coverage_item = compare_response.coverage_a
+                elif compare_response.coverage_b and compare_response.coverage_b.insurer.upper() == insurer:
+                    coverage_item = compare_response.coverage_b
+
+                if coverage_item:
+                    detail_text, source_meta = fetch_comparison_description(conn, coverage_item)
+                    if detail_text:
+                        row["comparison_description"] = detail_text
+                        row["comparison_description_source"] = source_meta
 
         # Step 4: Runtime schema validation (if enabled)
         if ENABLE_SCHEMA_VALIDATION:

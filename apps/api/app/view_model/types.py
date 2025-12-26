@@ -69,6 +69,12 @@ class PayoutCondition(BaseModel):
     evidence_ref_id: Optional[str] = None
 
 
+class ComparisonDescriptionSource(BaseModel):
+    """Source metadata for comparison description (STEP NEXT-AF)."""
+    doc_type: Literal["proposal_detail"]  # Always proposal_detail
+    page: int
+
+
 class FactTableRow(BaseModel):
     """Single row in fact table."""
     insurer: InsurerCode
@@ -79,6 +85,8 @@ class FactTableRow(BaseModel):
     note_text: Optional[str] = None
     row_status: StatusCode
     highlight: Optional[List[str]] = None  # v2: Cell keys to emphasize
+    comparison_description: Optional[str] = None  # STEP NEXT-AF: Proposal detail text (NOT evidence)
+    comparison_description_source: Optional[ComparisonDescriptionSource] = None  # STEP NEXT-AF: Source metadata
 
 
 class SortMetadata(BaseModel):

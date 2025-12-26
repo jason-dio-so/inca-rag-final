@@ -49,6 +49,7 @@ from .types import (
     DocType,
     SortMetadata,
     VisualEmphasis,
+    ComparisonDescriptionSource,
 )
 
 
