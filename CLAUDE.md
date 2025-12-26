@@ -440,6 +440,47 @@ compare / retrieval 단계에서 반드시 `is_synthetic = false` 필터 적용
 
 ---
 
+## DB Contract (SSOT)
+
+### 절대 원칙
+**DB 접속 정보는 환경변수로만 전달하며, apps/api/.env.example이 단일 출처이다.**
+
+### 환경변수 계약
+- `DB_HOST` (default: 127.0.0.1) - IPv6 회피
+- `DB_PORT` (default: 5433) - Container port mapping
+- `DB_NAME` (default: inca_rag_final) - Database name
+- `DB_USER` (default: postgres)
+- `DB_PASSWORD` (default: postgres)
+
+### Legacy 변수 (Backward Compatibility)
+- `POSTGRES_HOST` → `DB_HOST`
+- `POSTGRES_PORT` → `DB_PORT`
+- `POSTGRES_DB` → `DB_NAME`
+- `POSTGRES_USER` → `DB_USER`
+- `POSTGRES_PASSWORD` → `DB_PASSWORD`
+
+새 변수(`DB_*`)가 우선, 없으면 legacy 변수 사용.
+
+### 작업 시작 전 필수 검증
+**모든 API 실행 전 db_doctor.py 실행:**
+```bash
+python apps/api/scripts/db_doctor.py
+```
+
+실패 시 작업 중단. 접속 성공 후에만 진행.
+
+### Container 정보
+- Name: `inca_pg_step14`
+- Port: `0.0.0.0:5433->5432/tcp`
+- Credentials: `postgres/postgres/inca_rag_final`
+
+### 금지 사항
+- ❌ 코드에 하드코딩된 credentials
+- ❌ db_doctor.py 없이 API 실행
+- ❌ 추측으로 container 재생성 (데이터 유지 우선)
+
+---
+
 ## Git 반영 원칙
 
 - 모든 작업은 반드시 git에 반영

@@ -25,12 +25,19 @@ def get_db_connection(readonly: bool = True) -> PGConnection:
     Args:
         readonly: Force read-only mode (default: True for API)
 
-    Connection parameters from environment variables:
-    - POSTGRES_HOST (default: localhost)
-    - POSTGRES_PORT (default: 5433)
-    - POSTGRES_DB (default: inca_rag_final_test)
-    - POSTGRES_USER (default: postgres)
-    - POSTGRES_PASSWORD (required)
+    Connection parameters from environment variables (DB Contract SSOT):
+    - DB_HOST (default: 127.0.0.1, avoids IPv6 issues)
+    - DB_PORT (default: 5433)
+    - DB_NAME (default: inca_rag_final)
+    - DB_USER (default: postgres)
+    - DB_PASSWORD (default: postgres)
+
+    Legacy variables (backward compatibility):
+    - POSTGRES_HOST -> DB_HOST
+    - POSTGRES_PORT -> DB_PORT
+    - POSTGRES_DB -> DB_NAME
+    - POSTGRES_USER -> DB_USER
+    - POSTGRES_PASSWORD -> DB_PASSWORD
 
     Returns:
         psycopg2 connection object
@@ -39,12 +46,27 @@ def get_db_connection(readonly: bool = True) -> PGConnection:
         psycopg2.OperationalError: If connection fails
         psycopg2.ProgrammingError: If write attempted in read-only mode
     """
+    # Read from DB_* first (new contract), fallback to POSTGRES_* (legacy)
+    host = os.getenv("DB_HOST") or os.getenv("POSTGRES_HOST", "127.0.0.1")
+    port = int(os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT", "5433"))
+    database = os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "inca_rag_final")
+    user = os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "postgres")
+    password = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "postgres")
+
+    # Log connection params (mask password)
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(
+        f"DB connection: host={host}, port={port}, database={database}, user={user}, "
+        f"password={'*' * len(password) if password else 'MISSING'}"
+    )
+
     conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "localhost"),
-        port=int(os.getenv("POSTGRES_PORT", "5433")),
-        database=os.getenv("POSTGRES_DB", "inca_rag_final_test"),
-        user=os.getenv("POSTGRES_USER", "postgres"),
-        password=os.getenv("POSTGRES_PASSWORD", "testpass")
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password
     )
 
     # STRENGTHENED: Force read-only mode at PostgreSQL level
@@ -191,16 +213,25 @@ async def get_async_pool() -> asyncpg.Pool:
 
     NOTE: This pool allows WRITE operations (for admin_mapping only).
     Constitutional: Admin mapping workbench requires write access.
+
+    Uses DB Contract SSOT (same as get_db_connection).
     """
     global _async_pool
 
     if _async_pool is None or _async_pool._closed:
+        # Use same contract as sync connection
+        host = os.getenv("DB_HOST") or os.getenv("POSTGRES_HOST", "127.0.0.1")
+        port = int(os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT", "5433"))
+        database = os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "inca_rag_final")
+        user = os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "postgres")
+        password = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "postgres")
+
         _async_pool = await asyncpg.create_pool(
-            host=os.getenv("POSTGRES_HOST", "localhost"),
-            port=int(os.getenv("POSTGRES_PORT", "5433")),
-            database=os.getenv("POSTGRES_DB", "inca_rag_final_test"),
-            user=os.getenv("POSTGRES_USER", "postgres"),
-            password=os.getenv("POSTGRES_PASSWORD", "testpass"),
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
             min_size=2,
             max_size=10,
         )

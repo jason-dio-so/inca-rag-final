@@ -86,7 +86,39 @@ async def compare_view_model(
         # Re-raise HTTP exceptions from base_compare_proposals
         raise
     except Exception as e:
+        import psycopg2
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"ViewModel assembly error: {e}", exc_info=True)
+
+        # Provide specific error codes for common failures
+        error_detail = str(e)
+        error_code = "VIEWMODEL_ASSEMBLY_ERROR"
+        hints = []
+
+        # Check for DB connection errors
+        if isinstance(e, psycopg2.OperationalError):
+            error_code = "DB_CONN_FAILED"
+            if "password authentication failed" in error_detail:
+                hints.append("DB_PASSWORD mismatch")
+                hints.append("Run: python apps/api/scripts/db_doctor.py")
+            elif "could not connect" in error_detail:
+                hints.append("DB connection refused (check container)")
+                hints.append("Run: docker ps | grep inca_pg")
+            elif "does not exist" in error_detail:
+                hints.append("Database name mismatch")
+                hints.append("Expected: DB_NAME=inca_rag_final")
+
+        # Build structured error response
+        error_response = {
+            "error_code": error_code,
+            "detail": error_detail,
+        }
+        if hints:
+            error_response["hints"] = hints
+
         raise HTTPException(
             status_code=500,
-            detail=f"ViewModel assembly error: {str(e)}"
+            detail=error_response
         )
