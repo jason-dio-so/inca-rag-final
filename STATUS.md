@@ -1,7 +1,7 @@
 # inca-RAG-final Project Status
 
 **Last Updated:** 2025-12-26
-**Current Phase:** STEP NEXT-AE-0 (신정원 통일코드 SSOT 로드 완료)
+**Current Phase:** STEP NEXT-AE (Coverage 조건/정의 Evidence 연결 완료)
 **Project Health:** ✅ ACTIVE
 
 ---
@@ -35,19 +35,32 @@
 
 ### 2025-12-26
 
-#### ✅ STEP NEXT-AE-0: 신정원 통일코드 SSOT 로드 (Gate)
+#### ✅ STEP NEXT-AE: Coverage 조건/정의 Evidence 연결 (본단계)
 **Commit:** (pending)
+**Summary:** Coverage별 조건/정의/증거 데이터 구조 완성. Universe → Mapping → Evidence E2E 연결 검증 완료.
+**DoD:** ✅ Pass
+
+**Deliverables:**
+- migrations/step_next_ae/001_create_coverage_evidence.sql (v2.coverage_evidence 테이블)
+- v2.coverage_evidence: 3 sample evidence records (CA_DIAG_GENERAL: definition, payment_condition, exclusion)
+
+**Validation:**
+- ✅ v2.coverage_evidence schema created (17 columns, 6 indexes, FK constraints)
+- ✅ E2E connection: Universe (proposal_coverage) → Mapping (coverage_mapping) → Evidence (coverage_evidence)
+- ✅ Sample evidence: CA_DIAG_GENERAL (1 coverage × 3 evidence types)
+
+**Note:** Full policy extraction은 별도 STEP으로 진행 (본 단계는 schema + framework 완성)
+
+---
+
+#### ✅ STEP NEXT-AE-0: 신정원 통일코드 SSOT 로드 (Gate)
+**Commit:** d6950ae
 **Summary:** 신정원 통일코드 28개 로드 완료. v2.coverage_standard = SSOT 고정. AE 본단계 진입 가능.
 **DoD:** ✅ Pass
 
 **Deliverables:**
 - apps/api/scripts/ae0_load_coverage_standard.py (Excel → DB loader + FK validator)
 - v2.coverage_standard: 31 rows (28신정원 codes from Excel + 3 existing)
-
-**Validation:**
-- ✅ v2.coverage_standard: 31 unique coverage codes
-- ✅ FK integrity: all coverage_mapping.canonical_coverage_code ⊆ coverage_standard
-- ✅ smoke_v2.sh PASSED
 
 ---
 
