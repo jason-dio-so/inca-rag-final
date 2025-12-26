@@ -272,20 +272,52 @@ if [ "$DETAIL_TABLE_CHECK" = "t" ]; then
     UNMATCHED_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
         "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE coverage_id IS NULL;" | xargs)
 
+    # AF-FIX: Check deterministic extraction count
+    DETERMINISTIC_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE extraction_method LIKE 'deterministic%';" | xargs)
+
+    # AF-FIX: Check for manual/non-deterministic entries
+    MANUAL_COUNT=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+        "SELECT COUNT(*) FROM v2.proposal_coverage_detail WHERE extraction_method NOT LIKE 'deterministic%' OR extraction_method IS NULL;" | xargs)
+
     echo "   - Matched to coverage: $MATCHED_COUNT"
     echo "   - Unmatched (NULL coverage_id): $UNMATCHED_COUNT"
+    echo "   - Deterministic extractions: $DETERMINISTIC_COUNT"
 
-    # STEP NEXT-AF DoD: 최소 1개 template에 detail >= 1, 최소 1개 row는 매칭 성공
+    # AF-FIX: Warn if manual entries exist
+    if [ "$MANUAL_COUNT" -gt 0 ]; then
+        echo "   ⚠️  WARNING: Found $MANUAL_COUNT manual/non-deterministic entries"
+        echo "      Manual entries should be removed for production"
+    fi
+
+    # AF-FIX: Calculate match rate for quality check
+    if [ "$TOTAL_DETAIL_COUNT" -gt 0 ]; then
+        MATCH_RATE=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
+            "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE coverage_id IS NOT NULL) / COUNT(*), 1) FROM v2.proposal_coverage_detail WHERE extraction_method LIKE 'deterministic%';" | xargs)
+        echo "   - Match rate: ${MATCH_RATE}%"
+
+        # Quality threshold (minimum 10% for initial acceptance, warn if below)
+        if [ "$(echo "$MATCH_RATE < 10" | bc -l)" -eq 1 ]; then
+            echo "   ⚠️  WARNING: Match rate below 10% - check extraction quality"
+        fi
+    fi
+
+    # STEP NEXT-AF-FIX DoD: 최소 1개 template, 1+ matched, deterministic only
     TEMPLATES_WITH_DETAILS=$(psql "postgresql://postgres:postgres@127.0.0.1:5433/inca_rag_final" -t -c \
-        "SELECT COUNT(DISTINCT template_id) FROM v2.proposal_coverage_detail;" | xargs)
+        "SELECT COUNT(DISTINCT template_id) FROM v2.proposal_coverage_detail WHERE extraction_method LIKE 'deterministic%';" | xargs)
 
     echo "   - Templates with details: $TEMPLATES_WITH_DETAILS"
 
-    if [ "$TEMPLATES_WITH_DETAILS" -ge 1 ] && [ "$MATCHED_COUNT" -ge 1 ]; then
-        echo "✅ At least 1 template has details with 1+ matched coverage (DoD PASS)"
+    if [ "$TEMPLATES_WITH_DETAILS" -ge 1 ] && [ "$MATCHED_COUNT" -ge 1 ] && [ "$MANUAL_COUNT" -eq 0 ]; then
+        echo "✅ At least 1 template has deterministic details with 1+ matched coverage (DoD PASS)"
     else
-        echo "ℹ️  Not enough data for STEP NEXT-AF DoD (expected >= 1 template with >= 1 matched detail)"
-        echo "   Run: python apps/api/scripts/af_extract_proposal_detail.py <template_id> <pdf_path>"
+        if [ "$MANUAL_COUNT" -gt 0 ]; then
+            echo "ℹ️  Manual entries detected - run cleanup before production"
+            echo "   DELETE FROM v2.proposal_coverage_detail WHERE extraction_method NOT LIKE 'deterministic%';"
+        else
+            echo "ℹ️  Not enough data for STEP NEXT-AF-FIX DoD (expected >= 1 template with >= 1 matched deterministic detail)"
+            echo "   Run: python apps/api/scripts/af_extract_proposal_detail_v2.py <template_id> <pdf_path>"
+        fi
     fi
 
     # Template distribution

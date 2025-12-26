@@ -24,36 +24,41 @@ from .compare import compare_proposals as base_compare_proposals
 
 def fetch_comparison_description(
     conn: PGConnection,
-    coverage_item: ProposalCoverageItem
+    template_id: str,
+    insurer_coverage_name: str
 ) -> tuple[Optional[str], Optional[dict]]:
     """
-    Fetch comparison description from v2.proposal_coverage_detail (STEP NEXT-AF).
+    Fetch comparison description from v2.proposal_coverage_detail (STEP NEXT-AF-FIX).
+
+    IMPORTANT: Template isolation - only match within same template_id.
 
     Args:
         conn: DB connection
-        coverage_item: Coverage item from proposal
+        template_id: Template ID (for isolation)
+        insurer_coverage_name: Coverage name from row
 
     Returns:
         (detail_text, source_metadata) or (None, None) if not found
     """
     cursor = conn.cursor()
 
-    # Match by template_id + insurer_coverage_name
-    # We need template_id from proposal_id - simplified: use latest detail for this insurer
+    # Match by template_id + insurer_coverage_name (template isolation)
+    # Prefer matched (coverage_id NOT NULL), fallback to unmatched
     cursor.execute("""
-        SELECT d.detail_text, d.source_page, d.template_id
-        FROM v2.proposal_coverage pc
-        JOIN v2.proposal_coverage_detail d ON d.coverage_id = pc.coverage_id
-        WHERE pc.insurer_coverage_name = %s
-        ORDER BY d.updated_at DESC
+        SELECT d.detail_text, d.source_page
+        FROM v2.proposal_coverage_detail d
+        WHERE d.template_id = %s
+          AND d.insurer_coverage_name = %s
+          AND d.extraction_method LIKE 'deterministic%%'
+        ORDER BY (d.coverage_id IS NOT NULL) DESC, d.updated_at DESC
         LIMIT 1
-    """, (coverage_item.coverage_name_raw,))
+    """, (template_id, insurer_coverage_name))
 
     row = cursor.fetchone()
     cursor.close()
 
     if row:
-        detail_text, source_page, template_id = row
+        detail_text, source_page = row
         source_meta = {"doc_type": "proposal_detail", "page": source_page}
         return detail_text, source_meta
 
@@ -106,25 +111,55 @@ async def compare_view_model(
         # Step 3: Convert to dict
         view_model_dict = view_model.model_dump(mode="json")
 
-        # Step 3.5: Enrich with comparison_description (STEP NEXT-AF)
-        # Add comparison_description to fact_table rows if available
+        # Step 3.5: Enrich with comparison_description (STEP NEXT-AF-FIX)
+        # Add comparison_description to fact_table rows (row-level matching with template_id isolation)
         if "fact_table" in view_model_dict and "rows" in view_model_dict["fact_table"]:
+            # Get template_id for each coverage (need to query DB)
+            template_ids = {}
+            cursor = conn.cursor()
+
+            # Get template_id for coverage_a
+            if compare_response.coverage_a:
+                cursor.execute("""
+                    SELECT template_id FROM v2.proposal_coverage
+                    WHERE insurer_coverage_name = %s LIMIT 1
+                """, (compare_response.coverage_a.coverage_name_raw,))
+                result = cursor.fetchone()
+                if result:
+                    template_ids[compare_response.coverage_a.insurer.upper()] = result[0]
+
+            # Get template_id for coverage_b
+            if compare_response.coverage_b:
+                cursor.execute("""
+                    SELECT template_id FROM v2.proposal_coverage
+                    WHERE insurer_coverage_name = %s LIMIT 1
+                """, (compare_response.coverage_b.coverage_name_raw,))
+                result = cursor.fetchone()
+                if result:
+                    template_ids[compare_response.coverage_b.insurer.upper()] = result[0]
+
+            cursor.close()
+
+            # Enrich each row with comparison_description
             for row in view_model_dict["fact_table"]["rows"]:
                 insurer = row.get("insurer")
-                coverage_name = row.get("coverage_title_normalized")
+                coverage_title = row.get("coverage_title_normalized")
 
-                # Find matching coverage from compare_response
-                coverage_item = None
-                if compare_response.coverage_a and compare_response.coverage_a.insurer.upper() == insurer:
-                    coverage_item = compare_response.coverage_a
-                elif compare_response.coverage_b and compare_response.coverage_b.insurer.upper() == insurer:
-                    coverage_item = compare_response.coverage_b
+                # Get template_id for this row's insurer
+                template_id = template_ids.get(insurer)
+                if not template_id:
+                    continue
 
-                if coverage_item:
-                    detail_text, source_meta = fetch_comparison_description(conn, coverage_item)
-                    if detail_text:
-                        row["comparison_description"] = detail_text
-                        row["comparison_description_source"] = source_meta
+                # Fetch description using template_id + coverage_title (row-level matching)
+                detail_text, source_meta = fetch_comparison_description(
+                    conn,
+                    template_id,
+                    coverage_title  # This is the row's coverage name
+                )
+
+                if detail_text:
+                    row["comparison_description"] = detail_text
+                    row["comparison_description_source"] = source_meta
 
         # Step 4: Runtime schema validation (if enabled)
         if ENABLE_SCHEMA_VALIDATION:
